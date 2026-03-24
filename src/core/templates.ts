@@ -1,0 +1,56 @@
+import type { EntityStore, Entity } from "./entity.js";
+
+/**
+ * Evaluate template expressions in a string.
+ *
+ * Template syntax: ${...} where the expression has access to:
+ * - `self` — the entity's properties
+ * - `entity(id)` — look up another entity's properties
+ * - `has(tag)` — check if the entity has a tag
+ * - `contents()` — get names of entities inside this one
+ *
+ * Uses new Function for now — will be replaced with proper sandboxing later.
+ */
+export function renderTemplate(
+  template: string,
+  { entity, store }: { entity: Entity; store: EntityStore },
+): string {
+  // Fast path: no expressions
+  if (!template.includes("${")) return template;
+
+  const self = entity.properties;
+
+  function entityLookup(id: string): Record<string, unknown> {
+    const target = store.tryGet(id);
+    if (!target) return {};
+    return target.properties;
+  }
+
+  function has(tag: string): boolean {
+    return entity.tags.has(tag);
+  }
+
+  function contents(): string[] {
+    const children = store.getContents(entity.id);
+    return children
+      .filter((e) => !e.tags.has("exit"))
+      .map((e) => (e.properties["name"] as string) || e.id);
+  }
+
+  try {
+    // Build a function that evaluates the template as a tagged template literal
+    // We convert ${expr} in the string to actual template literal expressions
+    const fn = new Function("self", "entity", "has", "contents", "return `" + template + "`;");
+    return fn(self, entityLookup, has, contents) as string;
+  } catch (_e) {
+    // If evaluation fails, return the raw template
+    return template;
+  }
+}
+
+/**
+ * Check if a string contains template expressions.
+ */
+export function hasTemplateExpressions(text: string): boolean {
+  return text.includes("${");
+}

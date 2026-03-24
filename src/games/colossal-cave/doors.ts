@@ -16,7 +16,8 @@ export function createDoors(store: EntityStore): void {
       destination: "room:below-the-grate",
       name: "Steel Grate",
       aliases: ["grate", "grille", "metal", "grating"],
-      description: "It just looks like an ordinary grate mounted in concrete.",
+      description:
+        "${self.open ? 'The grate stands open.' : self.locked ? 'The grate is locked.' : 'The grate is unlocked but shut.'}",
       locked: true,
       open: false,
       unlockedBy: "item:keys",
@@ -32,7 +33,8 @@ export function createDoors(store: EntityStore): void {
       destination: "room:outside-grate",
       name: "Steel Grate",
       aliases: ["grate", "grille", "metal", "grating"],
-      description: "It just looks like an ordinary grate mounted in concrete.",
+      description:
+        "${self.open ? 'The grate stands open.' : self.locked ? 'The grate is locked.' : 'The grate is unlocked but shut.'}",
       locked: true,
       open: false,
       unlockedBy: "item:keys",

@@ -6,6 +6,7 @@ import { describeRoomFull, entityRef } from "./describe.js";
 import { open, close, putIn, takeFrom, unlock, unlockWith, lock } from "./container-verbs.js";
 import { switchOn, switchOff, turnOnPrep, turnOffPrep } from "./device-verbs.js";
 import { isRoomLit, darknessDescription } from "./darkness.js";
+import { renderTemplate } from "./templates.js";
 
 function moveEvent(
   entityId: string,
@@ -24,9 +25,10 @@ function moveEvent(
 function examinePerform(context: VerbContext): PerformResult {
   if (context.command.form !== "transitive") return { output: "Examine what?", events: [] };
   const target = context.command.object;
-  const desc =
+  const rawDesc =
     (target.properties["description"] as string) ||
     `You see nothing special about the ${entityRef(target)}.`;
+  const desc = renderTemplate(rawDesc, { entity: target, store: context.store });
   const parts = [desc];
   if (target.tags.has("container") && target.properties["open"] === true) {
     const contents = context.store.getContents(target.id);
@@ -65,9 +67,10 @@ const lookAt: VerbHandler = {
   perform(context: VerbContext): PerformResult {
     if (context.command.form !== "prepositional") return { output: "Look at what?", events: [] };
     const target = context.command.object;
-    const desc =
+    const rawDesc =
       (target.properties["description"] as string) ||
       `You see nothing special about the ${entityRef(target)}.`;
+    const desc = renderTemplate(rawDesc, { entity: target, store: context.store });
     return { output: desc, events: [] };
   },
 };

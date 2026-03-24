@@ -25,7 +25,8 @@ function createBuildingItems(store: EntityStore): void {
   item(store, {
     id: "item:lantern",
     name: "Brass lantern",
-    description: "There is a shiny brass lamp nearby.",
+    description:
+      "${self.switchedOn ? 'Your lamp is here, gleaming brightly.' : 'There is a shiny brass lamp nearby.'}",
     location: "room:inside-building",
     portable: true,
     tags: ["device"],
@@ -79,7 +80,8 @@ function createCaveItems(store: EntityStore): void {
   item(store, {
     id: "item:bird",
     name: "Little bird",
-    description: "A cheerful little bird is sitting here singing.",
+    description:
+      "${self.location === 'item:cage' ? 'The little bird looks unhappy in the cage.' : 'A cheerful little bird is sitting here singing.'}",
     location: "room:in-bird-chamber",
     aliases: ["bird", "cheerful"],
   });
@@ -148,7 +150,8 @@ function createFixedItems(store: EntityStore): void {
   item(store, {
     id: "item:plant",
     name: "Plant",
-    description: 'There is a tiny little plant in the pit, murmuring "water, water, ..."',
+    description:
+      "${self.plantSize === 'tiny' ? 'There is a tiny little plant in the pit, murmuring \"Water, water, ...\"' : self.plantSize === 'tall' ? 'There is a 12-foot-tall beanstalk stretching up out of the pit, bellowing \"Water!! Water!!\"' : 'There is a gigantic beanstalk stretching all the way up to the hole.'}",
     location: "room:in-west-pit",
     properties: { fixed: true, plantSize: "tiny" },
   });

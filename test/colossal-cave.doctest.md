@@ -202,6 +202,19 @@ game.locationOf("item:dragon")
 => void
 ```
 
+## Template Descriptions
+
+The lantern description changes based on state:
+
+```
+const game = colossalCave();
+game.walk("west");
+game.do("take lamp");
+game.do("turn lamp");
+game.do("examine lamp")
+=> Your lamp is here, gleaming brightly.
+```
+
 ## Score
 
 The player starts with 36 points:

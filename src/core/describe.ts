@@ -1,4 +1,5 @@
 import type { EntityStore, Entity } from "./entity.js";
+import { renderTemplate } from "./templates.js";
 
 function entityName(entity: Entity): string {
   return (entity.properties["name"] as string) || entity.id;
@@ -14,7 +15,8 @@ export function describeRoomFull(
   { room, playerId }: { room: Entity; playerId: string },
 ): string {
   const name = entityRef(room);
-  const description = (room.properties["description"] as string) || "";
+  const rawDescription = (room.properties["description"] as string) || "";
+  const description = renderTemplate(rawDescription, { entity: room, store });
   const contents = store.getContents(room.id);
 
   const exits = contents.filter((e) => e.tags.has("exit"));
