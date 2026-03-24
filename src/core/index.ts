@@ -24,3 +24,6 @@ export { SYSTEM_VERBS } from "./verb-types.js";
 
 export { createDefaultVerbs } from "./default-verbs.js";
 export { describeRoomFull, entityRef } from "./describe.js";
+export { defineBaseProperties } from "./base-properties.js";
+export { createGameRunner } from "./game-runner.js";
+export type { GameRunner } from "./game-runner.js";

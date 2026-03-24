@@ -3,6 +3,7 @@ import type { VerbContext, VerbRegistry, ResolvedCommand } from "./verbs.js";
 import { parseCommand, resolveCommand } from "./verbs.js";
 import { SYSTEM_VERBS } from "./verb-types.js";
 import { describeRoomFull } from "./describe.js";
+import { isRoomLit, darknessDescription } from "./darkness.js";
 
 export interface DebugInfo {
   /** e.g. "look", "take lantern", "put key in chest" */
@@ -103,7 +104,10 @@ function tryMovement(store: EntityStore, input: string): MovementResult | null {
     const player = getPlayer(store);
     store.setProperty(player.id, { name: "location", value: destination });
     const newRoom = store.get(destination);
-    const output = describeRoomFull(store, { room: newRoom, playerId: player.id });
+    const lit = isRoomLit(store, { room: newRoom, playerId: player.id });
+    const output = lit
+      ? describeRoomFull(store, { room: newRoom, playerId: player.id })
+      : darknessDescription();
     return { output, direction, moved: true };
   }
 

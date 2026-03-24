@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { createRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createRoute, Link } from "@tanstack/react-router";
 import { rootRoute } from "./__root.js";
-import { WorldShell } from "../WorldShell.js";
-import { EntityViewer } from "../EntityViewer.js";
+import { trpc } from "../trpc.js";
 
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -10,31 +9,35 @@ export const indexRoute = createRoute({
   component: HomePage,
 });
 
-function HomePage() {
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const [revision, setRevision] = useState(0);
+interface GameInfo {
+  slug: string;
+  title: string;
+  description: string;
+}
 
-  function handleCommandComplete(): void {
-    setRevision((r) => r + 1);
-  }
+function HomePage() {
+  const [games, setGames] = useState<GameInfo[]>([]);
+
+  useEffect(() => {
+    trpc.games.query().then(setGames);
+  }, []);
 
   return (
-    <div className="flex h-screen">
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="mb-4 text-xl font-bold">Extensoworld</h1>
-          <WorldShell
-            onEntityClick={setSelectedEntityId}
-            onCommandComplete={handleCommandComplete}
-          />
-        </div>
-      </div>
-      <div className="w-72 border-l border-gray-700 bg-gray-900">
-        <EntityViewer
-          selectedId={selectedEntityId}
-          onSelect={setSelectedEntityId}
-          revision={revision}
-        />
+    <div className="mx-auto max-w-2xl p-8">
+      <h1 className="mb-6 text-2xl font-bold">Extensoworld</h1>
+      <p className="mb-6 text-gray-400">Choose an adventure:</p>
+      <div className="space-y-4">
+        {games.map((game) => (
+          <Link
+            key={game.slug}
+            to="/game/$gameId"
+            params={{ gameId: game.slug }}
+            className="block rounded-lg border border-gray-700 bg-gray-900 p-4 hover:border-sky-500 hover:bg-gray-800"
+          >
+            <h2 className="text-lg font-bold text-sky-400">{game.title}</h2>
+            <p className="mt-1 text-sm text-gray-400">{game.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { VerbRegistry } from "./verbs.js";
 import { SYSTEM_VERBS } from "./verb-types.js";
 import { describeRoomFull, entityRef } from "./describe.js";
 import { open, close, putIn, takeFrom, unlock, unlockWith, lock } from "./container-verbs.js";
+import { switchOn, switchOff, turnOnPrep, turnOffPrep } from "./device-verbs.js";
+import { isRoomLit, darknessDescription } from "./darkness.js";
 
 function moveEvent(
   entityId: string,
@@ -46,6 +48,9 @@ const lookRoom: VerbHandler = {
   freeTurn: true,
   perform(context: VerbContext): PerformResult {
     const { store, room } = context;
+    if (!isRoomLit(store, { room, playerId: context.player.id })) {
+      return { output: darknessDescription(), events: [] };
+    }
     const output = describeRoomFull(store, { room, playerId: context.player.id });
     return { output, events: [] };
   },
@@ -87,6 +92,16 @@ const take: VerbHandler = {
     if (context.command.object.properties["location"] === context.player.id)
       return { applies: false };
     return { applies: true };
+  },
+  veto(context: VerbContext) {
+    if (context.command.form !== "transitive") return { blocked: false };
+    const capacity = (context.player.properties["carryingCapacity"] as number) || 0;
+    if (capacity <= 0) return { blocked: false };
+    const carried = context.store.getContents(context.player.id);
+    if (carried.length >= capacity) {
+      return { blocked: true, output: "You're carrying too many things already." };
+    }
+    return { blocked: false };
   },
   perform(context: VerbContext): PerformResult {
     if (context.command.form !== "transitive") return { output: "Take what?", events: [] };
@@ -165,6 +180,22 @@ const help: VerbHandler = {
   },
 };
 
+const score: VerbHandler = {
+  name: "score",
+  source: "default-verbs.ts",
+  pattern: { verb: "score", form: "intransitive" },
+  priority: 0,
+  freeTurn: true,
+  perform(context: VerbContext): PerformResult {
+    const s = (context.player.properties["score"] as number) || 0;
+    const maxScore = (context.player.properties["maxScore"] as number) || 0;
+    if (maxScore > 0) {
+      return { output: `Your score is ${s} out of ${maxScore}.`, events: [] };
+    }
+    return { output: `Your score is ${s}.`, events: [] };
+  },
+};
+
 function itemRefs(entities: Entity[]): string {
   return entities.map((e) => entityRef(e)).join(", ");
 }
@@ -210,6 +241,11 @@ export function createDefaultVerbs(): VerbRegistry {
     unlockWith,
     lock,
     help,
+    score,
+    switchOn,
+    switchOff,
+    turnOnPrep,
+    turnOffPrep,
     enterRoom,
   ];
   for (const handler of handlers) {

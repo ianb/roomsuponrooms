@@ -8,9 +8,11 @@ interface LogEntry {
 }
 
 export function WorldShell({
+  gameId,
   onEntityClick,
   onCommandComplete,
 }: {
+  gameId: string;
   onEntityClick?: (id: string) => void;
   onCommandComplete?: () => void;
 }) {
@@ -22,10 +24,10 @@ export function WorldShell({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    trpc.look.query().then((result) => {
+    trpc.look.query({ gameId }).then((result) => {
       setLog([{ type: "output", text: result.output }]);
     });
-  }, []);
+  }, [gameId]);
 
   useEffect(() => {
     if (logEndRef.current) {
@@ -43,7 +45,7 @@ export function WorldShell({
 
     setLog((prev) => [...prev, { type: "input", text: `> ${command}` }]);
 
-    const result = await trpc.command.mutate({ text: command, debug: debugMode });
+    const result = await trpc.command.mutate({ gameId, text: command, debug: debugMode });
     const entries: LogEntry[] = [{ type: "output", text: result.output }];
 
     if (result.debug) {

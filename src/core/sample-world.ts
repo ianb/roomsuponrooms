@@ -1,58 +1,12 @@
 import { EntityStore, WORLD_LOCATION } from "./entity.js";
-import type { PropertyRegistry } from "./properties.js";
-import { createRegistry, defineProperty } from "./properties.js";
+import { createRegistry } from "./properties.js";
+import { defineBaseProperties } from "./base-properties.js";
 import { createDefaultVerbs } from "./default-verbs.js";
 import type { VerbRegistry } from "./verbs.js";
 
 interface SampleWorld {
   store: EntityStore;
   verbs: VerbRegistry;
-}
-
-function defineBaseProperties(registry: PropertyRegistry): void {
-  const props = [
-    { name: "name", description: "Display name", schema: { type: "string" } },
-    {
-      name: "description",
-      description: "Text description shown to the player",
-      schema: { type: "string" },
-    },
-    { name: "location", description: "ID of the containing entity", schema: { type: "string" } },
-    { name: "direction", description: "Direction label for an exit", schema: { type: "string" } },
-    { name: "destination", description: "Target room ID for an exit", schema: { type: "string" } },
-    {
-      name: "open",
-      description: "Whether a container or door is open",
-      schema: { type: "boolean" },
-      defaultValue: false,
-    },
-    {
-      name: "locked",
-      description: "Whether something is locked",
-      schema: { type: "boolean" },
-      defaultValue: false,
-    },
-    {
-      name: "unlockedBy",
-      description: "Entity ID of the key that unlocks this",
-      schema: { type: "string" },
-    },
-    {
-      name: "visits",
-      description: "Number of times the player has entered this room",
-      schema: { type: "number" },
-      defaultValue: 0,
-    },
-    {
-      name: "aliases",
-      description: "Alternative names for matching in commands",
-      schema: { type: "array", items: { type: "string" } },
-    },
-  ] as const;
-
-  for (const prop of props) {
-    defineProperty(registry, prop);
-  }
 }
 
 function createRooms(store: EntityStore): void {

@@ -1,0 +1,1602 @@
+"Adventure" by Will Crowther and Don Woods
+
+[
+!  Advent 080512        A classic and one of the standard Inform 6 example games
+!
+!
+!                                  Adapted to Inform 5: 17.05.1994 to 24.05.1994
+!                 Modernised to Inform 5.5 and library 5/12 or later: 20.12.1995
+!                    Modernised to Inform 6 and library 6/1 or later: 11.11.1996
+!                    A few bugs removed and companion text rewritten: 09.12.1996
+!                                Some very minor bugs indeed removed: 24.02.1997
+!                                                    And another two: 04.09.1997
+!                 [RF] Source reformatted and very minor bug removed: 02.09.2004
+!                     [RF] Added teleportation, also minor bug fixes: 21.03.2006
+!		        		[AR] Adapted to Inform 7: 12.05.2008
+!                               [VG] Adapted to Inform 7 6M62: 15.02.2021
+! 
+]
+
+The story headline is "The Interactive Original". The story creation year is 1977.     
+
+Release along with the source text.        
+ 
+Part - Setup
+
+The carrying capacity of the player is 7. 
+Use scoring.
+The maximum score is 350. 
+Maximum treasures is a number that varies. Maximum treasures is 15.
+
+Caves closed is a truth state that varies.               [ true when cave is closing]
+Deaths is a number that varies. [ Counts of deaths/resurrections ]
+
+Use full-length room descriptions. 
+
+Chapter - Rules for Treasures
+
+A treasure is a kind of thing. A treasure has a number called deposit points. The deposit points of a treasure is usually 10. A treasure is either found or unfound. A treasure is usually unfound.
+
+After taking a treasure (called prize):
+	if location is Inside_Building, decrease the score by ( -1 * deposit points of prize );
+	increase the score by 5;
+	if prize is unfound begin;
+		now prize is found;
+		increase the score by 2;
+	end if;
+	continue the action.
+	
+Report taking a treasure: say "Taken!" instead.
+
+After inserting a treasure into something: decrease the score by 5; continue the action.
+
+After dropping a treasure:
+	increase the score by 5;
+	if location is Inside_Building begin;
+		increase the score by ( deposit points of noun );
+		say "Safely deposited." instead;
+	end if;
+	continue the action.
+
+Chapter - Going "Outside" when only one exit
+
+[This is not strictly speaking a feature of the original or any previous ports, but saves us having to define a number of "outside" directions for dead ends by hand.]
+
+Instead of going nowhere when the noun is outside and the number of rooms adjacent to location is 1, try exiting.
+
+Instead of exiting when the player is in a room (this is the guessing which way is out rule):
+	let the destination be a random room adjacent to location;
+	let the way be the best route from location to destination;
+	try going way.
+
+Part - Rooms
+
+Chapter - The Outside World
+
+A room is either underground or aboveground. A room is usually underground. An underground room is usually dark. An aboveground room is usually lighted.
+
+A room is either dwarfish or safe. An underground room is usually dwarfish. An aboveground room is usually safe.
+
+At_End_Of_Road is an aboveground room with printed name "At End Of Road". Understand "street/path/gully" as At_End_Of_Road. "You are standing at the end of a road before a small brick building. Around you is a forest. A small stream flows out of the building and down a gully." At_End_Of_Road is east of At_Hill_In_Road, down from At_Hill_In_Road, west of Inside_Building, north of In_A_Valley, and outside of Inside_Building. In_Forest_1 is north of At_End_Of_Road. Down from At_End_Of_Road is In_A_Valley.
+
+The well house is a backdrop. It is in At_End_Of_Road, At_Hill_In_Road, and Inside_Building. Understand "building" as well house. The description is "It's a small brick building. It seems to be a well house." Before entering the well house when location is At_Hill_In_Road and Inside_Building is unvisited, say "It's too far away." instead. Before entering the well house: move player to Inside_Building instead.
+
+[ The Stream ]
+
+The stream is a backdrop. It is in At_End_Of_Road, In_A_Valley, At_Slit_In_Streambed, In_Pit, In_Cavern_With_Waterfall, At_Reservoir, Inside_Building.
+
+Instead of drinking the stream, say "You have taken a drink from the stream. The water tastes strongly of minerals, but is not unpleasant. It is extremely cold.";
+
+Instead of taking the stream when player is not holding bottle, say "You have nothing in which to carry the water." Instead of taking the stream, try filling the bottle.
+
+Instead of inserting the stream into the bottle, try filling the bottle. Instead of inserting the stream into something, say "You have nothing in which to carry the water.".
+
+Instead of inserting the ming vase into the stream: remove ming vase from play; move shards to location; decrease the score by 5; say "The sudden change in temperature has delicately shattered the vase.".
+
+Instead of inserting the bottle into the stream, try filling the bottle.
+
+Instead of inserting something (called trash) into the stream: remove trash from play; if trash is a treasure, decrease the score by 5; say "[The trash] washes away with the stream.".
+
+The road is a backdrop. Understand "street/path/dirt" as road. It is in At_End_Of_Road, At_Hill_In_Road, In Forest 2. "The road is dirt, not yellow brick."
+
+The forest is a backdrop. Understand "tree/trees/oak/maple/grove/pine/spruce/birch/ash/saplings/bushes/leaves/berry/berries/hardwood" as forest. "The trees of the forest are large hardwood oak and maple, with an occasional grove of pine or spruce. There is quite a bit of undergrowth, largely birch and ash saplings plus nondescript bushes of various sorts. This time of year visibility is quite restricted by all the leaves, but travel is quite easy if you detour around the spruce and berry bushes." It is in At_End_Of_Road, At_Hill_In_Road, In_A_Valley, In_Forest_1, In_Forest_2.
+
+[--------]
+
+At_Hill_In_Road is an aboveground room with printed name "At Hill In Road". "You have walked up a hill, still in the forest. The road slopes back down the other side of the hill. There is a building in the distance." In_Forest_1 is south of At_Hill_In_Road. At_End_Of_Road is north of At_Hill_In_Road. 
+
+The hill is scenery in At_Hill_In_Road. Understand "bump/incline" as hill. "It's just a typical hill."
+
+The other_side is scenery in At_Hill_In_Road with printed name "other side of hill". Understand "other side" or "other side of hill" as other_side. "Why not explore it yourself?".
+
+[--------]
+
+Inside_Building is an aboveground room with printed name "Inside Building". Understand "well/house/wellhouse/building" as Inside_Building. "You are inside a building, a well house for a large spring."
+
+Instead of going nowhere from Inside_Building, say "The stream flows out through a pair of 1 foot diameter sewer pipes. The only exit is to the west." Instead of going inside from Inside_Building, say "The pipes are too small."
+
+Instead of entering something when location is Inside_Building, say "The stream flows out through a pair of 1 foot diameter sewer pipes. It would be advisable to use the exit."
+
+The spring is scenery in Inside_Building. Understand "large" as spring. "The stream flows out through a pair of 1 foot diameter sewer pipes."
+
+The sewer pipes are scenery in Inside_Building with printed name "pair of 1 foot diameter sewer pipes". Understand "pipe/one/foot/diameter/sewer-pipes" as sewer pipes. "Too small. The only exit is to the west."
+
+The set of keys is in Inside_Building. Understand "key/keyring/bunch" as set of keys. "There are some keys on the ground here." The description is "It's just a normal-looking set of keys." Instead of counting set of keys, say "A dozen or so keys."
+
+Some tasty food is an edible thing in Inside_Building. Understand "ration/rations/tripe/yummy/delicious/scrumptious" as tasty food. "There is tasty food here." The description is "Sure looks yummy!". Report eating food: say "Delicious!" instead.
+
+A brass lantern is a device in Inside_Building. Understand "lamp/headlamp/headlight/light/shiny" as lantern. "[if switched off]There is a shiny brass lamp nearby[otherwise]Your lamp is here, gleaming brightly[end if]." The lantern has a number called power remaining. The power remaining of lantern is 330. The description is "It is a shiny brass lamp[if switched off]. It is not currently lit[otherwise if power remaining of lantern < 30], glowing dimly[otherwise], glowing brightly[end if].".
+
+Instead of burning lantern, try switching on lantern. Instead of rubbing lantern, say "Rubbing the electric lamp is not particularly rewarding.  Anyway, nothing exciting happens." Instead of switching on lantern when power remaining of lantern <= 0, say "Unfortunately, the batteries seem to be dead." Instead of inserting old batteries into lantern, say "Those batteries are dead; they won't do any good at all.".  Instead of inserting something into lantern, say "The only thing you might successfully put in the lamp is a fresh pair of batteries."
+
+After switching on lantern: now lantern is lit; continue the action. After switching off lantern: now lantern is unlit; continue the action.
+
+Every turn when lantern is lit:
+	decrease power remaining of lantern by 1;
+	if power remaining of lantern is 0 begin;
+		now lantern is switched off;
+		now lantern is unlit;
+	end if;
+	if lantern is visible begin;
+		if power remaining of lantern is 0 begin;
+			say "Your lamp has run out of power.";
+			if location is dark begin;
+				if fresh batteries are not visible begin;
+					say "You can't explore the cave without a lamp. So let's just call it a day.";
+					pseudo-death;
+				otherwise;
+					try inserting fresh batteries into lantern;
+				end if;
+			end if;
+		otherwise if power remaining of lantern is 30;
+			say "Your lamp is getting dim.";
+			if fresh batteries are discharged, say "You're also out of spare batteries. You'd best start wrapping this up.";
+			if fresh batteries are in the vending machine and Dead_End_14 is unvisited, say "You'd best start wrapping this up, unless you can find some fresh batteries. I seem to recall there's a vending machine in the maze. Bring some coins with you.";
+			if fresh batteries are not in vending machine and fresh batteries are not visible, say  "You'd best go back for those batteries.";
+		end if;
+	end if.
+
+Instead of inserting fresh batteries into lantern:
+	remove fresh batteries from play;
+	now fresh batteries are discharged;
+	move old batteries to location;
+	now power remaining of lantern is 2500;
+	say "I'm taking the liberty of replacing the batteries.".
+	
+A bottle is an unopenable open container in Inside_Building. Understand "jar/flask" as bottle. "There is an empty bottle here." Instead of removing something from the bottle, say "You're holding that already (in the bottle).". Instead of inserting stream into bottle, try filling bottle. Instead of inserting oil into bottle, try filling bottle. Instead of inserting something into bottle, say "The bottle is only supposed to hold liquids.". Instead of filling bottle when bottle encloses something, say "The bottle is full already." Instead of emptying bottle when nothing is enclosed by the bottle, say "The bottle is already empty!". Instead of emptying bottle: remove a random thing enclosed by the bottle from play; say "Your bottle is now empty and the ground is now wet.".
+
+Instead of filling bottle when stream is visible or spring is visible: move water_in_bottle to bottle; say "The bottle is now full of water.". Instead of filling bottle when oil is visible: move oil_in_bottle to bottle; say "The bottle is now full of oil.". Instead of filling bottle: say "There is nothing here with which to fill the bottle.".
+
+The water_in_bottle is an edible thing with printed name "bottled water" and indefinite article "some". Understand "water/bottled/h2o" or "water in" as water_in_bottle. The description is "It looks like ordinary water to me.". Instead of drinking water_in_bottle: remove water_in_bottle from play; say "The water tastes strongly of minerals, but is not unpleasant. It is extremely cold." Does the player mean drinking stream: it is likely.
+
+The oil_in_bottle is an edible thing with printed name "bottled oil" and indefinite article "some". Understand "oil/bottled/lubricant/grease" as oil_in_bottle. The description is "It looks like ordinary oil to me." Instead of drinking oil_in_bottle: say "Absolutely not." Does the player mean drinking pool of oil: it is likely.
+
+[--------]
+
+In_Forest_1 is an aboveground room with printed name "In Forest". Understand "forest" as In_Forest_1. "You are in open forest, with a deep valley to one side." North of In_Forest_1 is In_Forest_1. West of In_Forest_1 is In_Forest_1. South of In_Forest_1 is In_Forest_1. East of In_Forest_1 is In_A_Valley. Down from In_Forest_1 is In_A_Valley.
+
+Before going to In_Forest_1: if a random chance of 1 in 2 succeeds, move player to In_Forest_2 instead.
+
+In_Forest_2 is an aboveground room with printed name "In Forest". "You are in open forest near both a valley and a road." North of In_Forest_2 is At_End_Of_Road. East of In_Forest_2 is In_A_Valley. West of In_Forest_2 is In_A_Valley. South of In_Forest_2 is In_Forest_1. North of In_Forest_2 is At_End_Of_Road.
+
+In_A_Valley is an aboveground room with printed name "In A Valley". Understand "valley" as In_A_Valley. "You are in a valley in the forest beside a stream tumbling along a rocky bed.". North of In_A_Valley is At_End_Of_Road. East of In_A_Valley is In_Forest_1. West of In_A_Valley is In_Forest_1. Up from In_A_Valley is In_Forest_1. South of In_A_Valley is At_Slit_In_Streambed. Down from In_A_Valley is At_Slit_In_Streambed.
+
+The streambed is scenery in In_A_Valley. Understand "bed/rock/small/rocky/bare/dry" as streambed.
+
+[--------]
+
+At_Slit_In_Streambed is an aboveground room with printed name "At Slit In Streambed". Understand "slit/in/streambed" as At_Slit_In_Streambed. "At your feet all the water of the stream splashes into a 2-inch slit in the rock. Downstream the streambed is bare rock." North of At_Slit_In_Streambed is In_A_Valley. East of At_Slit_In_Streambed is In_Forest_1. West of At_Slit_In_Streambed is In_Forest_1. South of At_Slit_In_Streambed is Outside_Grate. Instead of going down in At_Slit_In_Streambed, say "You don't fit through a two-inch slit!". 
+
+A 2-inch slit is scenery in At_Slit_In_Streambed. Understand "two/inch" as 2-inch slit. The description is "It's just a 2-inch slit in the rock, through which the stream is flowing." Instead of entering 2-inch slit, say "You don't fit through a two-inch slit!".
+
+[--------]
+
+Outside_Grate is an aboveground room with printed name "Outside Grate". Understand "outside/grate" as Outside_Grate. "You are in a 20-foot depression floored with bare dirt. Set into the dirt is a strong steel grate mounted in concrete. A dry streambed leads into the depression.". East of Outside_Grate is In_Forest_1. West of Outside_Grate is In_Forest_1. South of Outside_Grate is In_Forest_1. 
+
+Before going down in Outside_Grate when grate is closed and grate is unlocked: say "(first opening the grate)"; now grate is open.
+
+A 20-foot depression is scenery in Outside_Grate. Understand "dirt/twenty/foot/bare" as 20-foot depression. The description is "You're standing in it.".
+
+A steel grate is a door. It is locked and closed. It is up from Below_The_Grate and down from Outside_Grate. "[if open]The grate stands open.[otherwise if unlocked]The grate is unlocked but shut.[otherwise]The grate is locked.[end if]". Understand "lock/grille/metal/strong/grating" as steel grate. The description is "It just looks like an ordinary grate mounted in concrete." The set of keys unlocks the steel grate.
+
+Chapter - Upper Cave
+
+Below_The_Grate is a lighted safe room with printed name "Below The Grate". Understand "below/grate" as Below_The_Grate. "You are in a small chamber beneath a 3x3 steel grate to the surface. A low crawl over cobbles leads inward to the west." In_Cobble_Crawl is west of Below_The_Grate.
+
+Some cobbles are a backdrop. They are in Below_The_Grate, In_Cobble_Crawl, In_Debris_Room. Understand "cobble/cobblestones/cobblestone/stones/stone" as cobbles. The description is "They're just ordinary cobbles.".
+
+[--------]
+
+In_Cobble_Crawl is a lighted safe room with printed name "In Cobble Crawl". Understand "cobble/crawl" as In_Cobble_Crawl. "You are crawling over cobbles in a low passage. There is a dim light at the east end of the passage." In_Debris_Room is west of In_Cobble_Crawl.
+
+A wicker cage is an open openable transparent container in In_Cobble_Crawl. Understand "small" as wicker cage. "There is a small wicker cage discarded nearby.". The description is "It's a small wicker cage.". After opening cage when little bird is in cage: say "(releasing the little bird)"; try releasing little bird.
+
+[--------]
+
+In_Debris_Room is a safe room with printed name "In Debris Room". Understand "debris/room" as In_Debris_Room. "You are in a debris room filled with stuff washed in from the surface. A low wide passage with cobbles becomes plugged with mud and debris here, but an awkward canyon leads upward and west.[paragraph break]A note on the wall says, 'Magic word XYZZY.'". In_Awkward_Sloping_E_W_Canyon is up from In_Debris_Room. In_Awkward_Sloping_E_W_Canyon is west of In_Debris_Room.
+
+Some debris is scenery in In_Debris_Room. Understand "stuff/mud" as debris. "Yuck.".
+
+A note is scenery in In_Debris_Room. "The note says 'Magic word XYZZY'.".
+
+The black rod is in In_Debris_Room. The printed name is "black rod with a rusty star on the end". Understand "star/rusty/three/foot/iron" as black rod. "A three foot black rod with a rusty star on one end lies nearby.". The description is "It's a three foot black rod with a rusty star on an end.". Before waving black rod: say "Nothing happens." instead.
+
+
+[--------]
+
+In_Awkward_Sloping_E_W_Canyon is a safe room with printed name "Sloping E/W Canyon". Understand "sloping/canyon" as In_Awkward_Sloping_E_W_Canyon. "You are in an awkward sloping east/west canyon." In_Bird_Chamber is up from In_Awkward_Sloping_E_W_Canyon. In_Bird_Chamber is west of In_Awkward_Sloping_E_W_Canyon.
+
+[ The little bird in its natural habitat]
+
+In_Bird_Chamber is a safe room with printed name "Orange River Chamber". Understand "orange/river/chamber" as In_Bird_Chamber. "You are in a splendid chamber thirty feet high. The walls are frozen rivers of orange stone. An awkward canyon and a good passage exit from east and west sides of the chamber." West of In_Bird_Chamber is At_Top_Of_Small_Pit.
+
+A little bird is an animal in In_Bird_Chamber. Understand "cheerful/mournful" as bird. "A cheerful little bird is sitting here singing.". The description is "[if bird is in wicker cage]The little bird looks unhappy in the cage[otherwise]The cheerful little bird is sitting here singing[end if]." Instead of inserting bird into cage, try catching bird. Instead of inserting bird into something, say "Don't put the poor bird in [the second noun]!". Instead of removing the bird from cage, try dropping bird. Instead of dropping bird: say "(The bird is released from the cage.)[line break]"; try releasing bird. 
+
+Instead of taking or catching the bird: if bird is in cage, say "You already have the little bird. If you take it out of the cage it will likely fly away from you." instead; if player is not holding wicker cage, say "You can catch the bird, but you cannot carry it." instead; if player holds black rod, say "The bird was unafraid when you entered, but as you approach it becomes disturbed and you cannot catch it." instead; move bird to cage; now cage is closed; say "You catch the bird in the wicker cage.".
+
+Instead of releasing bird:
+	if bird is not in cage, say "The bird is not caged now." instead;
+	now wicker cage is open;
+	move bird to location;
+	if snake is visible begin;
+		remove snake from play;
+		say "The little bird attacks the green snake, and in an astounding flurry drives the snake away." instead;
+	end if;
+	if dragon is visible begin;
+		remove bird from play;
+		say "The little bird attacks the green dragon, and in an astounding flurry gets burnt to a cinder. The ashes blow away." instead;
+	end if; 
+	say "The little bird flies free.".
+	
+Instead of giving something to bird, say "It's not hungry. (It's merely pinin' for the fjords). Besides, I suspect it would prefer bird seed.". Instead of asking the bird about something, say "Cheep! Chirp!". Instead of answering the bird that something, say "Cheep! Chirp!". Instead of attacking the bird when bird is in cage, say "Oh, leave the poor unhappy bird alone.". Instead of attacking bird: remove bird from play; say "The little bird is now dead. Its body disappears.".
+
+[--------]
+
+At_Top_Of_Small_Pit is a safe room with printed name "At Top of Small Pit". Understand "top of small" or "top/small/pit" as At_Top_Of_Small_Pit. "At your feet is a small pit breathing traces of white mist. A west passage ends here except for a small crack leading on.[paragraph break]Rough stone steps lead down the pit." Down from At_Top_Of_Small_Pit is In_Hall_Of_Mists. Instead of going down in At_Top_Of_Small_Pit when player holds gold nugget: say "You are at the bottom of the pit with a broken neck."; pseudo-death. Instead of going west in At_Top_Of_Small_Pit, say "The crack is far too small for you to follow.".
+
+The small pit is scenery in At_Top_Of_Small_Pit. The description is "The pit is breathing traces of white mist."
+
+The pit crack is scenery in At_Top_Of_Small_Pit. The description is "The crack is very small -- far too small for you to follow.".
+
+The mist is a backdrop. It is in At_Top_Of_Small_Pit, In_Hall_Of_Mists, On_East_Bank_Of_Fissure, At_Window_On_Pit_1, At_West_End_Of_Hall_Of_Mists, In_Misty_Cavern, In_Mirror_Canyon, At_Reservoir, At_Window_On_Pit_2, On_Sw_Side_Of_Chasm. Understand "vapor/wisps/white" as mist. The description is "Mist is a white vapor, usually water, seen from time to time in caverns. It can be found anywhere but is frequently a sign of a deep pit leading down to water."
+
+Chapter - The Two Halls
+
+[The caves open up: The Hall of Mists]
+
+In_Hall_Of_Mists is a room with printed name "In Hall of Mists". Understand "hall of mists" or "hall/mists" as In_Hall_Of_Mists. "You are at one end of a vast hall stretching forward out of sight to the west. There are openings to either side. Nearby, a wide stone staircase leads downward. The hall is filled with wisps of white mist swaying to and fro almost as if alive. A cold wind blows up the staircase. There is a passage at the top of a dome behind you.[paragraph break]Rough stone steps lead up the dome." South of In_Hall_Of_Mists is In_Nugget_Of_Gold_Room. West of In_Hall_Of_Mists is On_East_Bank_Of_Fissure. Down from In_Hall_Of_Mists is In_Hall_Of_Mt_King. North of In_Hall_Of_Mists is In_Hall_Of_Mt_King.
+
+After going to In_Hall_Of_Mists for the first time: increase the score by 25; continue the action.
+
+Instead of going up in In_Hall_Of_Mists when player holds gold nugget: say "The dome is unclimbable."
+
+A wide stone staircase is scenery in In_Hall_Of_Mists. Understand "stair/stairs" as staircase. The description is "The staircase leads down." Instead of climbing staircase, try going down.
+
+Some rough stone steps are scenery in In_Hall_Of_Mists. Understand "stair/stairs" as steps. The description is "The rough stone steps lead up the dome." Instead of climbing steps, try going up.
+
+The dome is scenery in In_Hall_Of_Mists. The description is "[if player holds gold nugget]I'm not sure you'll be able to get up it with what you're carrying[otherwise]It looks like you might be able to climb up it[end if]." Instead of climbing dome, try going up.
+
+[--------]
+
+In_Nugget_Of_Gold_Room is a room with printed name "Low Room". Understand "low/room" as In_Nugget_Of_Gold_Room. "This is a low room with a crude note on the wall:[paragraph break]'You won't get it up the steps'.". 
+
+The gold_note is scenery in In_Nugget_Of_Gold_Room with printed name "note". Understand "note/crude" as note. The description is "The note says, 'You won't get it up the steps'.".
+
+The gold nugget is a treasure in In_Nugget_Of_Gold_Room. Understand "large/heavy" as nugget. "There is a large sparkling nugget of gold here!". The description is "It's a large sparkling nugget of gold!".
+
+[--------]
+
+On_East_Bank_Of_Fissure is a room with printed name "On East Bank of Fissure". Understand "east/bank/side/fissure" as On_East_Bank_Of_Fissure. "You are on the east bank of a fissure slicing clear across the hall. The mist is quite thick here, and the fissure is too wide to jump.". Instead of going west in On_East_Bank_Of_Fissure when crystal bridge is not visible, say "The fissure is too wide.".
+
+West_Side_Of_Fissure is a room with printed name "West Side of Fissure". Understand "bank/side/fissure" or "west side" as West_Side_Of_Fissure. "You are on the west side of the fissure in the hall of mists.". West of West_Side_Of_Fissure is At_West_End_Of_Hall_Of_Mists. North of West_Side_Of_Fissure is At_West_End_Of_Hall_Of_Mists. Instead of going east in West_Side_Of_Fissure when crystal bridge is not visible, say "The fissure is too wide." Report going north from West_Side_Of_Fissure: say "You have crawled through a very low wide passage parallel to and north of the hall of mists.".
+
+Instead of jumping when location is On_East_Bank_Of_Fissure or location is West_Side_Of_Fissure:
+	if crystal bridge is visible, say "I respectfully suggest you go across the bridge instead of jumping." instead;
+	say "You didn't make it.";
+	pseudo-death.
+	
+Instead of going down when location is On_East_Bank_Of_Fissure or location is West_Side_Of_Fissure, say "The fissure is too terrifying!".
+
+Some diamonds are a treasure in West_Side_Of_Fissure. Understand "diamond/several/high/quality" as diamonds. "There are diamonds here!" The description is "They look to be of the highest quality!".
+
+[ It's more difficult in Inform 7 to arbitrarily move doors around, so we're going to treat the fissure itself as the door, the rod as the key, and the bridge as mere portable decoration. ]
+
+The fissure is an undescribed door. It is closed and unopenable. It is west of On_East_Bank_Of_Fissure and east of West_Side_Of_Fissure. Understand "wide" as fissure. The description is "The fissure looks far too wide to jump." Instead of entering fissure when crystal bridge is not visible: try going down. The can't go through undescribed doors rule is not listed in any rulebook.
+
+The crystal bridge is a backdrop. The description is "It spans the fissure, thereby providing you a way across.". Instead of entering crystal bridge, try entering fissure.
+
+Before waving black rod when location is West_Side_Of_Fissure or location is On_East_Bank_Of_Fissure:
+	if caves closed is true, say "Peculiar. Nothing happens." instead;
+	if fissure is open begin;
+		now fissure is closed;
+		remove crystal bridge from play;
+		say "The crystal bridge has vanished!" instead;
+	otherwise;
+		now fissure is open;
+		move crystal bridge to Fissure_Vicinity;
+		say "A crystal bridge now spans the fissure." instead;
+	end if.
+
+Fissure_Vicinity is a region. West_Side_Of_Fissure and On_East_Bank_Of_Fissure are in Fissure_Vicinity. After looking when location is regionally in Fissure_Vicinity and crystal bridge is visible: say "A crystal bridge now spans the fissure."; continue the action.
+
+[--------]
+
+At_West_End_Of_Hall_Of_Mists is a room with printed name "At West End of Hall of Mists". Understand "west/end/hall/mists" as At_West_End_Of_Hall_Of_Mists. "You are at the west end of the hall of mists. A low wide crawl continues west and another goes north. To the south is a little passage 6 feet off the floor." South of At_West_End_Of_Hall_Of_Mists is Alike_Maze_1. Up from At_West_End_Of_Hall_Of_Mists is Alike_Maze_1. West of At_West_End_Of_Hall_Of_Mists is At_East_End_Of_Long_Hall. North of At_West_End_Of_Hall_Of_Mists is West_Side_Of_Fissure. Report going north from At_West_End_Of_Hall_Of_Mists: say "You have crawled through a very low wide passage parallel to and north of the hall of mists.".
+
+[   Long Hall to the west of the Hall of Mists ]
+
+At_East_End_Of_Long_Hall is a room with printed name "At East End of Long Hall". Understand "east/end/long/hall" or "end of long" as At_East_End_Of_Long_Hall. "You are at the east end of a very long hall apparently without side chambers. To the east a low wide crawl slants up. To the north a round two foot hole slants down.". Up from At_East_End_Of_Long_Hall is At_West_End_Of_Hall_Of_Mists. West of At_East_End_Of_Long_Hall is At_West_End_Of_Long_Hall. North of At_East_End_Of_Long_Hall is Crossover. Down from At_East_End_Of_Long_Hall is Crossover. East of At_East_End_Of_Long_Hall is nowhere.
+
+[--------]
+
+At_West_End_Of_Long_Hall is a room with printed name "At West End of Long Hall". Understand "west/end/long/hall" or "end of long" as At_West_End_Of_Long_Hall. "You are at the west end of a very long featureless hall. The hall joins up with a narrow north/south passage.". South of At_West_End_Of_Long_Hall is Different_Maze_1. North of At_West_End_Of_Long_Hall is Crossover.
+
+[--------]
+
+Crossover is a room with printed name "N/S and E/W Crossover". "You are at a crossover of a high N/S passage and a low E/W one." North of Crossover is Dead_End_7. East of Crossover is In_West_Side_Chamber. West of Crossover is At_East_End_Of_Long_Hall. South of Crossover is At_East_End_Of_Long_Hall.
+
+The crossover_scenery is scenery in Crossover with printed name "crossover". Understand "crossover/cross/over" as crossover_Scenery. The description is "You know as much as I do at this point.".
+
+[ Many Dead Ends will be needed for the maze below, so define a class: ]
+
+A dead end is a kind of room. The printed name of a dead end is usually "Dead End". The description of a dead end is usually "You have reached a dead end." Instead of going nowhere when location is a dead end, say "You'll have to go back the way you came.".
+
+Dead_End_7 is a dead end. South of Dead_End_7 is Crossover. 
+
+[   The Hall of the Mountain King and side chambers]
+
+In_Hall_Of_Mt_King is a room with printed name "Hall of the Mountain King". Understand "hall/mountain/king" or "hall of" as In_Hall_Of_Mt_King. "You are in the hall of the mountain king, with passages off in all directions." East of In_Hall_Of_Mt_King is In_Hall_Of_Mists. North of In_Hall_Of_Mt_King is Low_N_S_Passage. South of In_Hall_Of_Mt_King is In_South_Side_Chamber. West of In_Hall_Of_Mt_King is In_West_Side_Chamber. Southwest of In_Hall_Of_Mt_King is In_Secret_E_W_Canyon. Instead of going nowhere when location is In_Hall_Of_Mt_King, say "Well, perhaps not quite all directions.". Instead of going when location is In_Hall_Of_Mt_King and snake is visible: if noun is north or noun is south or noun is west, say "You can't get by the snake." instead; continue the action. Instead of going southwest when location is In_Hall_Of_Mt_King and snake is visible and a random chance of 35 in 100 succeeds: say  "You can't get by the snake."
+
+The snake is an animal in In_Hall_Of_Mt_King. Understand "cobra/asp/huge/fierce/green/ferocious/venemous/venomous/large/big/killer" as snake. "A huge green fierce snake bars the way!" The description is "I wouldn't mess with it if I were you." Instead of asking the snake about anything, say "Hiss!". Instead of throwing the axe at the snake, try attacking the snake. Instead of throwing anything at the snake, try giving noun to snake. Instead of giving the bird to snake: remove bird from play; say "The snake has now devoured your bird." Instead of giving something to snake, say "There's nothing here it wants to eat (except perhaps you)." Instead of attacking the snake, say "Attacking the snake both doesn't work and is very dangerous." Instead of taking the snake: say "It takes you instead. Glrp!"; pseudo-death.
+
+[--------]
+
+Low_N_S_Passage is a room with printed name "Low N/S Passage". Understand "low/passage" as Low_N_S_Passage. "You are in a low N/S passage at a hole in the floor. The hole goes down to an E/W passage." Down from Low_N_S_Passage is In_Dirty_Passage. North of Low_N_S_Passage is At_Y2.
+
+Some bars of silver are treasure in Low_N_S_Passage. "There are bars of silver here!" The description is "They're probably worth a fortune!".
+
+[--------]
+
+In_South_Side_Chamber is a room with printed name "In South Side Chamber". Understand "south/side/chamber" as In_South_Side_Chamber. "You are in the south side chamber." 
+
+Some precious jewelry is a treasure in In_South_Side_Chamber. Understand "jewel/jewels/exquisite" as jewelry. "There is precious jewelry here!" The description is "It's all quite exquisite!".
+
+[--------]
+
+In_West_Side_Chamber is a room with printed name "In West Side Chamber". Understand "west/side/chamber" as In_West_Side_Chamber. "You are in the west side chamber of the hall of the mountain king. A passage continues west and up here." West of In_West_Side_Chamber is Crossover. Up from In_West_Side_Chamber is Crossover. 
+
+Some rare coins are treasure in In_West_Side_Chamber with indefinite article "many". "There are many coins here!". The description is "They're a numismatist's dream!". Understand "coin" as rare coins.
+
+[ The Y2 Rock Room and environs, slightly below ]
+
+At_Y2 is a room with printed name "At 'Y2'". Understand "y2" as At_Y2. "You are in a large room, with a passage to the south, a passage to the west, and a wall of broken rock to the east. There is a large 'Y2' on a rock in the room's center." South of At_Y2 is Low_N_S_Passage. East of At_Y2 is Jumble_Of_Rock. West of At_Y2 is At_Window_On_Pit_1.
+
+The Y2 rock is an undescribed supporter in At_Y2. The description is "There is a large 'Y2' painted on the rock.".
+
+Every turn when location is At_Y2 and a random chance of 25 in 100 succeeds, say "A hollow voice says, 'Plugh.'". 
+
+[--------]
+
+Jumble_Of_Rock is a room with printed name "Jumble of Rock". Understand "jumble/rock" or "jumble of" as Jumble_Of_Rock. "You are in a jumble of rock, with cracks everywhere." Down from Jumble_Of_Rock is At_Y2. Up from Jumble_Of_Rock is In_Hall_Of_Mists.
+
+[--------]
+
+At_Window_On_Pit_1 is a room with printed name "At Window on Pit". Understand "window/pit/east" or "window on" as At_Window_On_Pit_1. "You're at a low window overlooking a huge pit, which extends up out of sight. A floor is indistinctly visible over 50 feet below. Traces of white mist cover the floor of the pit, becoming thicker to the right. Marks in the dust around the window would seem to indicate that someone has been here recently. Directly across the pit from you and 25 feet away there is a similar window looking into a lighted room. A shadowy figure can be seen there peering back at you." East of At_Window_On_Pit_1 is At_Y2. 
+
+Instead of waving hands when location is At_Window_On_Pit_1, say "The shadowy figure waves back at you!".
+
+Instead of going nowhere when location is At_Window_On_Pit_1, say "The only passage is back east to Y2."
+
+The window is scenery in At_Window_On_Pit_1 with printed name "window". Understand "low" as window. The description is "It looks like a regular window.". The window can be openable. The window is openable. 
+
+The huge-pit is scenery in At_Window_On_Pit_1 with printed name "huge pit". Understand "deep/large/huge/pit" as huge-pit. The description is "It's so deep you can barely make out the floor below, and the top isn't visible at all."
+
+Some marks in the dust are scenery in At_Window_On_Pit_1. The description is "Evidently you're not alone here.".
+
+The shadowy figure is scenery in At_Window_On_Pit_1. Understand "shadow/person/individual/mysterious" as shadowy figure. The description is "The shadowy figure seems to be trying to attract your attention."
+
+[--------]
+
+In_Dirty_Passage is a room with printed name "Dirty Passage". Understand "dirty/passage" as In_Dirty_Passage. "You are in a dirty broken passage. To the east is a crawl. To the west is a large passage. Above you is a hole to another passage." East of In_Dirty_Passage is On_Brink_Of_Pit. Up from In_Dirty_Passage is Low_N_S_Passage. West of In_Dirty_Passage is In_Dusty_Rock_Room. 
+
+[--------]
+
+On_Brink_Of_Pit is a room with printed name "Brink of Pit". Understand "brink/pit" or "brink of" as On_Brink_Of_Pit. The description is "You are on the brink of a small clean climbable pit. A crawl leads west." Down from On_Brink_Of_Pit is In_Pit. Inside from On_Brink_Of_Pit is In_Pit.
+
+The smaller_pit is scenery in On_Brink_Of_Pit with printed name "small pit". Understand "clean/climbable/small/pit" as smaller_pit. The description is "It looks like you might be able to climb down into it." Instead of climbing or entering smaller_pit, try going down.
+
+[--------]
+
+In_Pit is a safe room with printed name "In Pit". Understand "in pit" or "pit" as In_pit. "You are in the bottom of a small pit with a little stream, which enters and exits through tiny slits." Instead of going down in In_Pit, say "You don't fit through the tiny slits!".
+
+Some tiny-slits are scenery in In_Pit with printed name "tiny slits". Understand "tiny/slit/slits" as tiny-slits. The description is "The slits form a complex pattern in the rock."
+
+[--------]
+
+In_Dusty_Rock_Room is a room with printed name "In Dusty Rock Room". Understand "dusty/rock/room" as In_Dusty_Rock_Room. "You are in a large room full of dusty rocks. There is a big hole in the floor. There are cracks everywhere, and a passage leading east." Down from In_Dusty_Rock_Room is At_Complex_Junction.
+
+Some dusty rocks are scenery in In_Dusty_Rock_Room. Understand "boulders/stones/rock/boulder/stone/dirty" as dusty rocks. The description is "They're just rocks. (Dusty ones, that is.)". Instead of looking under, pushing, or pulling dusty rocks, say "You'd have to blast your way through.".
+
+Chapter - Alike Maze
+
+[   A maze of twisty little passages, all alike...]
+
+A maze room is a kind of room. The printed name of a maze room is usually "Maze". The description of a maze room is usually "You are in a maze of twisty little passages, all alike.". Instead of going outside when location is a maze room, say "Easier said than done."
+
+Alike_Maze_1 is a maze room. Up from Alike_Maze_1 is At_West_End_Of_Hall_Of_Mists. North from Alike_Maze_1 is Alike_Maze_1. East of Alike_Maze_1 is Alike_Maze_2. South of Alike_Maze_1 is Alike_Maze_4. West of Alike_Maze_1 is Alike_Maze_11.
+
+Alike_Maze_2 is a maze room. East of Alike_Maze_2 is Alike_Maze_4. South of Alike_Maze_2 is Alike_Maze_3.
+
+Alike_Maze_3 is a maze room. East of Alike_Maze_3 is Alike_Maze_2. Down from Alike_Maze_3 is Dead_End_3. South of Alike_Maze_3 is Alike_Maze_6. North of Alike_Maze_6 is nowhere. North of Alike_Maze_3 is Dead_End_13.
+
+Alike_Maze_4 is a maze room. West of Alike_Maze_4 is Alike_Maze_1. North of Alike_Maze_4 is Alike_Maze_2. East of Alike_Maze_4 is Dead_End_1. South of Alike_Maze_4 is Dead_End_2. North of Dead_End_2 is nowhere. Up from Alike_Maze_4 is Alike_Maze_14. Down from Alike_Maze_4 is Alike_Maze_14.
+
+Alike_Maze_5 is a maze room. East of Alike_Maze_5 is Alike_Maze_6. West of Alike_Maze_5 is Alike_Maze_7. 
+
+Alike_Maze_6 is a maze room. East of Alike_Maze_6 is Alike_Maze_3. West of Alike_Maze_3 is nowhere. West of Alike_Maze_6 is Alike_Maze_5. Down from Alike_Maze_6 is Alike_Maze_7. South from Alike_Maze_6 is Alike_Maze_8. 
+
+Dead_End_1 is a dead end. 
+
+Dead_End_2 is a dead end. West from Dead_End_2 is Alike_Maze_4. 
+
+Dead_End_3 is a dead end. 
+
+Alike_Maze_7 is a maze room. West of Alike_Maze_7 is Alike_Maze_5. Up from Alike_Maze_7 is Alike_Maze_6.  East from Alike_Maze_7 is Alike_Maze_8. South of Alike_Maze_7 is Alike_Maze_9. 
+
+Alike_Maze_8 is a maze room. West of Alike_Maze_8 is Alike_Maze_6. East of Alike_Maze_8 is Alike_Maze_7. South of Alike_Maze_8 is Alike_Maze_8. Up from Alike_Maze_8 is Alike_Maze_9. North of Alike_Maze_8 is Alike_Maze_10. South of Alike_Maze_10 is nowhere.
+
+Alike_Maze_9 is a maze room. West of Alike_Maze_9 is Alike_Maze_7. North of Alike_Maze_9 is Alike_Maze_8. South of Alike_Maze_9 is Dead_End_4. North of Dead_End_4 is nowhere. 
+
+Dead_End_4 is a dead end. West of Dead_End_4 is Alike_Maze_9. East of Alike_Maze_9 is nowhere. 
+
+Alike_Maze_10 is a maze room. West of Alike_Maze_10 is Alike_Maze_8. North of Alike_Maze_10 is Alike_Maze_10. Down from Alike_Maze_10 is Dead_End_5. East of Alike_Maze_10 is At_Brink_Of_Pit.
+
+Dead_End_5 is a dead end. 
+
+[--------]
+
+At_Brink_Of_Pit is a room with printed name "At Brink of Pit". Understand "brink/pit/brink of" as At_Brink_Of_Pit. "You are on the brink of a thirty foot pit with a massive orange column down one wall. You could climb down here but you could not get back up. The maze continues at this level." Down from At_Brink_Of_Pit is In_Bird_Chamber. Up from In_Bird_Chamber is nowhere. South of At_Brink_Of_Pit is Dead_End_6. North of Dead_End_6 is nowhere. North of At_Brink_Of_Pit is Alike_Maze_12. East of At_Brink_Of_Pit is Alike_Maze_13.
+
+A massive orange column is scenery in At_Brink_Of_Pit. Understand "big/huge" as column. The description is "It looks like you could climb down it.". Instead of climbing orange column, try going down.
+
+A thirty foot pit is scenery in At_Brink_Of_Pit. The description is "You'll have to climb down to find out anything more...". Instead of climbing thirty foot pit, try going down.
+
+Dead_End_6 is a dead end. East of Dead_End_6 is At_Brink_Of_Pit. 
+
+Chapter - Bedquilt Area
+
+[ A line of three vital junctions, east to west]
+
+At_Complex_Junction is a room with printed name "At Complex Junction". Understand "complex/junction" as At_Complex_Junction. "You are at a complex junction. A low hands and knees passage from the north joins a higher crawl from the east to make a walking passage going west. There is also a large room above. The air is damp here." Up from At_Complex_Junction is In_Dusty_Rock_Room. West of At_Complex_Junction is In_Bedquilt. North of At_Complex_Junction is In_Shell_Room. East of At_Complex_Junction is In_Anteroom.
+
+[--------]
+
+In_Bedquilt is a room with printed name "Bedquilt". Understand "bedquilt" as In_Bedquilt. "You are in bedquilt, a long east/west passage with holes everywhere. To explore at random select north, south, up, or down.". East of In_Bedquilt is At_Complex_Junction. West of In_Bedquilt is In_Swiss_Cheese_Room. South of In_Bedquilt is In_Slab_Room. Up from In_Bedquilt is In_Secret_N_S_Canyon_1. North of In_Bedquilt is In_Large_Low_Room. Down from In_Bedquilt is In_Anteroom. 
+
+Instead of going when location is In_Bedquilt:
+	let destiny be 0;
+	if ( noun is south or noun is down ) and a random chance of 80 in 100 succeeds, now destiny is 1;
+	if noun is up and a random chance of 80 in 100 succeeds, now destiny is 1;
+	if noun is up and a random chance of 50 in 100 succeeds, move player to In_Dusty_Rock_Room instead;
+	if noun is north and a random chance of 60 in 100 succeeds, now destiny is 1;
+	if noun is north and a random chance of 25 in 100 succeeds, move player to At_Junction_Of_Three instead;
+	if destiny is 1, say "You have crawled around in some little holes and wound up back in the main passage." instead;
+	continue the action.
+	
+[--------]
+
+In_Swiss_Cheese_Room is a room with printed name "In Swiss Cheese Room". "You are in a room whose walls resemble swiss cheese. Obvious passages go west, east, ne, and nw. Part of the room is occupied by a large bedrock block." Understand "swiss/cheese/room" as In_Swiss_Cheese_Room. West of In_Swiss_Cheese_Room is At_East_End_Of_Twopit_Room. South of In_Swiss_Cheese_Room is In_Tall_E_W_Canyon. Northeast of In_Swiss_Cheese_Room is In_Bedquilt. Southwest of In_Bedquilt is nowhere. East of In_Swiss_Cheese_Room is In_Soft_Room. Northwest of In_Swiss_Cheese_Room is In_Oriental_Room. 
+
+Instead of going when location is In_Swiss_Cheese_Room:
+	if ( noun is south and a random chance of 80 in 100 succeeds ) or ( noun is northwest and a random chance of 50 in 100 succeeds ) , say "You have crawled around in some little holes and wound up back in the main passage." instead;
+	continue the action.
+	
+A bedrock block is scenery in In_Swiss_Cheese_Room. Understand "large" as block. The description is "It's just a huge block." Instead of looking under, pushing, pulling, or taking block, say "Surely you're joking."
+
+[  The Twopit Room area ]
+
+At_West_End_Of_Twopit_Room is a room with printed name "At West End of Twopit Room". Understand "west end" or "west/twopit/room" or "end of" as At_West_End_Of_Twopit_Room. "You are at the west end of the twopit room. There is a large hole in the wall above the pit at this end of the room." East of At_West_End_Of_Twopit_Room is At_East_End_Of_Twopit_Room. West of At_West_End_Of_Twopit_Room is In_Slab_Room. East of In_Slab_Room is nowhere. Down from At_West_End_Of_Twopit_Room is In_West_Pit. Instead of going up in At_West_End_Of_Twopit_Room, say "It is too far up for you to reach."
+
+The beanstalk_top is a thing with printed name "beanstalk".  Understand "plant/beanstalk/stalk/bean/giant/tiny/little/murmuring/twelve/foot/tall/bellowing" as beanstalk_top. "[if size of plant is tall]The top of a 12-foot-tall beanstalk is poking out of the west pit[otherwise]There is a huge beanstalk growing out of the west pit up to the hole[end if]." Instead of examining beanstalk_top, say "[description of plant]". Instead of climbing beanstalk_top when size of plant is huge, try climbing plant.
+
+The hole-above-pit is a backdrop with printed name "hole above pit". Understand "hole/above/pit" as hole-above-pit. It is in In_West_Pit and At_West_End_Of_Twopit_Room. The description is "The hole is in the wall above the pit at this end of the room.". Instead of entering hole-above-pit, say "It is too far up for you to reach.".
+
+Chapter - The Beanstalk Pits
+
+[--------]
+
+In_West_Pit is a safe room with printed name "In West Pit". Understand "west pit" or "pit" as In_West_Pit. "You are at the bottom of the western pit in the twopit room. There is a large hole in the wall about 25 feet above you.". Instead of climbing In_West_Pit when noun is not plant or ( noun is plant and size of plant is tiny ) , say "There is nothing here to climb. Use 'up' or 'out' to leave the pit."
+
+The plant is a fixed in place thing in In_West_Pit. Understand "beanstalk/bean/stalk/giant/tiny/little/murmuring/twelve/foot/tall/bellowing" as plant. Plant-size is a kind of value. The plant-sizes are tiny, tall, and huge. The plant has a plant-size called size. The size of plant is tiny. "[if size of plant is tiny]There is a tiny little plant in the pit, murmuring 'Water, water, ...'[otherwise if size of plant is tall]There is a 12-foot-tall beanstalk stretching up out of the pit, bellowing 'Water!! Water!!'[otherwise]There is a gigantic beanstalk stretching all the way up to the hole.[end if]". The description is "[initial appearance of plant]". Instead of taking plant, say "The plant has exceptionally deep roots and cannot be pulled free."
+
+Instead of climbing plant:
+	if size of plant is tiny begin;
+		say "It's just a little plant!";
+	otherwise if size of plant is tall;
+		say "You have climbed up the plant and out of the pit.";
+		move player to At_West_End_Of_Twopit_Room;
+	otherwise;
+		say "You clamber up the plant and scurry through the hole at the top.";
+		move player to In_Narrow_Corridor;
+	end if.
+	
+Instead of watering or oiling plant:
+	if player is not holding bottle, say "You have nothing to water the plant with." instead;
+	if number of things in bottle is 0, say "The bottle is empty." instead; 
+	if oil_in_bottle is in bottle begin; 
+		remove oil_in_bottle from play;
+		say "The plant indignantly shakes the oil off its leaves and asks, 'Water?'" instead;  
+	end if; 
+	remove water_in_bottle from play;
+	say "[if size of plant is tiny]The plant spurts into furious growth for a few seconds[otherwise if size of plant is tall]The plant grows explosively, almost filling the bottom of the pit[otherwise]You've over-watered the plant! It's shriveling up! It's, it's..[run paragraph on][end if].";
+	now size of plant is plant-size after size of plant;
+	if size of plant is tall or size of plant is huge, move beanstalk_top to At_West_End_Of_Twopit_Room;
+	otherwise remove beanstalk_top from play;
+	if size of plant is huge, now In_Narrow_Corridor is mapped west of In_West_Pit;
+	otherwise change the west exit of In_West_Pit to nowhere;
+	try examining plant.         
+	 
+[--------]
+	
+At_East_End_Of_Twopit_Room is a room with printed name "At East End of Twopit Room". Understand "east end" or "end/twopit/room" as At_East_End_Of_Twopit_Room. "You are at the east end of the twopit room. The floor here is littered with thin rock slabs, which make it easy to descend the pits. There is a path here bypassing the pits to connect passages from east and west. There are holes all over, but the only big one is on the wall directly over the west pit where you can't get to it." East of At_East_End_Of_Twopit_Room is In_Swiss_Cheese_Room. Down from At_East_End_Of_Twopit_Room is In_East_Pit.
+
+Some thin rock slabs are scenery in At_East_End_Of_Twopit_Room. Understand "slab/rocks/stairs" as thin rock slabs. The description is  "They almost form natural stairs down into the pit." Instead of looking under, pushing, pulling, or taking thin rock slabs, say "Surely you're joking. You'd have to blast them aside."
+
+[--------]
+
+In_East_Pit is a safe room with printed name "In East Pit". "You are at the bottom of the eastern pit in the twopit room. There is a small pool of oil in one corner of the pit." Understand "east pit" or "pit" as In_East_Pit.
+
+The pool of oil is in In_East_Pit. The description is "It looks like ordinary oil." Instead of drinking pool of oil, say "Absolutely not." Instead of taking pool of oil when player is not holding bottle, say "You have nothing in which to carry the oil." Instead of taking pool of oil, try filling bottle. Instead of inserting the pool of oil into bottle, try filling bottle. Instead of inserting pool of oil into something, say "You have nothing in which to carry the oil."
+
+The hole-above-east-pit is a backdrop with printed name "hole above east pit". Understand "hole/above/pit" or "east pit" as hole-above-east-pit. It is in In_East_Pit and At_East_End_Of_Twopit_Room. The description is "The hole is in the wall above you."
+
+[--------]
+
+In_Slab_Room is a room with printed name "Slab Room". "You are in a large low circular chamber whose floor is an immense slab fallen from the ceiling (slab room). East and west there once were large passages, but they are now filled with boulders. Low small passages go north and south, and the south one quickly bends west around the boulders." South of In_Slab_Room is At_West_End_Of_Twopit_Room. North of At_West_End_Of_Twopit_Room is nowhere. Up from In_Slab_Room is In_Secret_N_S_Canyon_0. North of In_Slab_Room is In_Bedquilt. Understand "slab/room" as In_Slab_Room.
+
+An immense slab is scenery in In_Slab_Room. The description is "It is now the floor here." Instead of looking under, pulling, pushing, or taking immense slab, say "Surely you're joking."
+
+Some slab_boulders are scenery in In_Slab_Room with printed name "boulders". Understand "boulder/boulders/rocks/stones" as slab_boulders. The description is "They're just ordinary boulders."
+
+Chapter - Secret Canyons
+
+[  A small network of Canyons, mainly Secret ]
+
+In_Secret_N_S_Canyon_0 is a room with printed name "Secret N/S Canyon". "You are in a secret N/S canyon above a large room." Down from In_Secret_N_S_Canyon_0 is In_Slab_Room. South of In_Secret_N_S_Canyon_0 is In_Secret_Canyon. North of In_Secret_N_S_Canyon_0 is In_Mirror_Canyon. Before going south in In_Secret_N_S_Canyon_0: now In_Secret_N_S_Canyon_0 is mapped east of In_Secret_Canyon; continue the action.
+
+In_Secret_N_S_Canyon_1 is a room with printed name "Secret N/S Canyon". "You are in a secret N/S canyon above a sizable passage." North of In_Secret_N_S_Canyon_1 is At_Junction_Of_Three. Down from In_Secret_N_S_Canyon_1 is In_Bedquilt. South of In_Secret_N_S_Canyon_1 is Atop_Stalactite.
+
+At_Junction_Of_Three is a room with printed name "Junction of Three Secret Canyons". "You are in a secret canyon at a junction of three canyons, bearing north, south, and se. The north one is as tall as the other two combined." Southeast of At_Junction_Of_Three is In_Bedquilt. South of At_Junction_Of_Three is In_Secret_N_S_Canyon_1. North of At_Junction_Of_Three is At_Window_On_Pit_2. South of At_Window_On_Pit_2 is nowhere. East of At_Junction_Of_Three is nowhere. Understand "junction of" or "junction/three" as At_Junction_Of_Three.
+
+In_Large_Low_Room is a room with printed name "Large Low Room". The description is "You are in a large low room. Crawls lead north, se, and sw." Southwest of In_Large_Low_Room is In_Sloping_Corridor. Southeast of In_Large_Low_Room is In_Oriental_Room. North of In_Large_Low_Room is Dead_End_Crawl. Up from In_Large_Low_Room is nowhere. Understand "large/low/room" as In_Large_Low_Room.
+
+Dead_End_Crawl is a room with printed name "Dead End Crawl". "This is a dead end crawl." South of Dead_End_Crawl is In_Large_Low_Room. Inside from In_Large_Low_Room is nowhere.
+
+In_Secret_E_W_Canyon is a room with printed name "Secret E/W Canyon Above Tight Canyon". "You are in a secret canyon which here runs E/W. It crosses over a very tight canyon 15 feet below. If you go down you may not be able to get back up." East of In_Secret_E_W_Canyon is In_Hall_Of_Mt_King. West of In_Secret_E_W_Canyon is In_Secret_Canyon.  Down from In_Secret_E_W_Canyon is In_N_S_Canyon. Up from In_N_S_Canyon is nowhere. Before going west in In_Secret_E_W_Canyon: now In_Secret_E_W_Canyon is mapped east of In_Secret_Canyon; continue the action.
+
+In_N_S_Canyon is a room with printed name "N/S Canyon". "You are at a wide place in a very tight N/S canyon." South of In_N_S_Canyon is Canyon_Dead_End. North of In_N_S_Canyon is In_Tall_E_W_Canyon. South of In_Tall_E_W_Canyon is nowhere. 
+
+Canyon_Dead_End is a room with printed name "Canyon Dead End". "The canyon here becomes too tight to go further south."
+
+In_Tall_E_W_Canyon is a room with printed name "In Tall E/W Canyon". "You are in a tall E/W canyon. A low tight crawl goes 3 feet north and seems to open up." East of In_Tall_E_W_Canyon is In_N_S_Canyon. West of In_N_S_Canyon is nowhere. West of In_Tall_E_W_Canyon is Dead_End_8. North of In_Tall_E_W_Canyon is In_Swiss_Cheese_Room. Understand "tall/canyon" as In_Tall_E_W_Canyon.
+
+[--------]
+
+Atop_Stalactite is a room with printed name "Atop Stalactite". "A large stalactite extends from the roof and almost reaches the floor below. You could climb down it, and jump from it to the floor, but having done so you would be unable to reach it to climb back up." North of Atop_Stalactite is In_Secret_N_S_Canyon_1. Down from Atop_Stalactite is Alike_Maze_4. Before going down when location is Atop_Stalactite: if a random chance of 40 in 100 succeeds, move player to Alike_Maze_6 instead; if a random chance of 50 in 100 succeeds, move player to Alike_Maze_9 instead; continue the action. Instead of jumping or climbing when location is Atop_Stalactite, try going down. Understand "atop/stalactite" as Atop_Stalactite.
+
+A large stalactite is scenery in Atop_Stalactite. Understand "stalagmite/stalagtite" as large stalactite. The description is "You could probably climb down it, but you can forget coming back up." Instead of looking under, pushing, or taking large stalactite, say "Do get a grip on yourself."
+
+[Here be dragons]
+
+In_Secret_Canyon is a room with printed name "Secret Canyon". "You are in a secret canyon which exits to the north and east." East of In_Secret_Canyon is In_Secret_E_W_Canyon. Understand "secret/canyon" as In_Secret_Canyon.
+
+Before going east when location is In_Secret_Canyon and dragon is visible: say "The dragon looks rather nasty. You'd best not try to get by." instead.
+	
+Instead of saying yes when dragon is questioning:
+	remove dragon from play;
+	move dragon's body to location;
+	now dragon is barring;
+	say "Congratulations! You have just vanquished a dragon with your bare hands! (Unbelievable, isn't it?)".
+	
+Instead of saying no when dragon is questioning:
+	now dragon is barring;
+	say "I should think not.".
+	
+The dragon is an animal in In_Secret_Canyon. Understand "monster/beast/lizard/huge/green/fierce/scaly/giant/ferocious" as dragon. "A huge green fierce dragon bars the way!" The description is "I wouldn't mess with it if I were you." The dragon is either barring or questioning. The dragon is barring. Instead of giving anything to dragon, say "The dragon is implacable." Instead of throwing anything at the dragon, say "You'd probably be better off using your bare hands than that thing!" Report throwing axe at dragon: say "The axe bounces harmlessly off the dragon's thick scales." 
+
+Instead of attacking dragon:
+	now dragon is questioning;
+	say "With what? Your bare hands?".
+	
+Every turn when dragon is questioning and location is not In_Secret_Canyon: now dragon is barring.
+
+A Persian rug is treasure in In_Secret_Canyon. Understand "fine/finest/dragon's" as rug. "[if dragon is in location]The dragon is sprawled out on the Persian rug![otherwise]The Persian rug is spread out on the floor here.[end if]". Instead of taking rug when dragon is in location, say "You'll need to get the dragon to move first!". The deposit points of rug is 14.
+
+The dragon's body is a thing. It is fixed in place. Understand "corpse/dragon/dead" as body. "The body of a huge green dead dragon is lying off to one side." Instead of attacking dragon's body, say "You've already done enough damage!"
+
+[And more of the Alike Maze]
+
+Dead_End_8 is a dead end. "The canyon runs into a mass of boulders -- dead end." South of Dead_End_8 is In_Tall_E_W_Canyon. 
+
+Alike_Maze_11 is a maze room. North of Alike_Maze_11 is Alike_Maze_1. South of Alike_Maze_11 is Alike_Maze_11. West of Alike_Maze_11 is Alike_Maze_11. East of Alike_Maze_11 is Dead_End_9. Northeast of Alike_Maze_11 is Dead_End_10. Southwest of Dead_End_10 is nowhere.
+
+Dead_End_9 is a dead end. 
+
+Dead_End_10 is a dead end. South of Dead_End_10 is Alike_Maze_3. 
+
+Alike_Maze_12 is a maze room. South of Alike_Maze_12 is At_Brink_Of_Pit. East of Alike_Maze_12 is Alike_Maze_13. West of Alike_Maze_12 is Dead_End_11. 
+
+Alike_Maze_13 is a maze room. North of Alike_Maze_13 is At_Brink_Of_Pit. Northwest of Alike_Maze_13 is Dead_End_13.
+
+Dead_End_11 is a dead end. 
+
+Dead_End_12 is a dead end. 
+
+Alike_Maze_14 is a maze room. Up from Alike_Maze_14 is Alike_Maze_4. Down from Alike_Maze_14 is Alike_Maze_4.
+
+Dead_End_13 is a safe dead end. "This is the pirate's dead end." 
+
+The treasure chest is treasure in Dead_End_13. "[if we have not taken treasure chest]You've found the pirate's treasure chest![otherwise]The pirate's treasure chest is here!". Understand "box/riches/pirate/pirate's/treasure" as treasure chest. The description is "It's the pirate's treasure chest, filled with riches of all kinds!" The deposit points of treasure chest is 12.
+
+Chapter - Giant Area
+
+[Above the beanstalk: the Giant Room and the Waterfall ]
+
+Giant Area is a region.
+
+In_Narrow_Corridor is a room in Giant Area with printed name "In Narrow Corridor". "You are in a long, narrow corridor stretching out of sight to the west. At the eastern end is a hole through which you can see a profusion of leaves." Down from In_Narrow_Corridor is In_West_Pit. West of In_Narrow_Corridor is In_Giant_Room. East of In_Narrow_Corridor is In_West_Pit. West of In_West_Pit is nowhere. Instead of jumping when location is In_Narrow_Corridor: say "You fall and break your neck!"; pseudo-death.  Understand "narrow/corridor" as In_Narrow_Corridor.
+
+Some leaves are scenery in In_Narrow_Corridor. Understand "leaf/plant/tree/stalk/beanstalk/profusion" as leaves. The description is "The leaves appear to be attached to the beanstalk you climbed to get here." Instead of counting leaves, say "69,105."
+
+[--------]
+
+At_Steep_Incline is a room in Giant Area with printed name "Steep Incline Above Large Room". "You are at the top of a steep incline above a large room. You could climb down here, but you would not be able to climb up. There is a passage leading back to the north." North of At_Steep_Incline is In_Cavern_With_Waterfall. Down from At_Steep_Incline is In_Large_Low_Room. Understand "steep/incline" as At_Steep_Incline.
+
+[--------]
+
+In_Giant_Room is a room in Giant Area with printed name "Giant Room". "You are in the giant room. The ceiling here is too high up for your lamp to show it. Cavernous passages lead east, north, and south. On the west wall is scrawled the inscription, 'Fee fie foe foo' (sic)." South of In_Giant_Room is In_Narrow_Corridor. East of In_Giant_Room is At_Recent_Cave_In. North of In_Giant_Room is In_Immense_N_S_Passage. Understand "giant/room" as In_Giant_Room.
+
+A scrawled inscription is scenery in In_Giant_Room. Understand "writing/scrawl" as inscription. The description is "It says, 'Fee fie foe foo (sic).'". 
+
+Some golden eggs are treasure in In_Giant_Room with printed name "nest of golden eggs". Understand "egg/nest/beautiful" as eggs. "There is a large nest here, full of golden eggs!" The description is "The nest is filled with beautiful golden eggs!" The deposit points of golden eggs is 14. 
+
+[--------]
+
+At_Recent_Cave_In is a room in Giant Area with printed name "Recent Cave-in". "The passage here is blocked by a recent cave-in." Understand "recent/cave-in/cave" as At_Recent_Cave_In.
+
+[--------]
+
+In_Immense_N_S_Passage is a room in Giant Area with printed name "Immense N/S Passage". "You are at one end of an immense north/south passage." North of In_Immense_N_S_Passage is rusty door. South of In_Cavern_With_Waterfall is rusty door. Instead of going north in In_Immense_N_S_Passage when rusty door is locked, try opening rusty door. Before going north in In_Immense_N_S_Passage when rusty door is unlocked and rusty door is closed: say "(first wrenching the door open)"; now rusty door is open. Understand "immense/passage" as In_Immense_N_S_Passage.
+
+The rusty door is a door. It is locked and closed. Understand "hinge/hinges/massive/iron" as rusty door. "[if closed]The way north is barred by a massive, rusty, iron door[otherwise]The way north leads through a massive, rusty, iron door[end if]." The description is "It's just a big iron door." Instead of opening rusty door when rusty door is locked, say "The hinges are quite thoroughly rusted now and won't budge." Instead of closing rusty door when rusty door is open, say "With all the effort it took to get the door open,  I wouldn't suggest closing it again." Instead of closing rusty door, say "No problem there -- it already is." Instead of oiling rusty door: remove oil_in_bottle from play; now rusty door is unlocked; say "The oil has freed up the hinges so that the door will now move, although it requires some effort." Instead of oiling rusty door when oil_in_bottle is not enclosed by player: say "You have nothing to oil it with." Instead of watering rusty door: if water_in_bottle is enclosed by player begin; remove water_in_bottle from play; now rusty door is closed; now rusty door is locked; say "The hinges are quite thoroughly rusted now and won't budge."; otherwise; say "You have nothing to water it with."; end if. Report opening rusty door: say "The door heaves open with a shower of rust." instead.
+
+[--------]
+
+In_Cavern_With_Waterfall is a room in Giant Area with printed name "In Cavern With Waterfall". "You are in a magnificent cavern with a rushing stream, which cascades over a sparkling waterfall into a roaring whirlpool which disappears through a hole in the floor. Passages exit to the south and west." West of In_Cavern_With_Waterfall is At_Steep_Incline. East of At_Steep_Incline is nowhere. Understand "cavern/waterfall" or "cavern with" as In_Cavern_With_Waterfall.
+
+The waterfall is scenery in In_Cavern_With_Waterfall. Understand "whirlpool/sparkling/whirling" as waterfall. The description is "Wouldn't want to go down in in a barrel!"
+
+The trident is treasure in In_Cavern_With_Waterfall. Understand "jeweled/jewel-encrusted/encrusted/fabulous" as trident. "There is a jewel-encrusted trident here!" The description is "The trident is covered with fabulous jewels!" The deposit points of trident is 14.
+
+[The caves around Bedquilt]
+
+In_Soft_Room is a room with printed name "In Soft Room". "You are in the soft room. The walls are covered with heavy curtains, the floor with a thick pile carpet. Moss covers the ceiling." West of In_Soft_Room is In_Swiss_Cheese_Room. Understand "soft/room" as In_Soft_Room.
+
+A carpet is scenery in In_Soft_Room. Understand "shag/pile/heavy/thick" as carpet. The description is "The carpet is quite plush."
+
+Some curtains are scenery in In_Soft_Room. Understand "curtain/heavy/thick" as curtains. The description is "They seem to absorb sound very well." Instead of taking curtains, say "Now don't go ripping up the place!" Instead of looking under or searching curtains, say "You don't find anything exciting behind the curtains."
+
+Some moss is edible scenery in In_Soft_Room. Understand "typical/everyday" as moss. The description is "It just looks like your typical, everyday moss." Instead of taking moss, say "It crumbles to nothing in your hands."
+
+A velvet pillow is a thing in In_Soft_Room. Understand "small" as pillow. "A small velvet pillow lies on the floor." The description is "It's just a small velvet pillow."
+
+[--------]
+
+In_Oriental_Room is a room with printed name "Oriental Room". "This is the oriental room. Ancient oriental cave drawings cover the walls. A gently sloping passage leads upward to the north, another passage leads se, and a hands and knees crawl leads west." West of In_Oriental_Room is In_Large_Low_Room. East of In_Large_Low_Room is nowhere. Southeast of In_Oriental_Room is In_Swiss_Cheese_Room. Up from In_Oriental_Room is In_Misty_Cavern. North of In_Oriental_Room is In_Misty_Cavern. Understand "oriental/room" as In_Oriental_Room.
+
+Some ancient oriental drawings are scenery in In_Oriental_Room. Understand "art/cave/paintings" as drawings. The description is "They seem to depict people and animals."
+
+A ming vase is treasure in In_Oriental_Room. Understand "delicate" as vase. The description is "It's a delicate, precious, ming vase!" Report dropping ming vase when pillow is in location: say "(coming to rest, delicately, on the velvet pillow)". After dropping ming vase when pillow is not in location: remove ming vase from play; move shards to location; say "The ming vase drops with a delicate crash." Instead of attacking ming vase: remove ming vase from play; move shards to location; say "You have taken the vase and hurled it delicately to the ground." Instead of inserting anything into ming vase, say "The vase is too fragile to use as a container." Instead of filling ming vase, say "The vase is too fragile to use as a container." The deposit points of ming vase is 14. 
+
+Some worthless shards of pottery are a thing. Understand "remains/vase" as shards. "The floor is littered with worthless shards of pottery." The description is "They look to be the remains of what was once a beautiful vase. I guess some oaf must have dropped it."
+
+[--------]
+
+In_Misty_Cavern is a room with printed name "Misty Cavern". "You are following a wide path around the outer edge of a large cavern. Far below, through a heavy white mist, strange splashing noises can be heard. The mist rises up through a fissure in the ceiling. The path exits to the south and west." West of In_Misty_Cavern is In_Alcove. Understand "misty/cavern" as In_Misty_Cavern.
+
+A misty fissure is scenery in In_Misty_Cavern with printed name "fissure". Understand "ceiling" as fissure. The description is "You can't really get close enough to examine it."
+
+[Plovers and pyramids]
+
+In_Alcove is a room with printed name "Alcove". "You are in an alcove. A small northwest path seems to widen after a short distance. An extremely tight tunnel leads east. It looks like a very tight squeeze. An eerie light can be seen at the other end." Northwest of In_Alcove is In_Misty_Cavern. East of In_Alcove is In_Plover_Room. Understand "alcove" as In_Alcove.
+
+Before going east when location is In_Alcove:
+	if the number of things held by player is 0 or ( the player holds emerald and the number of things held by player is 1 ) , continue the action;
+	say "Something you're carrying won't fit through the tunnel with you. You'd best take inventory and drop something." instead.
+	
+[--------]
+
+In_Plover_Room is a lighted room with printed name "Plover Room". It is lighted. "You're in a small chamber lit by an eerie green light. An extremely narrow tunnel exits to the west. A dark corridor leads northeast." Northeast of In_Plover_Room is In_Dark_Room. Southwest of In_Dark_Room is nowhere. Understand "plover/room" as In_Plover_Room.
+
+Before going west when location is In_Plover_Room:
+	if the number of things held by player is 0 or ( the player holds emerald and the number of things held by player is 1 ) , continue the action;
+	say "Something you're carrying won't fit through the tunnel with you. You'd best take inventory and drop something." instead.
+	
+Instead of going outside when location is In_Plover_Room, try going west.
+
+An egg-sized emerald is treasure in In_Plover_Room with printed name "emerald the size of a plover's egg". Understand "plover's" as emerald. "There is an emerald here the size of a plover's egg!" The description is "Plover's eggs, by the way, are quite large." The deposit points of emerald is 14. 
+
+[--------]
+
+In_Dark_Room is a safe room with printed name "The Dark Room". "You're in the dark-room. A corridor leading south is the only exit." South of In_Dark_Room is In_Plover_Room. North of In_Plover_Room is nowhere. Understand "dark/room" as In_Dark_Room.
+
+A massive stone tablet is in In_Dark_Room. It is fixed in place. "A massive stone tablet imbedded in the wall reads: 'Congratulations on bringing light into the dark-room!'". 
+
+A platinum pyramid is treasure in In_Dark_Room. Understand "pyramidal" as pyramid. "There is a platinum pyramid here, 8 inches on a side!" The description is "The platinum pyramid is 8 inches on a side!" The deposit points of pyramid is 14.
+
+[ North of the complex junction: a long up-down corridor ]
+
+In_Arched_Hall is a room with printed name "Arched Hall". "You are in an arched hall. A coral passage once continued up and east from here, but is now blocked by debris. The air smells of sea water." Down from In_Arched_Hall is In_Shell_Room. Understand "arched/hall" as In_Arched_Hall.
+
+[--------]
+
+In_Shell_Room is a room with printed name "Shell Room". "You're in a large room carved out of sedimentary rock. The floor and walls are littered with bits of shells imbedded in the stone. A shallow passage proceeds downward, and a somewhat steeper one leads up. A low hands and knees passage enters from the south." Down from In_Shell_Room is In_Ragged_Corridor. South of In_Shell_Room is At_Complex_Junction. Understand "shell/room" as In_Shell_Room.
+
+Before going south when location is In_Shell_Room and player holds giant bivalve, say "You can't fit this five-foot [if pearl is not in bivalve]oyster[otherwise]clam[end if] through that little passage!" instead.
+	
+A giant bivalve is in In_Shell_Room. The printed name is "clam". Understand "oyster/clam" as bivalve. "There is an enormous [giant bivalve] here with its shell tightly closed." The description is "[if location is At_Ne_End or location is At_Sw_End]Interesting. There seems to be something written on the underside of the oyster:[paragraph break]'There is something strange about this place, such that one of the curses I've always known now has a new effect.'[otherwise]A giant bivalve of some kind.[end if]". Instead of opening bivalve, say "You aren't strong enough to open the [giant bivalve] with your bare hands."
+
+Instead of unlocking bivalve with something: say "[The second noun] isn't strong enough to open the clam.". Instead of unlocking bivalve with trident: if printed name of bivalve is "oyster" begin; say "The oyster creaks open, revealing nothing but oyster inside. It promptly snaps shut again."; otherwise; move pearl to In_A_Cul_De_Sac; now printed name of bivalve is "oyster"; say "A glistening pearl falls out of the clam and rolls away. Goodness, this must really be an oyster. (I never was very good at identifying bivalves.) Whatever it is, it has now snapped shut again."; end if. Instead of opening bivalve, say "The shell is very strong and is impervious to attack." Rule for supplying a missing second noun when bivalve is visible and trident is held: now the second noun is the trident.
+
+A glistening pearl is treasure. "Off to one side lies a glistening pearl!" The description is "It's incredibly large!" Understand "incredible/incredibly/large" as pearl. The deposit points of pearl is 14.
+
+[--------]
+
+In_Ragged_Corridor is a room with printed name "Ragged Corridor". "You are in a long sloping corridor with ragged sharp walls." Up from In_Ragged_Corridor is In_Shell_Room. Down from In_Ragged_Corridor is In_A_Cul_De_Sac. Understand "ragged/corridor" as In_Ragged_Corridor.
+
+In_A_Cul_De_Sac is a room with printed name "Cul-de-Sac". "You are in a cul-de-sac about eight feet across." Understand "cul/de/sac" as In_A_Cul_De_Sac.
+
+[Witt's End: Cave under construction]
+
+In_Anteroom is a room with printed name "In Anteroom". "You are in an anteroom leading to a large passage to the east. Small passages go west and up. The remnants of recent digging are evident." Up from In_Anteroom is At_Complex_Junction. West of In_Anteroom is In_Bedquilt. East of In_Anteroom is At_Witts_End. Understand "Anteroom" as In_Anteroom.
+
+A sign is a fixed in place thing in In_Anteroom. "A sign in midair here says 'Cave under construction beyond this point. Proceed at own risk. (Witt Construction Company)'". Instead of taking sign, say "It's hanging way above your head."
+
+Some recent issues of Spelunker Today are in In_Anteroom. Understand "magazines/magazine/issue" as issues. "There are a few recent issues of 'Spelunker Today' magazine here." The description is "I'm afraid the magazines are written in Dwarvish." After taking issues when location is At_Witts_End: decrease the score by 1. After dropping issues when location is At_Witts_End: increase the score by 1; say "You really are at wit's end."
+
+[--------]
+
+At_Witts_End is a room with printed name "At Witt's End". "You are at Witt's End. Passages lead off in *all* directions." Instead of going west when location is At_Witts_End, say "You have crawled around in some little holes and found your way blocked by a recent cave-in. You are now back in the main passage." East of At_Witts_End is In_Anteroom. [This last isn't strictly true, but provides for a map connection.] Understand "Witts/Witt's/Witt/End" as At_Witts_End.
+
+Instead of going nowhere when location is At_Witts_End: try going east.
+
+Instead of going east when location is At_Witts_End and a random chance of 95 in 100 succeeds: say "You have crawled around in some little holes and wound up back in the main passage."
+
+[  North of the secret canyons, on the other side of the pit]
+
+In_Mirror_Canyon is a room with printed name "In Mirror Canyon".  "You are in a north/south canyon about 25 feet across. The floor is covered by white mist seeping in from the north. The walls extend upward for well over 100 feet. Suspended from some unseen point far above you, an enormous two-sided mirror is hanging parallel to and midway between the canyon walls.[paragraph break]A small window can be seen in either wall, some fifty feet up." North of In_Mirror_Canyon is At_Reservoir. South of In_Mirror_Canyon is In_Secret_N_S_Canyon_0. Understand "mirror/canyon" as In_Mirror_Canyon.
+
+A suspended mirror is scenery in In_Mirror_Canyon. Understand "massive/enormous/hanging/dwarves/two-sided/two/sided" as mirror. The initial appearance is "The mirror is obviously provided for the use of the dwarves who, as you know, are extremely vain." The description of mirror is "[initial appearance of mirror]". Instead of attacking or taking mirror, say "You can't reach it from here."
+
+[--------]
+
+At_Window_On_Pit_2 is a room with printed name "At Window on Pit". "You're at a low window overlooking a huge pit, which extends up out of sight. A floor is indistinctly visible over 50 feet below. Traces of white mist cover the floor of the pit, becoming thicker to the left. Marks in the dust around the window would seem to indicate that someone has been here recently. Directly across the pit from you and 25 feet away there is a similar window looking into a lighted room. A shadowy figure can be seen there peering back at you." West of At_Window_On_Pit_2 is At_Junction_Of_Three. Instead of going nowhere when location is At_Window_On_Pit_2, say "The only passage is back west to the junction." Instead of jumping when location is At_Window_On_Pit_2: say  "You jump and break your neck!"; pseudo-death. Instead of waving hands when location is At_Window_On_Pit_2, say "The shadowy figure waves back at you!" Understand "window/pit" as At_Window_On_Pit_2.
+
+[--------]
+
+At_Reservoir is a room with printed name "At Reservoir". "You are at the edge of a large underground reservoir. An opaque cloud of white mist fills the room and rises rapidly upward. The lake is fed by a stream, which tumbles out of a hole in the wall about 10 feet overhead and splashes noisily into the water somewhere within the mist. The only passage goes back toward the south." Understand "swim" or "swim in water/reservoir" as a mistake ("The water is icy cold, and you would soon freeze to death.") when location is At_Reservoir. Understand "reservoir" as At_Reservoir.
+
+Chapter - Chasm and Troll Bridge
+
+[ The Chasm and the Troll Bridge]
+
+In_Sloping_Corridor is a room with printed name "Sloping Corridor". "You are in a long winding corridor sloping out of sight in both directions.". Down from In_Sloping_Corridor is In_Large_Low_Room. Up from In_Sloping_Corridor is On_Sw_Side_Of_Chasm. Instead of going nowhere when location is In_Sloping_Corridor, say "The corridor slopes steeply up and down." Understand "sloping/corridor" as In_Sloping_Corridor.
+
+On_Sw_Side_Of_Chasm is a room with printed name "On SW Side of Chasm". "You are on one side of a large, deep chasm. A heavy white mist rising up from below obscures all view of the far side. A southwest path leads away from the chasm into a winding corridor.[paragraph break][chasm_extras]". Southwest of On_Sw_Side_Of_Chasm is In_Sloping_Corridor. Northeast of In_Sloping_Corridor is nowhere. Instead of going nowhere when location is On_Sw_Side_Of_Chasm, say "The path winds southwest." Understand "on sw" or "side of" or "sw/side/chasm" as On_Sw_Side_Of_Chasm.
+
+Instead of jumping when location is On_Sw_Side_Of_Chasm or location is On_Ne_Side_Of_Chasm:
+	if rickety bridge is visible, say "I respectfully suggest you go across the bridge instead of jumping." instead;
+	say "You didn't make it.";
+	pseudo-death.
+
+The chasm is an undescribed door. It is closed and unopenable. It is northeast of On_Sw_Side_Of_Chasm and southwest of On_Ne_Side_Of_Chasm.
+
+Chasm_Area is a region. On_Sw_Side_Of_Chasm and On_Ne_Side_Of_Chasm  are in Chasm_Area. 
+
+The rickety bridge is a backdrop. It is in Chasm_Area. Understand "unstable/wobbly/rope" as bridge. The description is "It just looks like an ordinary, but unstable, bridge."
+
+To say chasm_extras: say "[if wreckage is visible]The wreckage of the troll bridge (and a dead bear) can be seen at the bottom of the chasm[otherwise]A rickety wooden bridge extends across the chasm, vanishing into the mist[end if].[paragraph break]A sign posted on the bridge reads, 'Stop! Pay troll!'[if troll is not visible][paragraph break]The troll is nowhere to be seen.[end if]".
+
+Entering chasm is bridge-using. Entering rickety bridge is bridge-using. Instead of bridge-using when location is On_Sw_Side_Of_Chasm, try going northeast. Instead of bridge-using when location is On_Ne_Side_Of_Chasm, try going southwest. 
+
+Before going through chasm:
+	if troll is visible, say "The troll refuses to let you cross." instead;
+	if troll is alive and troll is untreasured begin;
+		move troll to location;
+		now chasm is closed;
+		say "The troll steps out from beneath the bridge and blocks your way." instead;
+	end if;
+	if bear is following begin;
+		remove bear from play;
+		remove rickety bridge from play;
+		move wreckage of the bridge to Chasm_Area;
+		now chasm is closed;
+		now bear is unfollowing;
+		say "Just as you reach the other side, the bridge buckles beneath the weight of the bear, which was still following you around. You scrabble desperately for support, but as the bridge collapses you stumble back and fall into the chasm.";
+		pseudo-death;
+		stop;
+	end if;
+	if troll is alive and troll is treasured, now troll is untreasured;
+	continue the action.
+
+
+The burly troll is a man in On_Sw_Side_Of_Chasm. "A burly troll stands by the bridge and insists you throw him a treasure before you may cross." The description is "Trolls are close relatives with rocks and have skin as tough as that of a rhinoceros." Instead of attacking troll, say "The troll laughs aloud at your pitiful attempt to injure him." Instead of asking the troll about anything, say "Trolls make poor conversation." The troll is either treasured or untreasured. The troll is untreasured. The troll is either alive or dead. The troll is alive. Rule for supplying a missing second noun when throwing and troll is visible: now the second noun is the troll.
+
+Instead of throwing something (called weapon) at troll, try giving weapon to troll. Instead of giving something (called gift) to troll:
+	if gift is a treasure begin;
+		remove gift from play;
+		now troll is treasured;
+		remove troll from play;
+		now chasm is open;
+		decrease the score by 5;
+		say "The troll catches your treasure and scurries away out of sight." instead;
+	end if;
+	if gift is tasty food, say "Gluttony is not one of the troll's vices. Avarice, however, is." instead;
+	say "The troll deftly catches [the noun], examines it carefully, and tosses it back, declaring, 'Good workmanship, but it's not valuable enough.'".
+	
+The wreckage of the bridge is a backdrop. Understand "wreck/dead/bear" as wreckage. Instead of doing anything to wreckage, say "The wreckage is too far below."
+
+[--------]
+
+Chapter - Volcano and Bear area
+
+VolcanoArea is a region.
+
+On_Ne_Side_Of_Chasm is a safe room with printed name "On NE Side of Chasm". "You are on the far side of the chasm. A northeast path leads away from the chasm on this side.[paragraph break][chasm_extras]". Northeast of On_Ne_Side_Of_Chasm is In_Corridor. Southwest of In_Corridor is nowhere. Understand "ne/side/chasm" or "side of" or "on ne" as On_Ne_Side_Of_Chasm.
+
+[--------]
+
+In_Corridor is a safe room in VolcanoArea with printed name "In Corridor". "You're in a long east/west corridor. A faint rumbling noise can be heard in the distance." West of In_Corridor is On_Ne_Side_Of_Chasm. East of On_Ne_Side_Of_Chasm is nowhere. East of In_Corridor is At_Fork_In_Path. Understand "corridor" as In_Corridor.
+
+[   The Volcano ]
+
+At_Fork_In_Path is a safe room in VolcanoArea with printed name "At Fork in Path". "The path forks here. The left fork leads northeast. A dull rumbling seems to get louder in that direction. The right fork leads southeast down a gentle slope. The main corridor enters from the west." Northeast of At_Fork_In_Path is At_Junction_With_Warm_Walls. Southeast of At_Fork_In_Path is In_Limestone_Passage. Northwest of In_Limestone_Passage is nowhere. Down from At_Fork_In_Path is In_Limestone_Passage. Southwest of At_Junction_With_Warm_Walls is nowhere. Understand "fork in" or "fork/path" as At_Fork_In_Path.
+
+[--------]
+
+At_Junction_With_Warm_Walls is a safe room in VolcanoArea with printed name "At Junction With Warm Walls". "The walls are quite warm here. From the north can be heard a steady roar, so loud that the entire cave seems to be trembling. Another passage leads south, and a low crawl goes east." South of At_Junction_With_Warm_Walls is At_Fork_In_Path. North of At_Fork_In_Path is nowhere. North of At_Junction_With_Warm_Walls is At_Breath_Taking_View. East of At_Junction_With_Warm_Walls is In_Chamber_Of_Boulders. Understand "junction/warm/walls" or "junction with" as At_Junction_With_Warm_Walls.
+
+[--------]
+
+At_Breath_Taking_View is a lighted safe room in VolcanoArea with printed name "At Breath-Taking View". "You are on the edge of a breath-taking view. Far below you is an active volcano, from which great gouts of molten lava come surging out, cascading back down into the depths. The glowing rock fills the farthest reaches of the cavern with a blood-red glare, giving everything an eerie, macabre appearance. The air is filled with flickering sparks of ash and a heavy smell of brimstone. The walls are hot to the touch,  and the thundering of the volcano drowns out all other sounds. Embedded in the jagged roof far overhead are myriad twisted formations composed of pure white alabaster, which scatter the murky light into sinister apparitions upon the walls. To one side is a deep gorge, filled with a bizarre chaos of tortured rock which seems to have been crafted by the devil himself. An immense river of fire crashes out from the depths of the volcano, burns its way through the gorge, and plummets into a bottomless pit far off to your left. To the right, an immense geyser of blistering steam erupts continuously from a barren island in the center of a sulfurous lake, which bubbles ominously. The far right wall is aflame with an incandescence of its own, which lends an additional infernal splendor to the already hellish scene. A dark, forboding passage exits to the south." Instead of going down when location is At_Breath_Taking_View, try jumping. Instead of jumping when location is At_Breath_Taking_View, say "Don't be ridiculous!". Understand "breath/taking/breathtaking/view" as At_Breath_Taking_View.
+
+An active volcano is scenery in At_Breath_Taking_View. Understand "rock/glowing/blood/blood-red/red/eerie/macabre" as volcano. The description is "Great gouts of molten lava come surging out of the volcano and go cascading back down into the depths. The glowing rock fills the farthest reaches of the cavern with a blood-red glare, giving everything an eerie, macabre appearance."
+
+Some sparks of ash are scenery in At_Breath_Taking_View. Understand "spark/air/flickering" as ash. The description is "The sparks too far away for you to get a good look at them."
+
+The jagged roof is scenery in At_Breath_Taking_View. Understand "formations/light/apparaitions/twisted/murky/sinister" as roof. The description is "Embedded in the jagged roof far overhead are myriad twisted formations composed of pure white alabaster, which scatter the murky light into sinister apparitions upon the walls."
+
+The deep gorge is scenery in At_Breath_Taking_View. Understand "chaos/rock/bizarre/tortured" as gorge. The description is "The gorge is filled with a bizarre chaos of tortured rock which seems to have been crafted by the devil himself."
+
+A river of fire is scenery in At_Breath_Taking_View. Understand "depth/pit/fiery/bottomless" as river of fire. The description is "The river of fire crashes out from the depths of the volcano, burns its way through the gorge, and plummets into a bottomless pit far off to your left."
+
+An immense geyser is scenery in At_Breath_Taking_View. Understand "steam/island/lake/blistering/barren/sulfrous/sulferous/sulpherous/sulphrous/bubbling" as geyser. The description is "The geyser of blistering steam erupts continuously from a barren island in the center of a sulfurous lake, which bubbles ominously."
+
+[--------]
+
+In_Chamber_Of_Boulders is a safe room in VolcanoArea with printed name "In Chamber of Boulders". "You are in a small chamber filled with large boulders. The walls are very warm, causing the air in the room to be almost stifling from the heat. The only exit is a crawl heading west, through which is coming a low rumbling." Understand "chamber/boulders" or "chamber of" as In_Chamber_Of_Boulders.
+
+Some warm boulders are scenery in In_Chamber_Of_Boulders. Understand "boulder/rocks/stones" as warm boulders. The description is "They're just ordinary boulders. They're warm." Instead of looking under, pushing, or pulling warm boulders, say "You'd have to blast them aside."
+
+Some rare spices are treasure in In_Chamber_Of_Boulders. Understand "spice/exotic" as spices. The indefinite article is "a selection of". Instead of smelling or examining spices, say "They smell wonderfully exotic!" The deposit points of spices is 14.
+
+[--------]
+
+In_Limestone_Passage is a safe room in VolcanoArea with printed name "In Limestone Passage". "You are walking along a gently sloping north/south passage lined with oddly shaped limestone formations." North of In_Limestone_Passage is At_Fork_In_Path. Up from In_Limestone_Passage is At_Fork_In_Path. South of In_Limestone_Passage is In_Front_Of_Barren_Room. North of In_Front_Of_Barren_Room is nowhere. Down from In_Limestone_Passage is In_Front_Of_Barren_Room. Understand "limestone/passage" as In_Limestone_Passage.
+
+Some limestone formations are scenery in In_Limestone_Passage. Understand "shape/shapes/lime/stone/oddly/shaped" as formations. The description is "Every now and then a particularly strange shape catches your eye."
+
+[   If you go down to the woods today... ]
+
+In_Front_Of_Barren_Room is a safe room in VolcanoArea with printed name "In Front of Barren Room". "You are standing at the entrance to a large, barren room. A sign posted above the entrance reads: 'Caution! Bear in room!'". West of In_Front_Of_Barren_Room is In_Limestone_Passage. East of In_Limestone_Passage is nowhere. East of In_Front_Of_Barren_Room is In_Barren_Room. Inside from In_Front_Of_Barren_Room is In_Barren_Room. Understand "in front" or "front of" or "front/barren/room" as In_Front_Of_Barren_Room.
+
+A caution sign is scenery in In_Front_Of_Barren_Room. Understand "barren/room" as sign. The description is "The sign reads, 'Caution! Bear in room!'". 
+
+[--------]
+
+In_Barren_Room is a safe room in VolcanoArea with printed name "In Barren Room". "You are inside a barren room. The center of the room is completely empty except for some dust. Marks in the dust lead away toward the far end of the room. The only exit is the way you came in." Understand "barren/room" as In_Barren_Room.
+
+Some dusty marks are scenery in In_Barren_Room with printed name "marks in the dust". The description is "It just looks like ordinary dust."
+
+A bear is an animal in In_Barren_Room. Understand "large/tame/ferocious/cave" as bear. The bear is either following or unfollowing. The bear is unfollowing. The bear is either friendly or unfriendly. The bear is unfriendly. "[if bear is following]You are being followed by a very large, tame bear.[otherwise if bear is unfriendly]There is a ferocious cave bear eyeing you from the far end of the room![otherwise if location is In_Barren_Room]There is a gentle cave bear sitting placidly in one corner.[otherwise]There is a contented-looking bear wandering about nearby.[end if]". Instead of throwing something (called weapon) at bear, try giving weapon to bear. Instead of giving something to bear, say "[if bear is friendly]The bear doesn't seem very interested in your offer.[otherwise]Uh-oh -- your offer only makes the bear angrier!". Instead of asking the bear about anything, say "This is a Bear of very little brain." The description is "The bear is extremely large, [if friendly]but appears to be friendly.[otherwise]and seems quite ferocious![end if]". 
+
+Instead of attacking bear:
+	if player holds axe, try throwing axe at bear instead;
+	if bear is friendly, say "The bear is confused; he only wants to be your friend." instead;
+	say "With what? Your bare hands? Against *his* bear hands??".
+	
+Instead of throwing axe at bear:
+	if bear is friendly, say "The bear is confused; he only wants to be your friend." instead;
+	move axe to location;
+	say "The axe misses and lands near the bear where you can't get at it.".
+	
+Instead of giving tasty food to bear:
+	remove tasty food from play;
+	now bear is friendly;
+	say  "The bear eagerly wolfs down your food, after which he seems to calm down considerably and even becomes rather friendly."
+	
+Instead of taking or catching the bear:
+	if bear is unfriendly, say "Surely you're joking!" instead;
+	if golden chain is locked, say "The bear is still chained to the wall." instead;
+	now bear is following;
+	say "Ok, the bear's now following you around.".
+	
+Instead of dropping or releasing the bear:
+	if bear is not following, say "What?" instead;
+	now bear is not following;
+	if troll is visible begin;
+		remove troll from play;
+		now troll is dead;
+		now chasm is open;
+		say "The bear lumbers toward the troll, who lets out a startled shriek and scurries away. The bear soon gives up the pursuit and wanders back.";
+	otherwise;
+		say "The bear wanders away from you.";
+	end if.
+	
+Every turn when bear is following:
+	if bear is in location begin;
+		if location is At_Breath_Taking_View, say "The bear roars with delight.";
+	otherwise;
+		move bear to location;
+		say "The bear lumbers along behind you.";
+	end if.
+	
+A golden chain is treasure in In_Barren_Room. It is fixed in place. Understand "links/shackles/solid/gold/thick/chains" as chain. The chain can be locked. The chain can be lockable. The chain is locked and lockable. "[if locked]The bear is held back by a solid gold chain.[otherwise]A solid golden chain lies in coils on the ground![end if]". The description is "The chain has thick links of solid gold!". The set of keys unlocks the golden chain. Instead of taking chain when chain is locked: say "It's locked to the [if bear is friendly]friendly[otherwise]ferocious[end if] bear!". Instead of unlocking chain with something when bear is unfriendly, say "There is no way to get past the bear to unlock the chain, which is probably just as well." Instead of locking chain with something when chain is unlocked, say "The mechanism won't lock again." Report unlocking chain with something: now chain is portable; say "You unlock the chain, and set the tame bear free." instead. The deposit points of chain is 14.
+
+Chapter - Different Maze
+
+[ The Different Maze ]
+
+A different maze is a kind of room. The printed name of a different maze is usually "Maze".
+
+Different_Maze_1 is a different maze. "You are in a maze of twisty little passages, all different." South of Different_Maze_1 is Different_Maze_3. Southwest of Different_Maze_1 is Different_Maze_4. Northeast of Different_Maze_1 is Different_Maze_5. Southeast of Different_Maze_1 is Different_Maze_6. Up from Different_Maze_1 is Different_Maze_7. Northwest of Different_Maze_1 is Different_Maze_8. East of Different_Maze_1 is Different_Maze_9. West of Different_Maze_1 is Different_Maze_10. North of Different_Maze_1 is Different_Maze_11. Down from Different_Maze_1 is At_West_End_Of_Long_Hall.
+
+Different_Maze_2 is a different maze. "You are in a little maze of twisting passages, all different." Southwest of Different_Maze_2 is Different_Maze_3. North of Different_Maze_2 is Different_Maze_4. East of Different_Maze_2 is Different_Maze_5. Northwest of Different_Maze_2 is Different_Maze_6. Southeast of Different_Maze_2 is Different_Maze_7. Northeast of Different_Maze_2 is Different_Maze_8. West of Different_Maze_2 is Different_Maze_9. Down from Different_Maze_2 is Different_Maze_10. Up from Different_Maze_2 is Different_Maze_11. South of Different_Maze_2 is Dead_End_14.
+
+Different_Maze_3 is a different maze. "You are in a maze of twisting little passages, all different." West of Different_Maze_3 is Different_Maze_1. Southeast of Different_Maze_3 is Different_Maze_4. Northwest of Different_Maze_3 is Different_Maze_5. Southwest of Different_Maze_3 is Different_Maze_6. Northeast of Different_Maze_3 is Different_Maze_7. Up from Different_Maze_3 is Different_Maze_8. Down from Different_Maze_3 is Different_Maze_9. North of Different_Maze_3 is Different_Maze_10. South of Different_Maze_3 is Different_Maze_11. East of Different_Maze_3 is Different_Maze_2.
+
+Different_Maze_4 is a different maze. "You are in a little maze of twisty passages, all different." Northwest of Different_Maze_4 is Different_Maze_1. Up from Different_Maze_4 is Different_Maze_3. North of Different_Maze_4 is Different_Maze_5. South of Different_Maze_4 is Different_Maze_6. West of Different_Maze_4 is Different_Maze_7. Southwest of Different_Maze_4 is Different_Maze_8. Northeast of Different_Maze_4 is Different_Maze_9. East of Different_Maze_4 is Different_Maze_10. Down from Different_Maze_4 is Different_Maze_11. Southeast of Different_Maze_4 is Different_Maze_2.
+
+Different_Maze_5 is a different maze. "You are in a twisting maze of little passages, all different." Up from Different_Maze_5 is Different_Maze_1. Down from Different_Maze_5 is Different_Maze_3. West of Different_Maze_5 is Different_Maze_4. Northeast of Different_Maze_5 is Different_Maze_6. Southwest of Different_Maze_5 is Different_Maze_7. East of Different_Maze_5 is Different_Maze_8. North of Different_Maze_5 is Different_Maze_9. Northwest of Different_Maze_5 is Different_Maze_10. Southeast of Different_Maze_5 is Different_Maze_11. South of Different_Maze_5 is Different_Maze_2.
+
+Different_Maze_6 is a different maze. "You are in a twisting little maze of passages, all different." Northeast of Different_Maze_6 is Different_Maze_1. North of Different_Maze_6 is Different_Maze_3. Northwest of Different_Maze_6 is Different_Maze_4. Southeast of Different_Maze_6 is Different_Maze_5. East of Different_Maze_6 is Different_Maze_7. Down from Different_Maze_6 is Different_Maze_8. South of Different_Maze_6 is Different_Maze_9. Up from Different_Maze_6 is Different_Maze_10. West of Different_Maze_6 is Different_Maze_11. Southwest of Different_Maze_6 is Different_Maze_2.
+
+Different_Maze_7 is a different maze. "You are in a twisty little maze of passages, all different." North of Different_Maze_7 is Different_Maze_1. Southeast of Different_Maze_7 is Different_Maze_3. Down from Different_Maze_7 is Different_Maze_4. South of Different_Maze_7 is Different_Maze_5. East of Different_Maze_7 is Different_Maze_6. West of Different_Maze_7 is Different_Maze_8. Southwest of Different_Maze_7 is Different_Maze_9. Northeast of Different_Maze_7 is Different_Maze_10. Northwest of Different_Maze_7 is Different_Maze_11. Up from Different_Maze_7 is Different_Maze_2.
+
+Different_Maze_8 is a different maze. "You are in a twisty maze of little passages, all different." East of Different_Maze_8 is Different_Maze_1. West of Different_Maze_8 is Different_Maze_3. Up from Different_Maze_8 is Different_Maze_4. Southwest of Different_Maze_8 is Different_Maze_5. Down from Different_Maze_8 is Different_Maze_6. South of Different_Maze_8 is Different_Maze_7. Northwest of Different_Maze_8 is Different_Maze_9. Southeast of Different_Maze_8 is Different_Maze_10. Northeast of Different_Maze_8 is Different_Maze_11. North of Different_Maze_8 is Different_Maze_2.
+
+Different_Maze_9 is a different maze. "You are in a little twisty maze of passages, all different." Southeast of Different_Maze_9 is Different_Maze_1. Northeast of Different_Maze_9 is Different_Maze_3. South of Different_Maze_9 is Different_Maze_4. Down from Different_Maze_9 is Different_Maze_5. Up from Different_Maze_9 is Different_Maze_6. Northwest of Different_Maze_9 is Different_Maze_7. North of Different_Maze_9 is Different_Maze_8. Southwest of Different_Maze_9 is Different_Maze_10. East of Different_Maze_9 is Different_Maze_11. West of Different_Maze_9 is Different_Maze_2.
+
+Different_Maze_10 is a different maze. "You are in a maze of little twisting passages, all different." Down from Different_Maze_10 is Different_Maze_1. East of Different_Maze_10 is Different_Maze_3. Northeast of Different_Maze_10 is Different_Maze_4. Up from Different_Maze_10 is Different_Maze_5. West of Different_Maze_10 is Different_Maze_6. North of Different_Maze_10 is Different_Maze_7. South of Different_Maze_10 is Different_Maze_8. Southeast of Different_Maze_10 is Different_Maze_9. Southwest of Different_Maze_10 is Different_Maze_11. Northwest of Different_Maze_10 is Different_Maze_2.
+
+Different_Maze_11 is a different maze. "You are in a maze of little twisty passages, all different." Southwest of Different_Maze_11 is Different_Maze_1. Northwest of Different_Maze_11 is Different_Maze_3. East of Different_Maze_11 is Different_Maze_4. West of Different_Maze_11 is Different_Maze_5. North of Different_Maze_11 is Different_Maze_6. Down from Different_Maze_11 is Different_Maze_7. Southeast of Different_Maze_11 is Different_Maze_8. Up from Different_Maze_11 is Different_Maze_9. South of Different_Maze_11 is Different_Maze_10. Northeast of Different_Maze_11 is Different_Maze_2.
+
+[--------]
+
+Dead_End_14 is a safe dead end with printed name "Dead End, near Vending Machine". The description of Dead_End_14 is "You have reached a dead end. There is a massive vending machine here.[paragraph break]Hmmm... There is a message here scrawled in the dust in a flowery script."
+
+A message in the dust is scenery in Dead_End_14. Understand "Scrawl/writing/script/scrawled/flowery" as message. The description is "The message reads, 'This is not the maze where the pirate leaves his treasure chest.'". 
+
+A vending machine is an undescribed container in Dead_End_14. It is fixed in place, closed and unopenable. Understand "slot/massive/battery/coin" as vending machine. The description is "The instructions on the vending machine read, 'Insert coins to receive fresh batteries.'". Instead of attacking vending machine, say "The machine is quite sturdy and survives your attack without getting so much as a scratch." Instead of looking under machine, say "You don't find anything under the machine." Instead of searching machine, say "You can't get inside the machine." Instead of taking machine, say "The vending machine is far too heavy to move." Instead of inserting anything into vending machine, say "The machine seems to be designed to take coins."
+
+Instead of inserting rare coins into vending machine:
+	move fresh batteries to location;
+	remove rare coins from play;
+	say "Soon after you insert the coins in the coin slot, the vending machine makes a grinding sound, and a set of fresh batteries falls at your feet."
+	
+Some fresh batteries are a thing in vending machine. Understand "battery" as fresh batteries. The fresh batteries can be either charged or discharged. The batteries are charged. "There are fresh batteries here." The description is "They look like ordinary batteries. (A sepulchral voice says, 'Still going!')". Instead of counting fresh batteries, say "A pair."
+
+Some old batteries are a thing with printed name "worn-out batteries". Understand "battery/worn/out" as old batteries. "Some worn-out batteries have been discarded nearby." The description is "They look like ordinary batteries."
+
+	
+
+ 
+
+
+
+Part - NPCS
+
+Chapter - Dwarves
+
+A threatening little dwarf is a man. Understand "nasty/mean" as dwarf. "A threatening little dwarf hides in the shadows." The description is "It's probably not a good idea to get too close. Suffice it to say the little guy's pretty aggressive." A dwarf has a number called count. The count of dwarf is 5. A dwarf is either axed or axe-free. A dwarf is axed.
+
+Understand "kick dwarf" as a mistake ("You boot the dwarf across the room. He curses, then gets up and brushes himself off. Now he's madder than ever!"). Instead of giving food to dwarf, say "You fool, dwarves eat only coal! Now you've made him *really* mad!" Instead of giving something to dwarf, say "The dwarf is not at all interested in your offer. (The reason being, perhaps, that if he kills you he gets everything you have anyway.)". Instead of attacking dwarf, say "Not with your bare hands. No way." Instead of throwing something (called weapon) at dwarf, try giving weapon to dwarf. Rule for supplying a missing second noun while throwing: if noun is axe and dwarf is visible, now the second noun is the dwarf.
+
+Instead of throwing axe at dwarf:
+	if a random chance of 2 in 3 succeeds begin;
+		remove dwarf from play;
+		decrease count of dwarf by 1;
+		move axe to location;
+		say "You killed a little dwarf! The body vanishes in a cloud of greasy black smoke.";
+	otherwise;
+		move axe to location;
+		say "Missed! The little dwarf dodges out of the way of the axe.";
+	end if.
+
+Every turn when ( not in darkness ) and count of dwarf > 0 and location is dwarfish (this is the dwarf daemon rule):
+	if dwarf is off-stage and a random chance of ( count of dwarf ) in 100 succeeds and bear is not in location and troll is not in location begin;
+		if dragon is in location begin;
+			decrease count of dwarf by 1;
+			say "A dwarf appears, but with one casual blast the dragon vaporizes him!";
+			stop;
+		otherwise;
+			move dwarf to location;
+			say "A threatening little dwarf comes out of the shadows!";
+			stop;
+		end if;
+	end if;
+	if dwarf is on-stage and dwarf is not in location begin;
+		if location is dwarfish and a random chance of 96 in 100 succeeds and location of dwarf is not In_Mirror_Canyon begin;
+			move dwarf to location;
+			say "The dwarf stalks after you...[line break]";
+		otherwise;
+			remove dwarf from play;
+			stop;
+		end if;
+	end if;
+	if dwarf is visible and a random chance of 75 in 100 succeeds begin;
+		if dwarf is axed begin;
+			move axe to location;
+			now dwarf is axe-free;
+			remove dwarf from play;
+			say "The dwarf throws a nasty little axe at you, misses,
+					 curses, and runs away.";
+			stop;
+		end if;
+		if location is In_Mirror_Canyon begin;
+			say "The dwarf admires himself in the mirror.";
+			stop;
+		end if;
+		say "The dwarf throws a nasty little knife at you, ";
+		if a random chance of 95 in 1000 succeeds begin;
+			say "and hits!";
+			pseudo-death;
+			stop; 
+		otherwise;
+			say "but misses!";
+			stop;
+		end if;
+	end if;
+	if dwarf is visible and a random chance of 1 in 3 succeeds begin;
+		remove dwarf from play;
+		say "[line break]Tiring of this, the dwarf slips away.";
+	end if.
+		
+A dwarvish axe is a thing. Understand "little/dwarven" as axe. "There is a little axe here." The description is "It's just a little axe." Instead of examining axe when axe is not held by player and bear is visible, say "It's lying beside the bear." Instead of taking axe when bear is visible and bear is unfriendly, say "No chance. It's lying beside the ferocious bear, quite within harm's way."
+
+Chapter - Pirate
+
+The pirate is a man. The pirate is either spotted or unspotted. The pirate is unspotted. The pirate is either poor or rich. The pirate is poor. The pirate is either at large or retired. The pirate is at large.
+
+pirate_flag is a number that varies. Understand "pirate" as pirating. Pirating is an action out of world applying to nothing. Carry out pirating: now pirate_Flag is 1.
+
+Every turn when ( pirate is at large and a random chance of 1 in 100 succeeds and not in darkness and location is not In_Secret_Canyon and location is dwarfish ) or pirate_flag is 1 :
+	now pirate_flag is 0;
+	if dwarf is visible begin;
+		say "A bearded pirate appears, catches sight of the dwarf and runs away.";
+		stop;
+	end if;
+	if the number of visible treasures is 0 begin;
+		if pirate is spotted, stop;
+		now pirate is spotted;
+		say "There are faint rustling noises from the darkness behind you. As you turn toward them, you spot a bearded pirate. He is carrying a large chest.[paragraph break]'Shiver me timbers!' he cries, 'I've been spotted! I'd best hie meself off to the maze to hide me chest!'[paragraph break]With that, he vanishes into the gloom.";
+		now pirate is retired;
+		stop; 
+	otherwise;
+		if pirate is rich, stop;
+		now pirate is rich;
+		if pirate is spotted, now pirate is retired;
+		repeat with booty running through visible treasures begin;
+			if player holds booty, decrease the score by 5;
+			move booty to Dead_End_13;
+		end repeat;
+		say "Out from the shadows behind you pounces a bearded pirate! 'Har, har,' he chortles. 'I'll just take all this booty and hide it away with me chest deep in the maze!' He snatches your treasure and vanishes into the gloom.";
+	end if.
+			
+
+Part - Endgame
+
+[The cave is closing now...]
+
+Every turn when the number of found treasures >= number of treasures and caves closed is false:
+	now caves closed is true;
+	increase the score by 25;
+	remove crystal bridge from play;
+	now fissure is closed;
+	now grate is closed;
+	now grate is locked;
+	remove keys from play;
+	now pirate is retired;
+	now count of dwarf is 0;
+	remove troll from play;
+	now troll is dead;
+	remove bear from play;
+	remove dragon from play;
+	the cave closes in 25 turns from now;
+	say "A sepulchral voice reverberating through the cave says, 'Cave closing soon. All adventurers exit immediately through main office.'".
+	
+At the time when the cave closes:
+	increase the score by 10;
+	now every thing carried by player is in vending machine; [why not?]
+	move bottle to At_Ne_End;
+	if the bottle contains something (called contents), remove contents from play;
+	move giant bivalve to At_Ne_End;
+	move brass lantern to At_Ne_End;
+	move black mark rod to At_Ne_End;
+	move little bird to At_Sw_End;
+	move velvet pillow to At_Sw_End;
+	say "The sepulchral voice intones, 'The cave is now closed.' As the echoes fade, there is a blinding flash of light (and a small puff of orange smoke). . .[paragraph break]As your eyes refocus, you look around...";
+	move player to At_Ne_End.
+	
+[The End Game]
+
+At_Ne_End is a lighted room with printed name "NE End of Repository". "You are at the northeast end of an immense room, even larger than the giant room. It appears to be a repository for the 'Adventure' program. Massive torches far overhead bathe the room with smoky yellow light. Scattered about you can be seen a pile of bottles (all of them empty), a nursery of young beanstalks murmuring quietly, a bed of oysters, a bundle of black rods with rusty stars on their ends, and a collection of brass lanterns. Off to one side a great many dwarves are sleeping on the floor, snoring loudly. A sign nearby reads: 'Do not disturb the dwarves!'". Southwest of At_Ne_End is At_Sw_End.
+
+An enormous mirror is a backdrop. It is in At_Ne_End, At_Sw_End. Understand "huge/big/large/suspended/hanging/vanity/dwarvish" as mirror. The initial appearance is "An immense mirror is hanging against one wall, and stretches to the other end of the room, where various other sundry objects can be glimpsed dimly in the distance." The description is "It looks like an ordinary, albeit enormous, mirror." Instead of attacking mirror: say "You strike the mirror a resounding blow, whereupon it shatters into a myriad tiny fragments."; now sleeping dwarves are awake.
+
+A collection of adventure game materials is a backdrop. It is in At_Ne_End and At_Sw_End. Understand "stuff/junk/repository/torches/objects/massive/sundry/pit/snake/snakes/fierce/green" as collection. The description is "You've seen everything in here already, albeit in somewhat different contexts." Instead of taking collection, say "Realizing that by removing the loot here you'd be ruining the game for future players, you leave the 'Adventure' materials where they are."
+
+Some sleeping dwarves are an undescribed man in At_NE_End. Understand "dwarf/snoring/dozing/snoozing" as dwarves. The indefinite article is "hundreds of angry". The description is "I wouldn't bother the dwarves if I were you." Instead of taking dwarves, say "What, all of them?". Instead of waking dwarves: say "You prod the nearest dwarf, who wakes up grumpily, takes one look at you, curses, and grabs for his axe."; now sleeping dwarves are awake. Instead of attacking dwarves: now sleeping dwarves are awake. The sleeping dwarves can be either awake or asleep. The dwarves are asleep. Every turn when sleeping dwarves are awake: now dwarves are asleep; say "The resulting ruckus has awakened the dwarves. There are now dozens of threatening little dwarves in the room with you! Most of them throw knives at you! All of them get you!"; pseudo-death.
+
+[--------]
+
+At_Sw_End is a lighted room with printed name "SW End of Repository". "You are at the southwest end of the repository. To one side is a pit full of fierce green snakes. On the other side is a row of small wicker cages, each of which contains a little sulking bird. In one corner is a bundle of black rods with rusty marks on their ends. A large number of velvet pillows are scattered about on the floor. A vast mirror stretches off to the northeast. At your feet is a large steel grate, next to which is a sign which reads, 'TREASURE VAULT. Keys in main office.'". 
+
+The repository grate is a door. It is down from At_Sw_End and up from Fake_Room. It is locked, closed and openable. "The grate is [if open]open[otherwise]closed[end if].". The description is "It just looks like an ordinary steel grate." Understand "ordinary/steel/grating" as repository grate.
+
+A black mark rod is a thing in At_Sw_End with printed name "black rod with a rusty mark on the end". Understand "rusty/three/foot/iron/explosive/dynamite/blast" as black mark rod. "A three foot black rod with a rusty mark on one end lies nearby." The description is "It's a three foot black rod with a rusty mark on an end." Instead of waving rod, say "Nothing happens."
+
+
+Part - Misc
+
+Chapter - Score and Rank
+
+When play begins:
+	now score is 36;
+	say "[paragraph break]Welcome to Adventure![line break](Please type HELP for instructions and information.)[paragraph break]".
+
+Table 1 - Rankings
+Score	Rank
+0		"Amateur"
+10		"Novice"
+35		"Adventurer"
+100		"Experienced Adventurer"
+130		"Seasoned Adventurer"
+200		"Junior Master"
+300		"Master, second class"
+330		"Master, first class"
+348		"Grandmaster Adventurer"
+
+Chapter - The Dark
+
+Yourself is either dark-warned or undark-warned. Yourself is undark-warned.
+
+The going action has a number called the dark terminus count.
+
+Setting action variables for going:
+	now the dark terminus count is 0;
+	if in darkness, increase the dark terminus count by 1.
+	
+The last carry out going rule:
+	if in darkness, increase the dark terminus count by 1;
+	if the dark terminus count is 2 begin;
+		if player is undark-warned begin;
+			now player is dark-warned;
+			say "It is now pitch dark. If you proceed you will likely fall into a pit." instead;
+		end if;
+		if a random chance of 1 in 4 succeeds begin;
+			say "You fell into a pit and broke every bone in your body!";
+			pseudo-death;
+		end if;
+	end if.
+
+Rule for printing the description of a dark room: say "It is now pitch black. If you proceed you will likely fall into a pit." instead.
+
+Chapter - Resurrection
+
+[Unfortunately, what seems to be a bug in the current build of Inform 7 means the mechanism of "end the game in death" and "resume the game" is not presently functioning. For now, we work around this with our own routine. ]
+
+[When play ends when the game ended in death:]
+To pseudo-death:
+	say line break;
+	if caves closed is true begin;
+		say "It looks as though you're dead. Well, seeing as how it's so close to closing time anyway, I think we'll just call it a day.";
+		end the story finally saying "You have died.";
+	otherwise if power remaining of lantern > 0;
+		say "[if deaths is 0]Oh dear, you seem to have gotten yourself killed. I might be able to help you out, but I've never really done this before. Do you want me to try to reincarnate you?[otherwise if deaths is 1]You clumsy oaf, you've done it again! I don't know how long I can keep this up. Do you want me to try reincarnating you again?[otherwise if deaths is 2]Now you've really done it! I'm out of orange smoke! You don't expect me to do a decent reincarnation without any orange smoke, do you?[end if]";
+		say line break; 
+		if the player consents begin;
+			say "[line break][if deaths is 0]All right. But don't blame me if something goes wr......[paragraph break][paragraph break]--- POOF!! ---[paragraph break]You are engulfed in a cloud of orange smoke. Coughing and gasping, you emerge from the smoke and find that you're....[otherwise if deaths is 1]Okay, now where did I put my orange smoke?.... >POOF!<[paragraph break]Everything disappears in a dense cloud of orange smoke.[otherwise]Okay, if you're so smart, do it yourself! I'm leaving![end if]";
+			if deaths < 2 begin;
+				increase deaths by 1;
+				decrease the score by 10;
+				repeat with item running through things carried by player begin;
+					move item to location;
+					if item is a treasure, decrease the score by 5;
+				end repeat;
+				move lantern to At_End_Of_Road;
+				now lantern is switched off; 
+				now lantern is unlit;
+				remove dwarf from play;
+				move player to Inside_Building, without printing a room description; [For some reason, this prints two of them anyway.]
+[				resume the game;]
+			end if;
+		otherwise;
+			say "[line break][if deaths is 0]Very well.[otherwise if deaths is 1]Probably a wise choice.[otherwise]I thought not![end if]";
+			end the story finally saying "You have died.";
+		end if;
+	end if.
+	
+
+
+
+Part - New Verbs
+
+Chapter - Action Verbs
+
+Catching is an action applying to one thing. Understand "catch [someone]" as catching. Understand the command "capture" as "catch". Carry out catching: say "You can't catch [the noun].".
+
+Releasing is an action applying to one visible thing. Understand "release [someone]" as releasing. Understand the command "free" as "release". Carry out releasing: say "You can't release [the noun].".
+
+Watering is an action applying to one thing. Understand "water [something]" as watering. Check watering: if player holds bottle, try emptying bottle instead. Carry out watering: say "Water? What water?". 
+
+Oiling is an action applying to one thing. Understand "oil [something]" or "grease [something]" or "lubricate [something]" as oiling. Check oiling: if player holds bottle, try emptying bottle instead. Carry out oiling: say "Oil? What oil?". 
+
+Blasting is an action applying to nothing. Understand "blast" as blasting.
+
+Carry out blasting:
+	if location is not At_Sw_End and location is not At_Ne_End, say  "I see no dynamite here." instead;
+	if location is At_Sw_End and black mark rod is in At_Ne_End begin;
+		increase the score by 35;
+		say "There is a loud explosion, and a twenty-foot hole appears in the far wall, burying the dwarves in the rubble. You march through the hole and find yourself in the main office, where a cheering band of friendly elves carry the conquering adventurer off into the sunset.";
+		end the story finally saying "You have won!";
+	otherwise if location is At_Ne_End and black mark rod is in At_Sw_End;
+		increase the score by 20;
+		say "There is a loud explosion, and a twenty-foot hole appears in the far wall, burying the snakes in the rubble. A river of molten lava pours in through the hole, destroying everything in its path, including you!";
+		pseudo-death;
+	otherwise;
+		say "There is a loud explosion, and you are suddenly splashed across the walls of the room.";
+		pseudo-death;
+	end if.
+	
+Blasting with is an action applying to two things. Understand "blast [something] with [something preferably held]" as blasting with. Check blasting with: if second noun is not black mark rod, say "Blasting requires dynamite."; otherwise say "Been eating those funny brownies again?".
+
+Counting is an action applying to one thing. Understand "count [something]" as counting. Carry out counting: say "[if noun is plural-named]There are a multitude[otherwise]I see one (1) [noun][end if]."
+
+Understand "use" as a mistake ("You'll have to be a bit more explicit than that.").
+
+Filling is an action applying to one thing. Understand "fill [something]" or "get water" or "take water" as filling. Carry out filling: say "You can't fill that!".
+
+Emptying is an action applying to one thing. Understand "empty [something]" as emptying. Carry out emptying: say "You can't empty that!".
+
+After reading a command:
+	if the player's command matches "on", replace the player's command with "turn on lamp";
+	if the player's command matches "off", replace the player's command with "turn off lamp".
+
+Understand "unlock [something]" as unlocking it with. Rule for supplying a missing second noun while unlocking: if noun provides the property matching key and the matching key of noun is held, now the second noun is matching key of noun.
+
+Understand the command "toss" as "throw". 
+
+Chapter - Going by Room Name
+
+[Note: Graham Nelson's Inform 6 version lets you teleport to any room you've visited. I'm not sure if this was the behavior in the original, but if so, it would seem to ruin the magic words, the mazes, and several puzzles (re-crossing the troll bridge for instance). I've changed this so you can only go to an adjacent room, and then only if the path is clear (no locked doors etc.) ]
+
+Understand "[any adjacent visited room]" as name-going. Name-going is an action applying to one thing. 
+
+Carry out name-going:
+	let way be the best route from location to noun, using even locked doors;
+	if way is not a direction, say "You can't.";
+	try going way.
+
+Chapter - Help
+
+Understand "help" as requesting help text. Requesting help text is an action out of world applying to nothing. Carry out requesting help text: say "I know of places, actions, and things. You can guide me using commands that are complete sentences. To move, try commands like 'enter,' 'east,' 'west,' 'north,' 'south,' 'up,' 'down,' 'enter building,' 'climb pole,' etc.[paragraph break]I know about a few special objects, like a black rod hidden in the cave. These objects can be manipulated using some of the action words that I know. Usually you will need to give a verb followed by an object (along with descriptive adjectives when desired), but sometimes I can infer the object from the verb alone. Some objects also imply verbs; in particular, 'inventory' implies 'take inventory', which causes me to give you a list of what you're carrying. The objects have side effects; for instance, the rod scares the bird.[paragraph break]Many commands have abbreviations. For example, you can type 'i' in place of 'inventory,' 'x object' instead of 'examine object,' etc.[paragraph break]Usually people having trouble moving just need to try a few more words. Usually people trying unsuccessfully to manipulate an object are attempting something beyond their (or my!) capabilities and should try a completely different tack.[paragraph break]Note that cave passages turn a lot, and that leaving a room to the north does not guarantee entering the next from the south.[paragraph break]If you want to end your adventure early, type 'quit'. To suspend your adventure such that you can continue later, type 'save,' and to resume a saved game, type 'restore.' To see how well you're doing, type 'score'. To get full credit for a treasure, you must have left it safely in the building, though you get partial credit just for locating it. You lose points for getting killed, or for quitting, though the former costs you more. There are also points based on how much (if any) of the cave you've managed to explore; in particular, there is a large bonus just for getting in (to distinguish the beginners from the rest of the pack), and there are other ways to determine whether you've been through some of the more harrowing sections.[paragraph break]If you think you've found all the treasures, just keep exploring for a while. If nothing interesting happens, you haven't found them all yet. If something interesting *does* happen, it means you're getting a bonus and have an opportunity to garner many more points in the master's section.[paragraph break]Good luck!".
+
+Chapter - Magic Words
+
+
+Xyzzying is an action applying to nothing. Understand "xyzzy" as xyzzying.
+
+Carry out xyzzying:
+	if location is Inside_Building and In_Debris_Room is visited begin;
+		move player to In_Debris_Room;
+	otherwise if location is In_Debris_Room;
+		move player to Inside_Building;
+	otherwise;
+		say "Nothing happens.";
+	end if.
+
+Plughing is an action applying to nothing. Understand "plugh" as plughing.
+
+Carry out plughing:
+	if location is Inside_Building and At_Y2 is visited begin;
+		move player to At_Y2;
+	otherwise if location is At_Y2;
+		move player to Inside_Building;
+	otherwise;
+		say "Nothing happens.";
+	end if.
+	
+Plovering is an action applying to nothing. Understand "plover" as plovering.
+
+Carry out plovering:
+	if location is At_Y2 and In_Plover_Room is visited begin;
+		if player holds emerald begin;
+			move emerald to In_Plover_Room;
+			decrease the score by 5;
+		end if;
+		move player to In_Plover_Room;
+	otherwise if location is In_Plover_Room;
+		if player holds emerald begin;
+			move emerald to In_Plover_Room;
+			decrease the score by 5;
+		end if;
+		move player to At_Y2;
+	otherwise;
+		say "Nothing happens.";
+	end if.
+
+Feeing is an action applying to nothing. Understand "fee" or "fie" or "foe" or "foo" as feeing. Fee count is a number that varies.
+
+Carry out feeing:
+	let wd be 0;
+	if the player's command matches "fee", now wd is 0;
+	if the player's command matches "fie", now wd is 1;
+	if the player's command matches "foe", now wd is 2;
+	if the player's command matches "foo", now wd is 3;
+	if fee count is not wd begin;
+		now fee count is 0;
+		say "Get it right, dummy!" instead;
+	end if;
+	increase fee count by 1;
+	if fee count is 4 begin;
+		now fee count is 0;
+		if golden eggs are in In_Giant_Room, say "Nothing happens." instead;
+		if golden eggs are visible, say "The nest of golden eggs has vanished!";
+		otherwise say "Done!";
+		if player holds golden eggs, decrease the score by 5;
+		if location of golden eggs is Inside_Building, decrease the score by (deposit points of golden eggs ); 
+		move golden eggs to In_Giant_Room;
+		if location is In_Giant_Room, say "A large nest full of golden eggs suddenly appears out of nowhere!";
+	otherwise;
+		say "Ok."; 
+	end if.
+
+Understand "sesame" or "shazam" or "hocus" or "abracadabra" or "foobar" or "open-sesame" or "frotz" as a mistake ("Good try, but that is an old worn-out magic word.").           
+ 
+[
+Part - Puzzles
+
+Include Intelligent Hinting by Aaron Reed.     
+
+Use MAX_STATIC_DATA of 200000. 
+
+Section - Magic Word Hack
+
+[First, some awkward hacking. Ideally, Inform would allow us to define new directions, and we could set up the magic words as custom directions, to allow the pathfinding to use them as the most efficient routes between various places. Since this is (currently) not possible, we'll set up covert map connections in the relevant rooms, and then disallow movement by them unless a "suggestion" action is taking place. To avoid confusing commands, we'll also replace the extension's default reporting rule to print "xyzzying" or "plughing" at the appropriate times.]
+ 
+Inside_Building is mapped north of In_Debris_Room. South of Inside_Building is nowhere. After going to In_Debris_Room for the first time: now In_Debris_Room is mapped south of Inside_Building; continue the action. 
+
+Check going south when location is Inside_Building and suggestion flag is false: try going east instead [an invalid direction]. Check going north when location is In_Debris_Room and suggestion flag is false: try going south instead.  
+ 
+Inside_Building is mapped northeast of At_Y2. Southwest of Inside_Building is nowhere. After going to At_Y2 for the first time: now At_Y2 is mapped southwest of Inside_Building; continue the action.     
+
+Check going southwest when location is Inside_Building and suggestion flag is false: try going southeast instead. Check going northeast when location is At_Y2 and suggestion flag is false: try going northwest instead.
+
+Table of Intelligent Hinting Messages (amended)
+msg							txt
+action-solving			"([adventure action])[line break]"
+action-suggesting		"Try [adventure action].[line break]"
+
+To say adventure action: 
+	if ( relevant action is going south and location is Inside_Building ) or ( relevant action is going north and location is In_Debris_Room ) begin;
+		say "xyzzying";
+	otherwise if ( relevant action is going northeast and location is At_Y2 ) or ( relevant action is going southwest and location is Inside_Building ) ;
+		say "plughing";    
+	otherwise;  
+		say "[relevant action]";
+	end if.  
+	
+
+
+
+
+
+  
+Section - An Example of Alternate Usage
+
+[This next bit, commented out, shows a hint of how you might make use of this extension without allowing for a "suggest" command.]
+
+[
+Use no suggestion.
+
+Every turn when a random chance of 1 in 5 succeeds:
+	if the next incomplete task in Winning-The-Game is Entering-The-Cave:
+		say "Somewhere nearby is Colossal Cave. Maybe you should try to find it! (You could maybe start by [the suggested action]).".
+]
+
+
+Section - Main Puzzle Definitions
+
+[Our master overview. Note the order of the early items, some of which are marked as complete when play begins, but need to override other concerns. Killing-A-Dwarf needs to take precedence over nearly anything else when a dwarf appears-- but maintaining light is one of the few things even more important.]
+
+Winning-The-Game requires Entering-The-Cave, Staying-Alive, Finding-Most-Treasures, Final-Treasures, and Solving-The-Master-Level.         
+
+Entering-The-Cave is a task. The venue is In_Cobble_Crawl. Requirements for Entering-The-Cave: do the action of switching on lantern. Definition: Entering-The-Cave is complete: if In_Cobble_Crawl is visited and lantern is switched on, yes; if In_Debris_Room is visited, yes.
+
+Staying-Alive is a puzzle. It requires Maintaining-Light, Killing-A-Dwarf, Recharging-Lantern, Defeating-Snake, and Slaying-The-Dragon.   
+
+Final-Treasures is a puzzle. It requires Volcano-Area, Pirate-Treasures.
+
+Defeating-Snake is a puzzle. It requires Catching-The-Bird, Releasing-The-Bird.     
+ 
+Catching-The-Bird is a reversible task with apropos-list {In_Bird_Chamber, the snake, In_Hall_Of_Mists}. Requirements for Catching-The-Bird: do the action of dropping black rod; do the action of taking cage; do the action of catching bird. Definition: Catching-The-Bird is complete: if snake is off-stage, yes; if bird is in cage, yes; no.     
+
+Releasing-The-Bird is a task with venue In_Hall_Of_Mt_King. Requirements for Releasing-The-Bird: do the action of releasing bird. Definition: Releasing-The-Bird is complete: if snake is off-stage, yes.
+
+Maintaining-Light is a reversible task. Requirements for Maintaining-Light: do the action of taking lantern; do the action of switching on lantern. Definition: Maintaining-Light is complete: if location is aboveground and Entering-The-Cave is incomplete, yes; if lantern is switched on and lantern is held, yes; if location is In_Alcove or location is In_Plover_Room, yes; no.    
+  
+Killing-A-Dwarf is a reversible task. Requirements for Killing-A-Dwarf: do the action of taking axe; do the action of throwing axe at dwarf. Definition: Killing-A-Dwarf is complete: if caves closed is true, yes; if dwarf is visible, no; if location is In_Alcove or location is In_Plover_Room, yes; if axe is on-stage and player does not hold axe, no; yes.
+  
+Recharging-Lantern is a reversible task. Requirements for Recharging-Lantern: do the action of inserting coins into vending machine; do the action of taking fresh batteries; do the action of inserting fresh batteries into lantern. Definition: Recharging-Lantern is complete: if caves closed is true, yes; if power remaining of lantern < 50 and location is not regionally in VolcanoArea and location is not On_Ne_Side_Of_Chasm, no; yes.
+
+Finding-Most-Treasures is a not sequential puzzle. It requires Mt-King-Area-Treasures, Plover-Treasures, Dragon-Area-Treasures, Giant-Area-Treasures.  
+  
+
+Section - Mountain King Area Puzzles
+
+Mt-King-Area-Treasures is a puzzle. It requires Collecting-Mt-King-Treasures, Returning-Mt-King-Treasures.      
+ 
+Collecting-Mt-King-Treasures is a not sequential puzzle. It requires grabbing-jewelry, grabbing-coins, grabbing-nugget, grabbing-silver. 
+
+[Tasks are like any other kind of Inform object, so here we create a kind of task for all of our treasures, to greatly simplify the process of defining them.]
+
+A treasure-task is a kind of task. A treasure-task is always reversible. A treasure-task has a thing called the booty.  
+
+First requirements for a treasure-task (called job): do the action of taking booty of job.    
+
+Definition: a treasure-task is complete: if booty of it is held by player, yes; if booty of it is in Inside_Building, yes; if booty of it is off-stage, yes; no.      
+
+[We'll likewise create a kind of task for the similar process of depositing treasures.]
+
+A deposit-task is a kind of task. A deposit-task is always reversible. A deposit-task has a thing called the booty. The venue of a deposit-task is usually Inside_Building.
+
+First requirements for a deposit-task (called job): do the action of dropping booty of job.
+
+Definition: a deposit-task is complete: if booty of it is in Inside_Building, yes; if booty of it is off-stage, yes; no.  
+
+Grabbing-Jewelry is a treasure-task with booty jewelry. Grabbing-coins is a treasure-task with booty coins. Grabbing-Nugget is a treasure-task with booty nugget. Grabbing-silver is a treasure-task with booty silver.   
+ 
+Returning-Mt-King-Treasures is a puzzle. It requires Returning-Jewelry, Returning-Coins, Returning-Nugget, Returning-Silver.
+
+Returning-Jewelry is a deposit-task with booty jewelry. Returning-coins is a deposit-task with booty coins. Returning-Nugget is a deposit-task with booty nugget. Returning-silver is a deposit-task with booty silver. 
+
+Section - Plover Treasure Puzzles
+
+Plover-Treasures is a puzzle. It requires Prep-To-Enter, entering-plover-room, grabbing-emerald, re-equip, returning-emerald, use-plover-word, grabbing-pyramid, reverse-plovering, returning-pyramid.
+
+Prep-To-Enter is a reversible task with venue In_Alcove and command-sequence {"drop all"}. The apropos-list is {In_Plover_Room}. Definition: Prep-To-Enter is complete: if In_Plover_Room is visited, yes; if location is In_Alcove and the number of things held by player is 0, yes; no.
+
+Entering-Plover-Room is a task with venue In_Plover_Room. Definition: Entering-Plover-Room is complete: if location is In_Plover_Room, yes. 
+
+grabbing-emerald is a treasure-task with booty emerald.
+
+Re-Equip is a task with venue In_Alcove and command-sequence {"take all"}. Definition: Re-Equip is complete: if In_Plover_Room is visited and lantern is held, yes.   
+
+returning-emerald is a deposit-task with booty emerald. 
+
+use-plover-word is a reversible task with venue At_Y2. Requirements for Use-Plover-Word: do the action of plovering. Definition: use-plover-word is complete: if pyramid is not in In_Dark_Room and pyramid is not in In_Plover_Room, yes;  if ( location is In_Plover_Room or location is In_Dark_Room ) and player holds lantern, yes; no.
+
+grabbing-pyramid is a treasure-task with booty pyramid.  
+
+reverse-plovering is a task with venue In_Plover_Room. Requirements for reverse-plovering: do the action of plovering. Definition: reverse-plovering is complete: if location is At_Y2 and pyramid is held, yes.
+
+returning-pyramid is a deposit-task with booty pyramid.
+
+Section - Dragon & Vase
+
+Slaying-The-Dragon is a task with venue In_Secret_Canyon and apropos-list {rug}. Requirements for Slaying-The-Dragon: do the action of attacking dragon; do the action of saying yes. Definition: Slaying-The-Dragon is complete: if dragon is off-stage, yes.
+
+Dragon-Area-Treasures is a puzzle. It requires grabbing-rug, grabbing-pillow, grabbing-vase, returning-pillow, returning-vase, returning-rug.   
+
+grabbing-rug is a treasure-task with booty rug.  
+
+grabbing-pillow is a treasure-task with booty pillow.
+
+grabbing-vase is a treasure-task with booty vase.
+
+returning-pillow is a deposit-task with booty pillow. [Since the parent puzzle is sequential, we pretend the pillow is any other treasure, and we can ensure its presence before the vase is dropped. ] Definition: returning-pillow is complete: if pillow is in Inside_Building, yes; if caves closed is true, yes; no.  
+
+returning-vase is a deposit-task with booty vase.
+
+returning-rug is a deposit-task with booty rug.
+
+
+Section - Giant Area Puzzles
+
+Giant-Area-Treasures is a puzzle. It requires Creating-Beanstalk, Claiming-Trident, Opening-Bivalve, Returning-Giant-Treasures.
+ 
+Creating-Beanstalk is a puzzle. It requires Getting-Water, Watering-Plant. 
+
+Getting-Water is a reversible task with venue In_Pit. Requirements for Getting-Water: do the action of filling bottle. The apropos-list is {At_West_End_Of_Twopit_Room, plant, beanstalk_top, hole-above-pit}. Definition: Getting-Water is complete: if Giant-Area-Treasures is complete, yes; if size of plant is huge, yes; if water_in_bottle is in bottle and player holds bottle, yes; no.
+
+Watering-Plant is a reversible task with venue In_West_Pit. Requirements for Watering-Plant: do the action of watering plant. Definition: Watering-Plant is complete: if size of plant is huge, yes; if keys are in Giant Area and chain is locked, no; if food is in Giant Area and bear is unfriendly, no; if the number of treasures regionally in Giant Area > 0, no; yes. 
+
+Claiming-Trident is a puzzle. It requires Getting-Oil, Oiling-Door, Grabbing-Trident.      
+
+Getting-Oil is a reversible task with venue In_East_Pit. Requirements for Getting-Oil: do the action of emptying bottle; do the action of filling bottle. Definition: Getting-Oil is complete: if rusty door is unlocked, yes; if oil_in_bottle is in bottle, yes; no.
+
+Oiling-Door is a reversible task with venue In_Immense_N_S_Passage. Requirements for Oiling-Door: do the action of oiling rusty door. Definition: Oiling-Door is complete: if rusty door is unlocked, yes; no.
+  
+Grabbing-Trident is a treasure-task with booty trident.
+ 
+Opening-Bivalve is a puzzle. It requires Prying-Clam, Grabbing-Pearl.
+  
+Prying-Clam is a task with venue In_Shell_Room. Requirements for Prying-Clam: do the action of unlocking bivalve with trident. Definition: Prying-Clam is complete: if printed name of bivalve is "oyster", yes.   
+
+Grabbing-Pearl is a treasure-task with booty pearl. 
+
+Returning-Giant-Treasures is puzzle. It requires returning-pearl, returning-trident. Returning-pearl is a deposit-task with booty pearl. Returning-trident is a deposit-task with booty trident. 
+  
+Section - Volcano Area Treasures
+
+Volcano-Area is a puzzle. It requires Bear-Prepping, Grabbing-Eggs, Bribing-Troll, Grabbing-Spices, Freeing-Bear, Grabbing-Chain, Capturing-Bear, Scaring-Troll, Retrieving-Eggs, Grabbing-Eggs, Returning-Volcano-Treasures.         
+  
+[If we lose the food, this whole puzzle becomes unsolvable; so we manually make everything in it completed.]
+
+Every turn when food is off-stage and bear is unfriendly:
+	repeat with item running through tasks required by Volcano-Area:
+		now item is irreversible;
+		add item to list of cached-solved tasks, if absent.
+
+Bear-Prepping is a reversible task. Requirements for Bear-Prepping: do the action of taking keys; do the action of taking food. Definition: Bear-Prepping is complete: if food is off-stage, yes; if chain is unlocked, yes; if keys are held and food is held, yes; no. [Bug: what if player takes chain last? bear disappears; no way to get back across.]
+
+Grabbing-Eggs is a treasure-task with booty eggs. 
+ 
+Bribing-Troll is a reversible task with venue On_Sw_Side_Of_Chasm. Requirements for Bribing-Troll: do the action of throwing eggs at troll. Definition: Bribing-Troll is complete: if eggs are off-stage, yes; if troll is treasured, yes; if troll is off-stage, yes; no.
+
+Freeing-Bear is a task with venue In_Barren_Room. Requirements for Freeing-Bear: do the action of giving food to bear; do the action of unlocking chain with keys. Definition: Freeing-Bear is complete: if chain is unlocked, yes.
+
+Grabbing-Chain is a treasure-task with booty chain.
+
+Capturing-Bear is a reversible task with venue In_Barren_Room. Requirements for Capturing-Bear: do the action of catching bear. Definition: Capturing-Bear is complete: if bear is off-stage, yes; if troll is dead, yes; if bear is following, yes; no.
+
+Grabbing-Spices is a treasure-task with booty spices.
+
+Scaring-Troll is a task with venue On_Ne_Side_Of_Chasm. Requirements for Scaring-Troll: do the action of going southwest; do the action of releasing bear. Definition: Scaring-Troll is complete: if troll is dead, yes.
+
+Retrieving-Eggs is a reversible task with venue In_Giant_Room and command-sequence {"fee", "fie", "foe", "foo", "get eggs"}. Definition: Retrieving-Eggs is complete: if eggs are on-stage, yes; no.
+
+Returning-Volcano-Treasures is a puzzle. It requires Returning-eggs, returning-chain, returning-spices. Returning-eggs is a deposit-task with booty eggs. Returning-chain is a deposit-task with booty chain. Returning-spices is a deposit-task with booty spices. 
+
+Section - Pirate Treasures
+
+Pirate-Treasures is a puzzle. It requires Grabbing-Chest, Grabbing-Diamonds, Returning-Chest, Returning-Diamonds.
+
+Grabbing-Chest is a treasure-task with booty treasure chest. Returning-Chest is a deposit-task with booty treasure chest.
+
+Grabbing-Diamonds is a treasure-task with booty diamonds. Returning-Diamonds is a deposit-task with booty diamonds.
+
+
+Section - Master Level
+
+Solving-The-Master-Level is a puzzle. It requires Positioning-Rod, Causing-Explosion.
+
+Positioning-Rod is a reversible task with venue At_Ne_End. Requirements for Positioning-Rod: do the action of dropping black mark rod. Definition: Positioning-Rod is complete: if black mark rod is in At_Ne_End, yes; no.
+
+Causing-Explosion is a task with venue At_Sw_End. Requirements for Causing-Explosion: do the action of blasting. [No need to define an endpoint, since doing this wins the game!]
+
+
+]
+
+

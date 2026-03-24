@@ -19,10 +19,12 @@ interface EntityDetailInfo {
 }
 
 export function EntityViewer({
+  gameId,
   selectedId,
   onSelect,
   revision,
 }: {
+  gameId: string;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   revision: number;
@@ -32,18 +34,18 @@ export function EntityViewer({
   const [showDiff, setShowDiff] = useState(false);
 
   useEffect(() => {
-    trpc.entities.query().then(setEntities);
-  }, [revision]);
+    trpc.entities.query({ gameId }).then(setEntities);
+  }, [revision, gameId]);
 
   // Re-fetch detail for the selected entity when it changes or the world updates
   useEffect(() => {
     if (!selectedId) return;
-    trpc.entity.query({ id: selectedId }).then((result) => {
+    trpc.entity.query({ gameId, id: selectedId }).then((result) => {
       if (result) {
         setDetails((prev) => new Map(prev).set(selectedId, result));
       }
     });
-  }, [selectedId, revision]);
+  }, [selectedId, revision, gameId]);
 
   function handleSelect(id: string): void {
     if (selectedId === id) {
@@ -54,7 +56,7 @@ export function EntityViewer({
   }
 
   function refreshEntities(): void {
-    trpc.entities.query().then(setEntities);
+    trpc.entities.query({ gameId }).then(setEntities);
     setDetails(new Map());
   }
 
