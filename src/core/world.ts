@@ -100,6 +100,15 @@ function tryMovement(store: EntityStore, input: string): MovementResult | null {
       const exitName = (exit.properties["name"] as string) || "way";
       return { output: `The ${exitName} is locked.`, direction, moved: false };
     }
+    // Auto-open unlocked doors
+    if (exit.tags.has("openable") && exit.properties["open"] !== true) {
+      store.setProperty(exit.id, { name: "open", value: true });
+      // If there's a paired door, open it too
+      const pairedId = exit.properties["pairedDoor"] as string | undefined;
+      if (pairedId && store.has(pairedId)) {
+        store.setProperty(pairedId, { name: "open", value: true });
+      }
+    }
     const destination = exit.properties["destination"] as string;
     const player = getPlayer(store);
     store.setProperty(player.id, { name: "location", value: destination });

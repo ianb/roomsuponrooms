@@ -5,6 +5,8 @@ import {
   createDefaultVerbs,
 } from "../../core/index.js";
 import { createAllRooms } from "./rooms.js";
+import { createItems } from "./items.js";
+import { createDoors } from "./doors.js";
 import { registerGame } from "../registry.js";
 
 registerGame({
@@ -19,6 +21,8 @@ registerGame({
     const verbs = createDefaultVerbs();
 
     createAllRooms(store);
+    createItems(store);
+    createDoors(store);
 
     // Create the player
     store.create("player:1", {

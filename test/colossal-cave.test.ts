@@ -57,11 +57,53 @@ test("player starts with score 36", (t) => {
   t.end();
 });
 
-test("below grate is lighted (requires door system)", { todo: "grate is a door, needs door support" }, (t) => {
+test("unlock grate and go below", (t) => {
+  const game = newGame();
+  game.command("west"); // inside building
+  game.command("take keys");
+  game.command("take lamp");
+  game.command("east"); // end of road
+  game.command("south"); // valley
+  game.command("south"); // slit
+  game.command("south"); // outside grate
+  game.command("unlock grate");
+  game.command("down"); // below grate
+  t.equal(game.currentRoom(), "room:below-the-grate");
+  const output = game.look();
+  t.match(output, /small chamber/i);
   t.end();
 });
 
-test("cobble crawl to debris room (requires door system)", { todo: "grate blocks access" }, (t) => {
+test("debris room is dark without lamp", (t) => {
+  const game = newGame();
+  game.command("west");
+  game.command("take keys");
+  game.command("east");
+  game.run(["south", "south", "south"]);
+  game.command("unlock grate");
+  game.run(["down", "west"]); // below grate, cobble crawl
+  t.equal(game.currentRoom(), "room:in-cobble-crawl");
+  game.command("west"); // debris room - dark!
+  t.equal(game.currentRoom(), "room:in-debris-room");
+  const output = game.look();
+  t.match(output, /dark|pitch/i);
+  t.end();
+});
+
+test("lamp lights dark rooms", (t) => {
+  const game = newGame();
+  game.command("west");
+  game.command("take keys");
+  game.command("take lamp");
+  game.command("turn lamp");
+  game.command("east");
+  game.run(["south", "south", "south"]);
+  game.command("unlock grate");
+  game.run(["down", "west", "west"]); // debris room with lamp
+  t.equal(game.currentRoom(), "room:in-debris-room");
+  const output = game.look();
+  t.match(output, /debris room/i);
+  t.notMatch(output, /dark|pitch/i);
   t.end();
 });
 

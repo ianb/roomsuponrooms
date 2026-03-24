@@ -23,6 +23,28 @@ function setEvent(
   return { type: "set-property", entityId, property, value, description };
 }
 
+/** Build unlock events for an entity and its paired door (if any) */
+function unlockEvents(obj: Entity): WorldEvent[] {
+  const events: WorldEvent[] = [
+    setEvent(obj.id, {
+      property: "locked",
+      value: false,
+      description: `Unlocked ${entityRef(obj)}`,
+    }),
+  ];
+  const pairedId = obj.properties["pairedDoor"] as string | undefined;
+  if (pairedId) {
+    events.push(
+      setEvent(pairedId, {
+        property: "locked",
+        value: false,
+        description: "Unlocked paired door",
+      }),
+    );
+  }
+  return events;
+}
+
 export const open: VerbHandler = {
   name: "open",
   source: "container-verbs.ts",
@@ -199,13 +221,7 @@ export const unlockWith: VerbHandler = {
     const key = context.command.indirect;
     return {
       output: `You unlock the ${entityRef(obj)} with the ${entityRef(key)}.`,
-      events: [
-        setEvent(obj.id, {
-          property: "locked",
-          value: false,
-          description: `Unlocked ${entityRef(obj)}`,
-        }),
-      ],
+      events: unlockEvents(obj),
     };
   },
 };
@@ -235,13 +251,7 @@ export const unlock: VerbHandler = {
       };
     return {
       output: `You unlock the ${entityRef(obj)} with the ${entityRef(key)}.`,
-      events: [
-        setEvent(obj.id, {
-          property: "locked",
-          value: false,
-          description: `Unlocked ${entityRef(obj)}`,
-        }),
-      ],
+      events: unlockEvents(obj),
     };
   },
 };

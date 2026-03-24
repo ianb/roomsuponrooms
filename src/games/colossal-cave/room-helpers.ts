@@ -51,13 +51,20 @@ export function abovegroundRoom(store: EntityStore, options: RoomOptions): void 
   });
 }
 
-/** Underground room with default dwarfish tag */
+/** Underground room with default dwarfish tag and dark property */
 export function undergroundRoom(store: EntityStore, options: RoomOptions): void {
   const extraTags = options.tags || [];
   const hasSafe = extraTags.includes("safe");
+  const hasLighted = extraTags.includes("lighted");
   const baseTags = hasSafe ? [] : ["dwarfish"];
+  const isLit = options.lit === true || hasLighted;
   room(store, {
     ...options,
     tags: [...baseTags, ...extraTags],
+    lit: isLit ? true : undefined,
   });
+  // Underground rooms are dark unless explicitly lit
+  if (!isLit) {
+    store.get(options.id).properties["dark"] = true;
+  }
 }

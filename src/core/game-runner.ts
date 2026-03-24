@@ -2,6 +2,7 @@ import type { EntityStore } from "./entity.js";
 import type { VerbRegistry } from "./verbs.js";
 import { processCommand } from "./world.js";
 import { describeRoomFull } from "./describe.js";
+import { isRoomLit, darknessDescription } from "./darkness.js";
 
 export interface GameRunner {
   /** Send a command and return the output */
@@ -44,6 +45,9 @@ export function createGameRunner({
   function look(): string {
     const player = getPlayer();
     const room = store.get(player.location);
+    if (!isRoomLit(store, { room, playerId: player.id })) {
+      return darknessDescription();
+    }
     return describeRoomFull(store, { room, playerId: player.id });
   }
 
