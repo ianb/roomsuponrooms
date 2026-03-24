@@ -4,6 +4,7 @@ import {
   defineBaseProperties,
   createDefaultVerbs,
 } from "../../core/index.js";
+import { defineCaveProperties } from "./properties.js";
 import { createAllRooms } from "./rooms.js";
 import { createItems } from "./items.js";
 import { createDoors } from "./doors.js";
@@ -31,7 +32,8 @@ registerGame({
   create() {
     const registry = createRegistry();
     defineBaseProperties(registry);
-    const store = new EntityStore(registry);
+    defineCaveProperties(registry);
+    const store = new EntityStore(registry, 42);
     const verbs = createDefaultVerbs();
     const allHandlers = [
       catchBird,

@@ -1,5 +1,6 @@
-import type { PropertyRegistry, PropertyBag } from "./properties.js";
+import type { PropertyRegistry, PropertyBag, PropertyDefinition } from "./properties.js";
 import { validateValue } from "./properties.js";
+import { SeededRandom } from "./random.js";
 
 export interface Entity {
   id: string;
@@ -21,6 +22,23 @@ class DuplicateEntityError extends Error {
   constructor(public readonly entityId: string) {
     super(`Entity already exists: ${entityId}`);
     this.name = "DuplicateEntityError";
+  }
+}
+
+class UndefinedPropertyError extends Error {
+  constructor(public readonly propertyName: string) {
+    super(`Property "${propertyName}" is not defined in the registry`);
+    this.name = "UndefinedPropertyError";
+  }
+}
+
+class DanglingReferenceError extends Error {
+  constructor(
+    public readonly propertyName: string,
+    public readonly referencedId: string,
+  ) {
+    super(`Property "${propertyName}" references non-existent entity "${referencedId}"`);
+    this.name = "DanglingReferenceError";
   }
 }
 
@@ -52,9 +70,11 @@ export class EntityStore {
   private nextId = 1;
   private initialState: Map<string, EntitySnapshot> = new Map();
   readonly registry: PropertyRegistry;
+  readonly random: SeededRandom;
 
-  constructor(registry: PropertyRegistry) {
+  constructor(registry: PropertyRegistry, seed: number) {
     this.registry = registry;
+    this.random = new SeededRandom(seed);
   }
 
   /** Save the current state of all entities as the baseline for diff tracking */
@@ -99,10 +119,23 @@ export class EntityStore {
     if (this.entities.has(id)) {
       throw new DuplicateEntityError(id);
     }
+    // Validate all initial properties against the registry
+    const props = options.properties || {};
+    for (const [propName, propValue] of Object.entries(props)) {
+      const def = this.registry.definitions[propName];
+      if (!def) {
+        throw new UndefinedPropertyError(propName);
+      }
+      const errors = validateValue(this.registry, { name: propName, value: propValue });
+      if (errors.length > 0) {
+        throw new PropertyValueError(propName, errors);
+      }
+    }
+
     const entity: Entity = {
       id,
       tags: new Set(options.tags || []),
-      properties: { ...options.properties },
+      properties: { ...props },
     };
     this.entities.set(id, entity);
 
@@ -132,14 +165,17 @@ export class EntityStore {
     const entity = this.get(id);
     const { name, value } = assignment;
 
-    // Validate if the property is defined in the registry
+    // Property must be defined in the registry
     const def = this.registry.definitions[name];
-    if (def) {
-      const errors = validateValue(this.registry, { name, value });
-      if (errors.length > 0) {
-        throw new PropertyValueError(name, errors);
-      }
+    if (!def) {
+      throw new UndefinedPropertyError(name);
     }
+    const errors = validateValue(this.registry, { name, value });
+    if (errors.length > 0) {
+      throw new PropertyValueError(name, errors);
+    }
+    // Check entity-ref integrity
+    this.validateEntityRef(def, value);
 
     const oldValue = entity.properties[name];
     entity.properties[name] = value;
@@ -273,6 +309,19 @@ export class EntityStore {
       this.locationIndex.set(locationId, set);
     }
     set.add(entityId);
+  }
+
+  /**
+   * Validate entity-ref format: the referenced entity must exist,
+   * or be a known special location (void, world).
+   */
+  private validateEntityRef(def: PropertyDefinition, value: unknown): void {
+    if (def.schema.format !== "entity-ref") return;
+    if (typeof value !== "string") return;
+    if (value === VOID_LOCATION || value === WORLD_LOCATION) return;
+    if (!this.entities.has(value)) {
+      throw new DanglingReferenceError(def.name, value);
+    }
   }
 
   private removeFromLocationIndex(locationId: string, entityId: string): void {

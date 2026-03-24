@@ -10,9 +10,17 @@ export function defineBaseProperties(registry: PropertyRegistry): void {
       description: "Text description shown to the player",
       schema: { type: "string" },
     },
-    { name: "location", description: "ID of the containing entity", schema: { type: "string" } },
+    {
+      name: "location",
+      description: "ID of the containing entity",
+      schema: { type: "string", format: "entity-ref" },
+    },
     { name: "direction", description: "Direction label for an exit", schema: { type: "string" } },
-    { name: "destination", description: "Target room ID for an exit", schema: { type: "string" } },
+    {
+      name: "destination",
+      description: "Target room ID for an exit",
+      schema: { type: "string", format: "entity-ref" },
+    },
     {
       name: "open",
       description: "Whether a container or door is open",
@@ -28,7 +36,7 @@ export function defineBaseProperties(registry: PropertyRegistry): void {
     {
       name: "unlockedBy",
       description: "Entity ID of the key that unlocks this",
-      schema: { type: "string" },
+      schema: { type: "string", format: "entity-ref" },
     },
     {
       name: "visits",
@@ -82,6 +90,23 @@ export function defineBaseProperties(registry: PropertyRegistry): void {
       description: "Whether an item is fixed in place and cannot be taken",
       schema: { type: "boolean" },
       defaultValue: false,
+    },
+    {
+      name: "depositPoints",
+      description: "Score points awarded when this treasure is deposited",
+      schema: { type: "number" },
+      defaultValue: 0,
+    },
+    {
+      name: "pairedDoor",
+      description: "Entity ID of the paired door (other side)",
+      schema: { type: "string", format: "entity-ref" },
+    },
+    {
+      name: "powerRemaining",
+      description: "Remaining power/fuel for a device",
+      schema: { type: "number" },
+      defaultValue: 0,
     },
   ] as const;
 

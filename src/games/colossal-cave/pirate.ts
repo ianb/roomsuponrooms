@@ -33,7 +33,7 @@ export const pirateTick: VerbHandler = {
     if (!context.room.tags.has("dwarfish")) return { applies: false };
     if (context.room.id === "room:in-secret-canyon") return { applies: false };
     // 1% chance
-    if (Math.random() > 0.01) return { applies: false };
+    if (!context.store.random.odds(1, 100)) return { applies: false };
     return { applies: true };
   },
   perform(context: VerbContext): PerformResult {

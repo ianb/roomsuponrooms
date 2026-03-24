@@ -138,7 +138,7 @@ export function createSampleWorld(): SampleWorld {
   const registry = createRegistry();
   defineBaseProperties(registry);
 
-  const store = new EntityStore(registry);
+  const store = new EntityStore(registry, 1);
   createRooms(store);
   createExits(store);
   createItems(store);

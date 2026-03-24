@@ -1,0 +1,114 @@
+import type { PropertyRegistry } from "../../core/properties.js";
+import { defineProperty } from "../../core/properties.js";
+
+/** Define Colossal Cave-specific properties */
+export function defineCaveProperties(registry: PropertyRegistry): void {
+  const props = [
+    {
+      name: "plantSize",
+      description: "Size of the beanstalk plant",
+      schema: { type: "string", enum: ["tiny", "tall", "huge"] },
+    },
+    {
+      name: "friendly",
+      description: "Whether an NPC is friendly to the player",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "following",
+      description: "Whether an NPC is following the player",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "questioning",
+      description: "Whether the dragon is asking about bare hands",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "alive",
+      description: "Whether an NPC is alive",
+      schema: { type: "boolean" },
+      defaultValue: true,
+    },
+    {
+      name: "treasured",
+      description: "Whether the troll has been paid with a treasure",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "remaining",
+      description: "Number of remaining instances (e.g., dwarves)",
+      schema: { type: "number" },
+    },
+    {
+      name: "hasAxe",
+      description: "Whether the dwarf still has its axe",
+      schema: { type: "boolean" },
+      defaultValue: true,
+    },
+    {
+      name: "spotted",
+      description: "Whether the pirate has been spotted",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "rich",
+      description: "Whether the pirate has stolen treasure",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "retired",
+      description: "Whether the pirate has retired",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    // Scoring flags
+    {
+      name: "scored_take",
+      description: "Whether take-score has been awarded for this treasure",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "scored_found",
+      description: "Whether find-score has been awarded for this treasure",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    // Endgame
+    {
+      name: "caveClosing",
+      description: "Whether the cave closing sequence is active",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "caveClosed",
+      description: "Whether the cave has fully closed",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
+      name: "closingCountdown",
+      description: "Turns remaining until cave closes",
+      schema: { type: "number" },
+      defaultValue: 0,
+    },
+    {
+      name: "gameOver",
+      description: "Whether the game has ended",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+  ] as const;
+
+  for (const prop of props) {
+    defineProperty(registry, prop);
+  }
+}

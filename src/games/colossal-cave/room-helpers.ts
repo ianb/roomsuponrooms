@@ -65,6 +65,6 @@ export function undergroundRoom(store: EntityStore, options: RoomOptions): void 
   });
   // Underground rooms are dark unless explicitly lit
   if (!isLit) {
-    store.get(options.id).properties["dark"] = true;
+    store.setProperty(options.id, { name: "dark", value: true });
   }
 }

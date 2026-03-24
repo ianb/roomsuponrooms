@@ -40,7 +40,7 @@ export const dwarfSpawn: VerbHandler = {
     const dwarf = context.store.get("npc:dwarf");
     const remaining = (dwarf.properties["remaining"] as number) || 0;
     // Random chance based on remaining dwarves
-    if (Math.random() * 100 > remaining) {
+    if (!context.store.random.odds(remaining, 100)) {
       return { output: "", events: [] };
     }
     return {
@@ -70,7 +70,7 @@ export const dwarfEncounter: VerbHandler = {
     }
 
     // 75% chance of aggression
-    if (Math.random() > 0.75) {
+    if (!context.store.random.chance(0.75)) {
       return { output: "", events: [] };
     }
 
@@ -91,7 +91,7 @@ export const dwarfEncounter: VerbHandler = {
     }
 
     // Subsequent: throws knife (9.5% hit chance)
-    if (Math.random() < 0.095) {
+    if (context.store.random.chance(0.095)) {
       return {
         output: "The dwarf throws a nasty little knife at you, and hits!",
         events: [],
@@ -125,7 +125,7 @@ export const dwarfFollow: VerbHandler = {
   },
   perform(context: VerbContext): PerformResult {
     // 96% chance of following
-    if (Math.random() > 0.96) {
+    if (!context.store.random.chance(0.96)) {
       return {
         output: "",
         events: [moveEvent("npc:dwarf", { to: "void", description: "Dwarf wandered off" })],
@@ -157,7 +157,7 @@ export const throwAxeAtDwarf: VerbHandler = {
       moveEvent("item:axe", { to: context.room.id, description: "Axe lands in room" }),
     ];
 
-    if (Math.random() < 0.667) {
+    if (context.store.random.chance(0.667)) {
       const remaining = (dwarf.properties["remaining"] as number) || 0;
       events.push(
         moveEvent("npc:dwarf", { to: "void", description: "Dwarf killed" }),

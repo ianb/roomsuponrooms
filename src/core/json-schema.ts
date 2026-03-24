@@ -5,7 +5,8 @@
 export interface JSONSchema7 {
   type?: JSONSchema7Type | JSONSchema7Type[];
   description?: string;
-  enum?: unknown[];
+  format?: string;
+  enum?: readonly unknown[];
 
   // numbers
   minimum?: number;
