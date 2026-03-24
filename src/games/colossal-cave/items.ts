@@ -154,9 +154,53 @@ function createFixedItems(store: EntityStore): void {
   });
 }
 
+function createNPCs(store: EntityStore): void {
+  item(store, {
+    id: "item:snake",
+    name: "Snake",
+    description: "A huge green fierce snake bars the way!",
+    location: "room:in-hall-of-mt-king",
+    tags: ["npc"],
+    aliases: ["cobra", "asp", "huge", "fierce", "green"],
+    properties: { fixed: true },
+  });
+
+  item(store, {
+    id: "item:dragon",
+    name: "Dragon",
+    description: "A huge green fierce dragon bars the way!",
+    location: "room:in-secret-canyon",
+    tags: ["npc"],
+    aliases: ["monster", "beast", "lizard"],
+    properties: { fixed: true, questioning: false },
+  });
+
+  item(store, {
+    id: "item:bear",
+    name: "Bear",
+    description: "There is a ferocious cave bear eyeing you from the far end of the room!",
+    location: "room:in-barren-room",
+    tags: ["npc"],
+    aliases: ["large", "tame", "ferocious", "cave"],
+    properties: { fixed: true, friendly: false, following: false },
+  });
+
+  item(store, {
+    id: "item:troll",
+    name: "Troll",
+    description:
+      "A burly troll stands by the bridge and insists you throw him a treasure before you may cross.",
+    location: "room:on-sw-side-of-chasm",
+    tags: ["npc"],
+    aliases: ["burly"],
+    properties: { fixed: true, alive: true, treasured: false },
+  });
+}
+
 export function createItems(store: EntityStore): void {
   createBuildingItems(store);
   createCaveItems(store);
   createFixedItems(store);
+  createNPCs(store);
   createTreasures(store);
 }

@@ -155,6 +155,56 @@ test("fee fie foe foo returns eggs to giant room", (t) => {
   t.end();
 });
 
+test("catch bird with cage", (t) => {
+  const game = newGame();
+  // Get cage, go to bird chamber
+  game.command("west");
+  game.command("take keys");
+  game.command("take lamp");
+  game.command("turn lamp");
+  game.command("east");
+  game.run(["south", "south", "south"]);
+  game.command("unlock grate");
+  game.run(["down", "west"]); // cobble crawl
+  game.command("take cage");
+  game.run(["west", "west", "west"]); // debris -> canyon -> bird chamber
+  const output = game.command("take bird");
+  t.match(output, /catch the bird/i);
+  t.equal(game.getProperty("item:bird", "location"), "item:cage");
+  t.end();
+});
+
+test("bird drives away snake", (t) => {
+  const game = newGame();
+  game.command("west");
+  game.command("take keys");
+  game.command("take lamp");
+  game.command("turn lamp");
+  game.command("east");
+  game.run(["south", "south", "south"]);
+  game.command("unlock grate");
+  game.run(["down", "west"]); // cobble crawl
+  game.command("take cage");
+  game.run(["west", "west", "west"]); // bird chamber
+  game.command("take bird");
+  game.run(["west", "down", "down"]); // small pit -> hall of mists -> mt king
+  const output = game.command("release bird");
+  t.match(output, /snake/i);
+  t.equal(game.getProperty("item:snake", "location"), "void");
+  t.end();
+});
+
+test("dragon can be slain", (t) => {
+  const game = newGame();
+  // Teleport to dragon location for quick test
+  game.store.setProperty("player:1", { name: "location", value: "room:in-secret-canyon" });
+  game.command("attack dragon");
+  const output = game.command("yes");
+  t.match(output, /vanquished/i);
+  t.equal(game.getProperty("item:dragon", "location"), "void");
+  t.end();
+});
+
 test("room count is substantial", (t) => {
   const game = newGame();
   const allIds = game.store.getAllIds();
