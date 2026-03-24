@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/number-literal-case */
 /**
  * Seeded pseudo-random number generator using xoshiro128**.
  * Deterministic given the same seed — the state can be serialized
