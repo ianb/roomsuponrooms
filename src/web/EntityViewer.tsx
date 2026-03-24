@@ -32,24 +32,24 @@ export function EntityViewer({
   const [showDiff, setShowDiff] = useState(false);
 
   useEffect(() => {
-    trpc.entities.query().then((result) => {
-      setEntities(result);
-      setDetails(new Map());
-    });
+    trpc.entities.query().then(setEntities);
   }, [revision]);
+
+  // Re-fetch detail for the selected entity when it changes or the world updates
+  useEffect(() => {
+    if (!selectedId) return;
+    trpc.entity.query({ id: selectedId }).then((result) => {
+      if (result) {
+        setDetails((prev) => new Map(prev).set(selectedId, result));
+      }
+    });
+  }, [selectedId, revision]);
 
   function handleSelect(id: string): void {
     if (selectedId === id) {
       onSelect(null);
-      return;
-    }
-    onSelect(id);
-    if (!details.has(id)) {
-      trpc.entity.query({ id }).then((result) => {
-        if (result) {
-          setDetails((prev) => new Map(prev).set(id, result));
-        }
-      });
+    } else {
+      onSelect(id);
     }
   }
 
