@@ -3,7 +3,7 @@ import { trpc } from "./trpc.js";
 import { HighlightedText } from "./HighlightedText.js";
 
 interface LogEntry {
-  type: "input" | "output" | "debug";
+  type: "input" | "output" | "debug" | "system";
   text: string;
 }
 
@@ -46,7 +46,12 @@ export function WorldShell({
     setLog((prev) => [...prev, { type: "input", text: `> ${command}` }]);
 
     const result = await trpc.command.mutate({ gameId, text: command, debug: debugMode });
-    const entries: LogEntry[] = [{ type: "output", text: result.output }];
+    const entries: LogEntry[] = [];
+    const aiOutput = "aiOutput" in result ? (result.aiOutput as string) : null;
+    if (aiOutput) {
+      entries.push({ type: "system", text: aiOutput });
+    }
+    entries.push({ type: "output", text: result.output });
 
     if (result.debug) {
       entries.push({ type: "debug", text: formatDebug(result.debug) });
@@ -84,7 +89,9 @@ export function WorldShell({
                 ? "text-sky-400"
                 : entry.type === "debug"
                   ? "mt-1 border-l-2 border-yellow-700 pl-2 text-xs text-yellow-600"
-                  : "text-gray-200"
+                  : entry.type === "system"
+                    ? "text-purple-300"
+                    : "text-gray-200"
             }
           >
             {entry.type === "output" ? (

@@ -6,6 +6,7 @@ import type { VerbRegistry } from "../core/verbs.js";
 import { getLlm } from "./llm.js";
 import type { AiHandlerRecord } from "./ai-handler-store.js";
 import { saveHandlerRecord, recordToHandler } from "./ai-handler-store.js";
+import { describeProperties, collectTags } from "./ai-prompt-helpers.js";
 
 export interface FallbackDebugInfo {
   systemPrompt: string;
@@ -35,7 +36,13 @@ const fallbackResponseSchema = z.object({
   message: z
     .string()
     .describe(
-      "The template text shown to the player. Use {{entityId|Name}} for entity references.",
+      "For refuse: the refusal message. For perform without code: a static result message. For perform with code: a brief description of what the handler does (not shown to player).",
+    ),
+  code: z
+    .string()
+    .optional()
+    .describe(
+      "JavaScript function body for perform handlers that need conditional logic. Only used when decision is 'perform'. Receives (object, player, room, store, command) as arguments. Must return { output: string, events: Array<{type, entityId, property, value, description}> }.",
     ),
   events: z
     .array(
@@ -47,7 +54,7 @@ const fallbackResponseSchema = z.object({
       }),
     )
     .describe(
-      "Property changes to apply to the target object. Only used when decision is 'perform'. Properties must exist in the registry.",
+      "Static property changes. Used for simple perform handlers without code. Properties must exist in the registry.",
     ),
 });
 
@@ -77,15 +84,6 @@ function describeEntityForLlm(entity: Entity): string {
   return `- id: ${entity.id}\n  tags: [${tags}]\n  properties: ${JSON.stringify(props)}`;
 }
 
-function describeProperties(store: EntityStore): string {
-  const defs = store.registry.definitions;
-  const lines: string[] = [];
-  for (const [name, def] of Object.entries(defs)) {
-    lines.push(`- ${name} (${JSON.stringify(def.schema)}): ${def.description}`);
-  }
-  return lines.join("\n");
-}
-
 function buildPrompt(store: EntityStore, { command }: { command: ResolvedCommand }): string {
   const parts: string[] = [];
 
@@ -110,6 +108,8 @@ function buildPrompt(store: EntityStore, { command }: { command: ResolvedCommand
 
   parts.push(`## Available Properties\n${describeProperties(store)}`);
 
+  parts.push(`## Tags in World\n${collectTags(store).join(", ")}`);
+
   return parts.join("\n\n");
 }
 
@@ -121,35 +121,97 @@ Your response creates a REUSABLE handler — it should make sense regardless of 
 
 You must choose one of:
 
-- "perform" — the action makes physical/logical sense for this kind of object. You MUST describe what happens and MAY include property changes as events.
-- "refuse" — you understand the intent, but this shouldn't work for this object. Give a specific, in-character reason.
+- "perform" — the action makes physical/logical sense for this kind of object.
+- "refuse" — you understand the intent, but this shouldn't work for this object. Give a specific, in-character reason in "message".
 
-## Writing the message
+## Refuse handlers
 
-- Keep it to 1-2 sentences in classic text adventure style.
-- When refusing, be specific about WHY it fails based on the object's nature ("The lantern is made of solid brass — you can't break it with your bare hands."), never generic ("You can't do that.").
-- You may reference entities using {{entityId|Display Name}} syntax, e.g. {{item:lantern|Brass lantern}}.
+Set message to a specific, in-character explanation of why it fails based on the object's nature. Never use generic refusals like "You can't do that."
 
-## Events (property changes)
+Example: "The lantern is made of solid brass — you can't break it with your bare hands."
 
-Events let you change properties on the target object. Each event has:
-- type: must be "set-property"
-- property: the property name — MUST be one from the Available Properties list
-- value: the new value, matching the property's schema type
-- description: a short human-readable note about what changed
+## Perform handlers
 
-For example, to turn off a light:
-  { "type": "set-property", "property": "switchedOn", "value": false, "description": "The lantern goes dark" }
+For perform, you can respond in two ways:
 
-If the action has no meaningful state change (just flavor text), return an empty events array.
-Only use properties from the Available Properties list — do not invent new property names.
+### Simple (no code): static message + events
+Use "message" for the output text and "events" for property changes. Good for actions with a fixed outcome.
+
+### With code: JavaScript function body
+Use "code" for handlers that need conditional logic (checking properties, different outcomes based on state). The code is a JavaScript function body that receives these arguments:
+
+- object — the target entity: { id, tags (Set), properties (object) }
+- player — the player entity (same shape)
+- room — the current room entity
+- store — the entity store, with methods:
+  - store.get(id) — get entity by ID
+  - store.tryGet(id) — get entity or null
+  - store.getContents(id) — get entities located inside this entity
+  - store.findByTag(tag) — find all entities with a given tag
+- command — the parsed command
+
+Entity shape: { id: string, tags: Set<string>, properties: { [name]: value } }
+- entity.tags.has("flame-source") — check if an entity has a tag
+- entity.properties.lit — read a property
+- entity.properties["name"] — read a property by string key
+
+The code MUST return: { output: string, events: Array<{type: "set-property", entityId: string, property: string, value: any, description: string}> }
+
+## Tags
+
+Tags categorize entities and are used to write generic handlers. For example, a "light candle" handler should not check for a specific tinderbox — it should check if the player is carrying anything with the "flame-source" tag. This way any flame source (tinderbox, matches, lit torch) will work.
+
+Use store.getContents(player.id) to check what the player is carrying, then filter by tag. The "Tags in World" section lists all tags currently in use.
+
+## Code examples
+
+Light a candle (requires a flame source in inventory):
+\`\`\`
+var carried = store.getContents(player.id);
+var flameSrc = carried.filter(function(e) { return e.tags.has("flame-source"); });
+if (flameSrc.length === 0) {
+  return { output: "You have nothing to light it with.", events: [] };
+}
+if (object.properties.lit) {
+  return { output: "The candle is already lit.", events: [] };
+}
+return {
+  output: "You strike the " + flameSrc[0].properties.name + " and light the candle.",
+  events: [{ type: "set-property", entityId: object.id, property: "lit", value: true, description: "Candle lit" }]
+};
+\`\`\`
+
+Eat something (moves it to void):
+\`\`\`
+return {
+  output: "You eat the food. Not bad!",
+  events: [
+    { type: "set-property", entityId: object.id, property: "location", value: "void", description: "Food consumed" }
+  ]
+};
+\`\`\`
+
+Shake lantern (different output based on state):
+\`\`\`
+if (object.properties.switchedOn) {
+  return { output: "The lantern flickers as you shake it.", events: [] };
+}
+return { output: "The lantern rattles. You hear liquid sloshing inside.", events: [] };
+\`\`\`
+
+## Events
+
+Property changes. Each event: { type: "set-property", entityId, property, value, description }.
+Property names MUST come from the Available Properties list. Do not invent new properties.
 
 ## Guidelines
 
 - Be conservative. Most unusual actions should be refused.
-- Only "perform" if the action is physically plausible given the object's tags and properties.
+- Only "perform" if physically plausible given the object's tags and properties.
 - Do not destroy important game objects without very good reason.
-- A "perform" with no events is fine — not everything needs a state change (e.g., "shake lantern" might just produce flavor text).`;
+- A "perform" with no events is fine — flavor text is good.
+- Prefer code over static message+events when the handler should react to object state.
+- Keep output to 1-2 sentences in classic text adventure style.`;
 
 /**
  * Ask the LLM to handle an unrecognized verb+object combination.
@@ -211,6 +273,7 @@ export async function handleVerbFallback(
     entityId: targetEntity ? targetEntity.id : undefined,
     message: response.message,
     eventTemplates: response.events,
+    code: response.code,
   };
 
   // Persist and register

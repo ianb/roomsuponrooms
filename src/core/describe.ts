@@ -33,8 +33,16 @@ export function describeRoomFull(
   const contents = store.getContents(room.id);
 
   const exits = contents.filter((e) => e.tags.has("exit"));
-  const exitDirs = exits.map((e) => (e.properties["direction"] as string) || "?");
-  const exitList = exitDirs.length > 0 ? exitDirs.join(", ") : "none";
+  const exitDescs = exits.map((e) => {
+    const dir = (e.properties["direction"] as string) || "?";
+    const short = e.properties["shortDescription"] as string | undefined;
+    if (short) {
+      const rendered = renderTemplate(short, { entity: e, store });
+      return `${dir} (${rendered})`;
+    }
+    return dir;
+  });
+  const exitList = exitDescs.length > 0 ? exitDescs.join(", ") : "none";
 
   const items = contents.filter((e) => !e.tags.has("exit") && e.id !== playerId);
   const parts = [`${name}\n\n${description}`];

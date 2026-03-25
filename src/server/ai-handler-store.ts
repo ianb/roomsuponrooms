@@ -1,8 +1,14 @@
 import { readFileSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ParsedCommand, VerbHandler, VerbContext, WorldEvent } from "../core/verb-types.js";
+import type { Entity } from "../core/entity.js";
+import type {
+  ParsedCommand,
+  VerbHandler,
+  VerbContext,
+  PerformResult,
+  WorldEvent,
+} from "../core/verb-types.js";
 import type { VerbRegistry } from "../core/verbs.js";
-import { entityRef } from "../core/describe.js";
 
 export interface AiHandlerRecord {
   createdAt: string;
@@ -11,6 +17,7 @@ export interface AiHandlerRecord {
   verb: string;
   form: ParsedCommand["form"];
   entityId?: string;
+  /** Static message (used when there's no code) */
   message: string;
   eventTemplates: Array<{
     type: string;
@@ -18,6 +25,8 @@ export interface AiHandlerRecord {
     value: unknown;
     description: string;
   }>;
+  /** JS function body string. Receives (context) and must return { output, events }. */
+  code?: string;
 }
 
 function handlerFilePath(gameId: string): string {
@@ -65,12 +74,13 @@ export function recordToHandler(record: AiHandlerRecord): VerbHandler {
         return { output: record.message, events: [] };
       }
 
-      const target =
-        context.command.form === "transitive" || context.command.form === "prepositional"
-          ? context.command.object
-          : context.command.form === "ditransitive"
-            ? context.command.object
-            : null;
+      // If there's code, evaluate it
+      if (record.code) {
+        return evaluateHandlerCode(record.code, context);
+      }
+
+      // Otherwise fall back to static message + event templates
+      const target = getTarget(context);
 
       const events: WorldEvent[] = record.eventTemplates.map((t) => ({
         type: t.type,
@@ -81,14 +91,43 @@ export function recordToHandler(record: AiHandlerRecord): VerbHandler {
         description: t.description,
       }));
 
-      let output = record.message;
-      if (target) {
-        while (output.includes("{target}")) {
-          output = output.replace("{target}", entityRef(target));
-        }
-      }
-
-      return { output, events };
+      return { output: record.message, events };
     },
   };
+}
+
+function getTarget(context: VerbContext): Entity | null {
+  if (context.command.form === "transitive" || context.command.form === "prepositional") {
+    return context.command.object;
+  }
+  if (context.command.form === "ditransitive") {
+    return context.command.object;
+  }
+  return null;
+}
+
+/**
+ * Evaluate an AI-generated handler code string.
+ * The code is a function body that receives a context object with:
+ *   object, player, room, store, command
+ * And must return { output: string, events: Array<{type, entityId, property, value, description}> }
+ */
+function evaluateHandlerCode(code: string, context: VerbContext): PerformResult {
+  const target = getTarget(context);
+  const fn = new Function("object", "player", "room", "store", "command", code);
+  const result = fn(
+    target,
+    context.player,
+    context.room,
+    context.store,
+    context.command,
+  ) as PerformResult;
+  // Ensure the result has the right shape
+  if (!result || typeof result.output !== "string") {
+    return { output: "Something strange happens, but nothing changes.", events: [] };
+  }
+  if (!Array.isArray(result.events)) {
+    return { output: result.output, events: [] };
+  }
+  return result;
 }

@@ -2,6 +2,7 @@ import type { Entity } from "./entity.js";
 import type {
   ParsedCommand,
   ResolvedCommand,
+  WorldEvent,
   VerbHandler,
   VerbContext,
   VerbPattern,
@@ -136,8 +137,8 @@ export class VerbRegistry {
     };
   }
 
-  /** Dispatch a system verb like [enter] or [tick]. Returns combined output from all handlers. */
-  dispatchSystem(verb: string, context: VerbContext): string[] {
+  /** Dispatch a system verb like [enter] or [tick]. Returns combined output and events from all handlers. */
+  dispatchSystem(verb: string, context: VerbContext): { outputs: string[]; events: WorldEvent[] } {
     const systemCommand: ResolvedCommand = {
       form: "intransitive",
       verb,
@@ -145,6 +146,7 @@ export class VerbRegistry {
     const systemContext: VerbContext = { ...context, command: systemCommand };
     const candidates = this.findHandlers(systemContext);
     const outputs: string[] = [];
+    const allEvents: WorldEvent[] = [];
 
     for (const handler of candidates) {
       if (handler.check) {
@@ -156,6 +158,7 @@ export class VerbRegistry {
         outputs.push(result.output);
       }
       for (const event of result.events) {
+        allEvents.push(event);
         if (event.type === "set-property" && event.property) {
           systemContext.store.setProperty(event.entityId, {
             name: event.property,
@@ -166,7 +169,7 @@ export class VerbRegistry {
         }
       }
     }
-    return outputs;
+    return { outputs, events: allEvents };
   }
 
   private findHandlers(context: VerbContext): VerbHandler[] {

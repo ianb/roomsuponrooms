@@ -1,9 +1,10 @@
 import type { EntityStore, Entity } from "./entity.js";
-import type { VerbContext, VerbRegistry, ResolvedCommand } from "./verbs.js";
+import type { VerbContext, VerbRegistry, ResolvedCommand, WorldEvent } from "./verbs.js";
 import { parseCommand, resolveCommand } from "./verbs.js";
 import { SYSTEM_VERBS } from "./verb-types.js";
 import { describeRoomFull } from "./describe.js";
 import { isRoomLit, darknessDescription } from "./darkness.js";
+import { describeParsed, describeResolved } from "./debug-helpers.js";
 
 export interface DebugInfo {
   /** e.g. "look", "take lantern", "put key in chest" */
@@ -37,6 +38,8 @@ export interface UnhandledContext {
 
 export interface CommandResult {
   output: string;
+  /** All events that were applied during this command */
+  events: WorldEvent[];
   debug?: DebugInfo;
   /** Present when the verb was parsed and resolved but no handler matched */
   unhandled?: UnhandledContext;
@@ -81,6 +84,7 @@ interface MovementResult {
   output: string;
   direction: string;
   moved: boolean;
+  events: WorldEvent[];
 }
 
 function tryMovement(store: EntityStore, input: string): MovementResult | null {
@@ -113,26 +117,51 @@ function tryMovement(store: EntityStore, input: string): MovementResult | null {
   if (exit) {
     if (exit.properties["locked"] === true) {
       const exitName = (exit.properties["name"] as string) || "way";
-      return { output: `The ${exitName} is locked.`, direction, moved: false };
+      return { output: `The ${exitName} is locked.`, direction, moved: false, events: [] };
     }
+    const events: WorldEvent[] = [];
     // Auto-open unlocked doors
     if (exit.tags.has("openable") && exit.properties["open"] !== true) {
-      store.setProperty(exit.id, { name: "open", value: true });
-      // If there's a paired door, open it too
+      events.push({
+        type: "set-property",
+        entityId: exit.id,
+        property: "open",
+        value: true,
+        description: "Auto-opened door",
+      });
       const pairedId = exit.properties["pairedDoor"] as string | undefined;
       if (pairedId && store.has(pairedId)) {
-        store.setProperty(pairedId, { name: "open", value: true });
+        events.push({
+          type: "set-property",
+          entityId: pairedId,
+          property: "open",
+          value: true,
+          description: "Auto-opened paired door",
+        });
       }
     }
     const destination = exit.properties["destination"] as string;
     const player = getPlayer(store);
-    store.setProperty(player.id, { name: "location", value: destination });
+    events.push({
+      type: "set-property",
+      entityId: player.id,
+      property: "location",
+      value: destination,
+      oldValue: player.properties["location"],
+      description: `Moved ${direction}`,
+    });
+    // Apply events
+    for (const event of events) {
+      if (event.property) {
+        store.setProperty(event.entityId, { name: event.property, value: event.value });
+      }
+    }
     const newRoom = store.get(destination);
     const lit = isRoomLit(store, { room: newRoom, playerId: player.id });
     const output = lit
       ? describeRoomFull(store, { room: newRoom, playerId: player.id })
       : darknessDescription();
-    return { output, direction, moved: true };
+    return { output, direction, moved: true, events };
   }
 
   if (isExplicitGo) {
@@ -141,6 +170,7 @@ function tryMovement(store: EntityStore, input: string): MovementResult | null {
       output: `You can't go ${direction}. Available exits: ${exitDirs.join(", ")}`,
       direction,
       moved: false,
+      events: [],
     };
   }
 
@@ -150,10 +180,10 @@ function tryMovement(store: EntityStore, input: string): MovementResult | null {
 function dispatchSystemVerbs(
   verbs: VerbRegistry,
   { store, player, systemVerbs }: { store: EntityStore; player: Entity; systemVerbs: string[] },
-): string[] {
+): { outputs: string[]; events: WorldEvent[] } {
   const allOutputs: string[] = [];
+  const allEvents: WorldEvent[] = [];
   for (const verb of systemVerbs) {
-    // Re-read room in case a prior system verb changed location
     const currentRoom = getPlayerRoom(store);
     const context: VerbContext = {
       store,
@@ -161,20 +191,22 @@ function dispatchSystemVerbs(
       player,
       room: currentRoom,
     };
-    const outputs = verbs.dispatchSystem(verb, context);
-    allOutputs.push(...outputs);
+    const result = verbs.dispatchSystem(verb, context);
+    allOutputs.push(...result.outputs);
+    allEvents.push(...result.events);
   }
-  return allOutputs;
+  return { outputs: allOutputs, events: allEvents };
 }
 
 /** Fire [encounter] for each entity in the current room */
 function dispatchEncounters(
   verbs: VerbRegistry,
   { store, player }: { store: EntityStore; player: Entity },
-): string[] {
+): { outputs: string[]; events: WorldEvent[] } {
   const room = getPlayerRoom(store);
   const contents = store.getContents(room.id);
   const allOutputs: string[] = [];
+  const allEvents: WorldEvent[] = [];
   for (const entity of contents) {
     if (entity.id === player.id) continue;
     if (entity.tags.has("exit")) continue;
@@ -184,10 +216,11 @@ function dispatchEncounters(
       player,
       room,
     };
-    const outputs = verbs.dispatchSystem(SYSTEM_VERBS.ENCOUNTER, context);
-    allOutputs.push(...outputs);
+    const result = verbs.dispatchSystem(SYSTEM_VERBS.ENCOUNTER, context);
+    allOutputs.push(...result.outputs);
+    allEvents.push(...result.events);
   }
-  return allOutputs;
+  return { outputs: allOutputs, events: allEvents };
 }
 
 export function processCommand(
@@ -196,46 +229,45 @@ export function processCommand(
 ): CommandResult {
   const player = getPlayer(store);
 
-  // Try movement first (direction aliases + "go X")
   const movement = tryMovement(store, input);
   if (movement) {
     const parts = [movement.output];
+    const allEvents = [...movement.events];
     if (movement.moved) {
-      const systemOutput = dispatchSystemVerbs(verbs, {
+      const sys = dispatchSystemVerbs(verbs, {
         store,
         player,
         systemVerbs: [SYSTEM_VERBS.ENTER, SYSTEM_VERBS.TICK],
       });
-      parts.push(...systemOutput);
-      const encounterOutput = dispatchEncounters(verbs, { store, player });
-      parts.push(...encounterOutput);
+      parts.push(...sys.outputs);
+      allEvents.push(...sys.events);
+      const enc = dispatchEncounters(verbs, { store, player });
+      parts.push(...enc.outputs);
+      allEvents.push(...enc.events);
     }
     return {
       output: parts.join("\n"),
+      events: allEvents,
       debug: debug ? { parse: `go ${movement.direction}`, outcome: "movement" } : undefined,
     };
   }
 
-  // Parse and resolve through the verb system
   const parsed = parseCommand(input);
   if (!parsed) {
     return {
       output: `I don't understand "${input}". Type "help" for commands.`,
+      events: [],
       debug: debug ? { parse: input, outcome: "unparseable" } : undefined,
     };
   }
 
   const room = getPlayerRoom(store);
-
-  const resolved = resolveCommand(parsed, {
-    store,
-    roomId: room.id,
-    playerId: player.id,
-  });
+  const resolved = resolveCommand(parsed, { store, roomId: room.id, playerId: player.id });
 
   if (typeof resolved === "string") {
     return {
       output: resolved,
+      events: [],
       debug: debug ? { parse: describeParsed(parsed), outcome: "resolution-failed" } : undefined,
     };
   }
@@ -245,16 +277,19 @@ export function processCommand(
 
   if (result.outcome === "performed") {
     const parts = [result.output];
+    const allEvents = [...result.events];
     if (!result.freeTurn) {
-      const systemOutput = dispatchSystemVerbs(verbs, {
+      const sys = dispatchSystemVerbs(verbs, {
         store,
         player,
         systemVerbs: [SYSTEM_VERBS.TICK],
       });
-      parts.push(...systemOutput);
+      parts.push(...sys.outputs);
+      allEvents.push(...sys.events);
     }
     return {
       output: parts.join("\n"),
+      events: allEvents,
       debug: debug
         ? {
             parse: describeResolved(resolved),
@@ -274,6 +309,7 @@ export function processCommand(
   if (result.outcome === "vetoed") {
     return {
       output: result.output,
+      events: [],
       debug: debug
         ? { parse: describeResolved(resolved), outcome: "vetoed", vetoedBy: result.vetoedBy }
         : undefined,
@@ -282,29 +318,8 @@ export function processCommand(
 
   return {
     output: `I don't know how to "${input}". Type "help" for commands.`,
+    events: [],
     debug: debug ? { parse: describeParsed(parsed), outcome: "unhandled" } : undefined,
     unhandled: { command: resolved, player, room },
   };
-}
-
-function entityLabel(entity: Entity): string {
-  const name = (entity.properties["name"] as string) || entity.id;
-  return `${name} [${entity.id}]`;
-}
-
-function describeParsed(parsed: ReturnType<typeof parseCommand>): string {
-  if (!parsed) return "?";
-  if (parsed.form === "intransitive") return parsed.verb;
-  if (parsed.form === "transitive") return `${parsed.verb} "${parsed.object}"`;
-  if (parsed.form === "prepositional") return `${parsed.verb} ${parsed.prep} "${parsed.object}"`;
-  return `${parsed.verb} "${parsed.object}" ${parsed.prep} "${parsed.indirect}"`;
-}
-
-function describeResolved(resolved: ResolvedCommand): string {
-  if (resolved.form === "intransitive") return resolved.verb;
-  if (resolved.form === "transitive") return `${resolved.verb} ${entityLabel(resolved.object)}`;
-  if (resolved.form === "prepositional") {
-    return `${resolved.verb} ${resolved.prep} ${entityLabel(resolved.object)}`;
-  }
-  return `${resolved.verb} ${entityLabel(resolved.object)} ${resolved.prep} ${entityLabel(resolved.indirect)}`;
 }

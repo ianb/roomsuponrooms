@@ -1,6 +1,13 @@
 import type { PropertyRegistry, PropertyBag, PropertyDefinition } from "./properties.js";
 import { validateValue } from "./properties.js";
 import { SeededRandom } from "./random.js";
+import {
+  EntityNotFoundError,
+  DuplicateEntityError,
+  UndefinedPropertyError,
+  DanglingReferenceError,
+  PropertyValueError,
+} from "./entity-errors.js";
 
 export interface Entity {
   id: string;
@@ -10,47 +17,6 @@ export interface Entity {
 
 export const VOID_LOCATION = "void";
 export const WORLD_LOCATION = "world";
-
-class EntityNotFoundError extends Error {
-  constructor(public readonly entityId: string) {
-    super(`Entity not found: ${entityId}`);
-    this.name = "EntityNotFoundError";
-  }
-}
-
-class DuplicateEntityError extends Error {
-  constructor(public readonly entityId: string) {
-    super(`Entity already exists: ${entityId}`);
-    this.name = "DuplicateEntityError";
-  }
-}
-
-class UndefinedPropertyError extends Error {
-  constructor(public readonly propertyName: string) {
-    super(`Property "${propertyName}" is not defined in the registry`);
-    this.name = "UndefinedPropertyError";
-  }
-}
-
-class DanglingReferenceError extends Error {
-  constructor(
-    public readonly propertyName: string,
-    public readonly referencedId: string,
-  ) {
-    super(`Property "${propertyName}" references non-existent entity "${referencedId}"`);
-    this.name = "DanglingReferenceError";
-  }
-}
-
-class PropertyValueError extends Error {
-  constructor(
-    public readonly propertyName: string,
-    public readonly errors: string[],
-  ) {
-    super(`Invalid value for property "${propertyName}"`);
-    this.name = "PropertyValueError";
-  }
-}
 
 interface CreateEntityOptions {
   tags?: string[];
@@ -159,6 +125,21 @@ export class EntityStore {
 
   has(id: string): boolean {
     return this.entities.has(id);
+  }
+
+  /** Remove an entity from the store. Also removes any entities contained within it. */
+  delete(id: string): void {
+    const entity = this.tryGet(id);
+    if (!entity) return;
+    // Recursively delete contents
+    const contents = this.getContents(id);
+    for (const child of contents) {
+      this.delete(child.id);
+    }
+    // Remove from location index
+    const location = (entity.properties["location"] as string) || VOID_LOCATION;
+    this.removeFromLocationIndex(location, id);
+    this.entities.delete(id);
   }
 
   setProperty(id: string, assignment: { name: string; value: unknown }): void {
@@ -300,6 +281,35 @@ export class EntityStore {
   /** Get exits from a room (exit entities whose location is this room) */
   getExits(roomId: string): Entity[] {
     return this.findByTagAt("exit", roomId);
+  }
+
+  /** Serialize the full store state for undo/save */
+  saveState(): EntitySnapshot[] {
+    const snapshots: EntitySnapshot[] = [];
+    for (const entity of this.entities.values()) {
+      snapshots.push({
+        id: entity.id,
+        tags: Array.from(entity.tags),
+        properties: { ...entity.properties },
+      });
+    }
+    return snapshots;
+  }
+
+  /** Restore from a saved state, replacing all entities */
+  restoreState(snapshots: EntitySnapshot[]): void {
+    this.entities.clear();
+    this.locationIndex.clear();
+    for (const snap of snapshots) {
+      const entity: Entity = {
+        id: snap.id,
+        tags: new Set(snap.tags),
+        properties: { ...snap.properties },
+      };
+      this.entities.set(entity.id, entity);
+      const location = (entity.properties["location"] as string) || VOID_LOCATION;
+      this.addToLocationIndex(location, entity.id);
+    }
   }
 
   private addToLocationIndex(locationId: string, entityId: string): void {

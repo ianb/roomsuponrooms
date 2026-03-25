@@ -54,19 +54,39 @@ function createRooms(store: EntityStore): void {
 function createExits(store: EntityStore): void {
   store.create("exit:clearing:to-deep-woods", {
     tags: ["exit"],
-    properties: { location: "room:clearing", direction: "north", destination: "room:deep-woods" },
+    properties: {
+      location: "room:clearing",
+      direction: "north",
+      destination: "room:deep-woods",
+      shortDescription: "into the deep woods",
+    },
   });
   store.create("exit:clearing:to-hillside", {
     tags: ["exit"],
-    properties: { location: "room:clearing", direction: "east", destination: "room:hillside" },
+    properties: {
+      location: "room:clearing",
+      direction: "east",
+      destination: "room:hillside",
+      shortDescription: "toward a rocky hillside",
+    },
   });
   store.create("exit:deep-woods:to-clearing", {
     tags: ["exit"],
-    properties: { location: "room:deep-woods", direction: "south", destination: "room:clearing" },
+    properties: {
+      location: "room:deep-woods",
+      direction: "south",
+      destination: "room:clearing",
+      shortDescription: "back to the clearing",
+    },
   });
   store.create("exit:hillside:to-clearing", {
     tags: ["exit"],
-    properties: { location: "room:hillside", direction: "west", destination: "room:clearing" },
+    properties: {
+      location: "room:hillside",
+      direction: "west",
+      destination: "room:clearing",
+      shortDescription: "down to the clearing",
+    },
   });
   store.create("exit:hillside:to-cabin", {
     tags: ["exit", "openable"],
@@ -78,11 +98,17 @@ function createExits(store: EntityStore): void {
       aliases: ["door"],
       locked: true,
       unlockedBy: "item:key",
+      shortDescription: "${self.locked ? 'a locked cabin door' : 'the cabin'}",
     },
   });
   store.create("exit:cabin:to-hillside", {
     tags: ["exit"],
-    properties: { location: "room:cabin", direction: "out", destination: "room:hillside" },
+    properties: {
+      location: "room:cabin",
+      direction: "out",
+      destination: "room:hillside",
+      shortDescription: "to the hillside",
+    },
   });
 }
 
@@ -125,6 +151,80 @@ function createItems(store: EntityStore): void {
       location: "room:hillside",
       name: "Silver Coin",
       description: "A tarnished silver coin with an unfamiliar crest.",
+    },
+  });
+
+  store.create("item:rope", {
+    tags: ["portable"],
+    properties: {
+      location: "room:deep-woods",
+      name: "Coil of Rope",
+      aliases: ["rope", "coil"],
+      description: "A sturdy hemp rope, about thirty feet long.",
+    },
+  });
+
+  store.create("item:flask", {
+    tags: ["portable", "container", "openable"],
+    properties: {
+      location: "room:cabin",
+      name: "Glass Flask",
+      aliases: ["flask", "bottle", "vial"],
+      description: "A small glass flask with a cork stopper. It contains a shimmering blue liquid.",
+      open: false,
+    },
+  });
+
+  store.create("item:potion", {
+    tags: ["portable"],
+    properties: {
+      location: "item:flask",
+      name: "Blue Potion",
+      aliases: ["potion", "liquid", "blue"],
+      description: "A shimmering blue liquid that seems to glow faintly.",
+    },
+  });
+
+  store.create("item:stone", {
+    tags: ["portable"],
+    properties: {
+      location: "room:hillside",
+      name: "Smooth Stone",
+      aliases: ["stone", "rock", "pebble"],
+      description: "A smooth, palm-sized stone. It feels oddly warm to the touch.",
+    },
+  });
+
+  store.create("item:mirror", {
+    tags: ["portable"],
+    properties: {
+      location: "room:cabin",
+      name: "Hand Mirror",
+      aliases: ["mirror", "looking glass"],
+      description:
+        "A tarnished hand mirror with an ornate silver frame. Your reflection looks back at you, slightly distorted.",
+    },
+  });
+
+  store.create("item:candle", {
+    tags: ["portable"],
+    properties: {
+      location: "room:cabin",
+      name: "Beeswax Candle",
+      aliases: ["candle", "wax"],
+      description:
+        "${self.lit ? 'A beeswax candle burns with a steady golden flame.' : 'A thick beeswax candle, unlit. It smells faintly of honey.'}",
+      lit: false,
+    },
+  });
+
+  store.create("item:tinderbox", {
+    tags: ["portable", "flame-source"],
+    properties: {
+      location: "room:clearing",
+      name: "Tinderbox",
+      aliases: ["tinder", "flint", "matches"],
+      description: "A small brass tinderbox with flint and steel inside.",
     },
   });
 
