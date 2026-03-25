@@ -1,0 +1,233 @@
+{
+  "meta": {
+    "slug": "test",
+    "title": "Test World",
+    "description": "A small test world with a forest clearing, deep woods, hillside, and a locked cabin."
+  },
+  "entities": [
+    {
+      "id": "room:clearing",
+      "tags": ["room"],
+      "properties": {
+        "location": "world",
+        "name": "Forest Clearing",
+        "description": "You stand in a sunlit clearing surrounded by tall oaks. A weathered stone bench sits beneath the largest tree. Paths lead in several directions."
+      }
+    },
+    {
+      "id": "room:deep-woods",
+      "tags": ["room"],
+      "properties": {
+        "location": "world",
+        "name": "Deep Woods",
+        "description": "The canopy above is thick, filtering the light into green shafts. The forest floor is soft with fallen leaves. An old wooden chest sits half-hidden among the roots."
+      }
+    },
+    {
+      "id": "room:hillside",
+      "tags": ["room"],
+      "properties": {
+        "location": "world",
+        "name": "Rocky Hillside",
+        "description": "Loose stones shift under your feet as you climb a gentle slope. From here you can see the forest stretching out to the west. A small stone cabin stands at the top of the hill."
+      }
+    },
+    {
+      "id": "room:cabin",
+      "tags": ["room"],
+      "properties": {
+        "location": "world",
+        "name": "Stone Cabin",
+        "description": "The interior of the cabin is sparse but cozy. A fireplace dominates one wall, and a rough wooden table sits in the center. Dusty shelves line the walls."
+      }
+    },
+
+    {
+      "id": "exit:clearing:to-deep-woods",
+      "tags": ["exit"],
+      "properties": {
+        "location": "room:clearing",
+        "direction": "north",
+        "destination": "room:deep-woods",
+        "shortDescription": "into the deep woods"
+      }
+    },
+    {
+      "id": "exit:clearing:to-hillside",
+      "tags": ["exit"],
+      "properties": {
+        "location": "room:clearing",
+        "direction": "east",
+        "destination": "room:hillside",
+        "shortDescription": "toward a rocky hillside"
+      }
+    },
+    {
+      "id": "exit:deep-woods:to-clearing",
+      "tags": ["exit"],
+      "properties": {
+        "location": "room:deep-woods",
+        "direction": "south",
+        "destination": "room:clearing",
+        "shortDescription": "back to the clearing"
+      }
+    },
+    {
+      "id": "exit:hillside:to-clearing",
+      "tags": ["exit"],
+      "properties": {
+        "location": "room:hillside",
+        "direction": "west",
+        "destination": "room:clearing",
+        "shortDescription": "down to the clearing"
+      }
+    },
+    {
+      "id": "exit:hillside:to-cabin",
+      "tags": ["exit", "openable"],
+      "properties": {
+        "location": "room:hillside",
+        "direction": "enter",
+        "destination": "room:cabin",
+        "name": "Cabin Door",
+        "aliases": ["door"],
+        "locked": true,
+        "unlockedBy": "item:key",
+        "shortDescription": "${self.locked ? 'a locked cabin door' : 'the cabin'}"
+      }
+    },
+    {
+      "id": "exit:cabin:to-hillside",
+      "tags": ["exit"],
+      "properties": {
+        "location": "room:cabin",
+        "direction": "out",
+        "destination": "room:hillside",
+        "shortDescription": "to the hillside"
+      }
+    },
+
+    {
+      "id": "item:lantern",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:clearing",
+        "name": "Lantern",
+        "aliases": ["lamp", "brass lantern"],
+        "description": "A brass lantern, slightly tarnished but still functional."
+      }
+    },
+    {
+      "id": "item:chest",
+      "tags": ["container", "openable"],
+      "properties": {
+        "location": "room:deep-woods",
+        "name": "Wooden Chest",
+        "aliases": ["box"],
+        "description": "A sturdy wooden chest with iron bands. It looks old but well-made.",
+        "open": false,
+        "locked": true,
+        "unlockedBy": "item:key"
+      }
+    },
+    {
+      "id": "item:key",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:clearing",
+        "name": "Iron Key",
+        "description": "A heavy iron key with an ornate handle."
+      }
+    },
+    {
+      "id": "item:coin",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:hillside",
+        "name": "Silver Coin",
+        "description": "A tarnished silver coin with an unfamiliar crest."
+      }
+    },
+    {
+      "id": "item:rope",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:deep-woods",
+        "name": "Coil of Rope",
+        "aliases": ["rope", "coil"],
+        "description": "A sturdy hemp rope, about thirty feet long."
+      }
+    },
+    {
+      "id": "item:flask",
+      "tags": ["portable", "container", "openable"],
+      "properties": {
+        "location": "room:cabin",
+        "name": "Glass Flask",
+        "aliases": ["flask", "bottle", "vial"],
+        "description": "A small glass flask with a cork stopper. It contains a shimmering blue liquid.",
+        "open": false
+      }
+    },
+    {
+      "id": "item:potion",
+      "tags": ["portable"],
+      "properties": {
+        "location": "item:flask",
+        "name": "Blue Potion",
+        "aliases": ["potion", "liquid", "blue"],
+        "description": "A shimmering blue liquid that seems to glow faintly."
+      }
+    },
+    {
+      "id": "item:stone",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:hillside",
+        "name": "Smooth Stone",
+        "aliases": ["stone", "rock", "pebble"],
+        "description": "A smooth, palm-sized stone. It feels oddly warm to the touch."
+      }
+    },
+    {
+      "id": "item:mirror",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:cabin",
+        "name": "Hand Mirror",
+        "aliases": ["mirror", "looking glass"],
+        "description": "A tarnished hand mirror with an ornate silver frame. Your reflection looks back at you, slightly distorted."
+      }
+    },
+    {
+      "id": "item:candle",
+      "tags": ["portable"],
+      "properties": {
+        "location": "room:cabin",
+        "name": "Beeswax Candle",
+        "aliases": ["candle", "wax"],
+        "description": "${self.lit ? 'A beeswax candle burns with a steady golden flame.' : 'A thick beeswax candle, unlit. It smells faintly of honey.'}",
+        "lit": false
+      }
+    },
+    {
+      "id": "item:tinderbox",
+      "tags": ["portable", "flame-source"],
+      "properties": {
+        "location": "room:clearing",
+        "name": "Tinderbox",
+        "aliases": ["tinder", "flint", "matches"],
+        "description": "A small brass tinderbox with flint and steel inside."
+      }
+    },
+
+    {
+      "id": "player",
+      "tags": ["player"],
+      "properties": {
+        "location": "room:clearing",
+        "name": "You"
+      }
+    }
+  ]
+}

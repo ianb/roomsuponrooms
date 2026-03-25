@@ -1,6 +1,7 @@
 import { registerSerializer } from "agent-doctest/check";
-import { createSampleWorld, createGameRunner } from "../src/core/index.js";
+import { createGameRunner } from "../src/core/index.js";
 import { getGame } from "../src/games/registry.js";
+import "../src/games/test-world.js";
 import "../src/games/colossal-cave/index.js";
 import type { GameRunner } from "../src/core/index.js";
 
@@ -72,7 +73,9 @@ export class TestGame {
 
 /** Create a new test game for the sample world */
 export function testWorld(): TestGame {
-  return new TestGame(createGameRunner(createSampleWorld()));
+  const def = getGame("test");
+  if (!def) throw new GameNotRegisteredError("test");
+  return new TestGame(createGameRunner(def.create()));
 }
 
 /** Create a new test game for Colossal Cave */

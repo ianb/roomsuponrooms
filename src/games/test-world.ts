@@ -1,10 +1,19 @@
-import { createSampleWorld } from "../core/sample-world.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { registerGame } from "./registry.js";
+import { loadGameData } from "../core/game-loader.js";
+import type { GameData } from "../core/game-data.js";
+
+const thisDir = import.meta.dirname!;
+const data = JSON.parse(readFileSync(resolve(thisDir, "test-world.json"), "utf-8")) as GameData;
 
 registerGame({
-  slug: "test",
-  title: "Test World",
-  description:
-    "A small test world with a forest clearing, deep woods, hillside, and a locked cabin.",
-  create: createSampleWorld,
+  slug: data.meta.slug,
+  title: data.meta.title,
+  description: data.meta.description,
+  create() {
+    const game = loadGameData(data);
+    game.store.snapshot();
+    return game;
+  },
 });

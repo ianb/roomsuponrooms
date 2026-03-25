@@ -15,16 +15,10 @@ export interface FallbackDebugInfo {
   durationMs: number;
 }
 
-/**
- * Result of the LLM deciding how to handle an unknown verb+object combination.
- * The LLM produces a reusable handler that is persisted to disk.
- */
 export interface FallbackResult {
   output: string;
   events: WorldEvent[];
-  /** The handler that was created and registered, if any */
   handler: VerbHandler | null;
-  /** Debug info about the LLM call, included when debug mode is on */
   debug?: FallbackDebugInfo;
 }
 
@@ -42,7 +36,7 @@ const fallbackResponseSchema = z.object({
     .string()
     .optional()
     .describe(
-      "JavaScript function body for perform handlers that need conditional logic. Only used when decision is 'perform'. Receives (object, player, room, store, command) as arguments. Must return { output: string, events: Array<{type, entityId, property, value, description}> }.",
+      "JavaScript function body for perform handlers that need conditional logic. Only used when decision is 'perform'. Has access to lib, object, player, room, store, command. Must return { output: string, events: WorldEvent[] }.",
     ),
   events: z
     .array(
@@ -77,7 +71,6 @@ function describeEntityForLlm(entity: Entity): string {
   const tags = Array.from(entity.tags).join(", ");
   const props: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(entity.properties)) {
-    // Skip verbose text fields — the LLM doesn't need them to decide
     if (key === "description" || key === "shortDescription") continue;
     props[key] = value;
   }
@@ -89,7 +82,6 @@ function buildPrompt(store: EntityStore, { command }: { command: ResolvedCommand
 
   parts.push(`## Action\nThe player typed: "${describeCommand(command)}"`);
 
-  // Describe the target object(s) — this is what the handler is about
   const involved: Entity[] = [];
   if (command.form === "transitive" || command.form === "prepositional") {
     involved.push(command.object);
@@ -138,65 +130,74 @@ For perform, you can respond in two ways:
 Use "message" for the output text and "events" for property changes. Good for actions with a fixed outcome.
 
 ### With code: JavaScript function body
-Use "code" for handlers that need conditional logic (checking properties, different outcomes based on state). The code is a JavaScript function body that receives these arguments:
+Use "code" for handlers that need conditional logic (checking properties, different outcomes based on state).
+
+The code has access to these variables:
 
 - object — the target entity: { id, tags (Set), properties (object) }
 - player — the player entity (same shape)
 - room — the current room entity
-- store — the entity store, with methods:
+- store — the entity store:
   - store.get(id) — get entity by ID
   - store.tryGet(id) — get entity or null
-  - store.getContents(id) — get entities located inside this entity
-  - store.findByTag(tag) — find all entities with a given tag
+  - store.getContents(id) — get entities inside this entity
+  - store.findByTag(tag) — find all entities with a tag
 - command — the parsed command
+- lib — helper library with common operations:
+  - lib.result(message) — return a simple result with no state changes
+  - lib.ref(entity) — display name for output text
+  - lib.setEvent(entityId, {property, value, description}) — create a property change event
+  - lib.moveEvent(entityId, {to, from, description}) — create a location change event
+  - lib.carried() — entities the player is carrying
+  - lib.contents(entityId) — entities inside a container
+  - lib.findKey(object) — find the matching key in player inventory
+  - lib.take(object) — pick up an object (returns result + events)
+  - lib.drop(object) — drop an object
+  - lib.open(object) / lib.close(object)
+  - lib.switchOn(object) / lib.switchOff(object)
 
 Entity shape: { id: string, tags: Set<string>, properties: { [name]: value } }
-- entity.tags.has("flame-source") — check if an entity has a tag
-- entity.properties.lit — read a property
-- entity.properties["name"] — read a property by string key
 
-The code MUST return: { output: string, events: Array<{type: "set-property", entityId: string, property: string, value: any, description: string}> }
+The code MUST return: { output: string, events: WorldEvent[] }
 
 ## Tags
 
 Tags categorize entities and are used to write generic handlers. For example, a "light candle" handler should not check for a specific tinderbox — it should check if the player is carrying anything with the "flame-source" tag. This way any flame source (tinderbox, matches, lit torch) will work.
 
-Use store.getContents(player.id) to check what the player is carrying, then filter by tag. The "Tags in World" section lists all tags currently in use.
+Use lib.carried() to check what the player is carrying, then filter by tag. The "Tags in World" section lists all tags currently in use.
 
 ## Code examples
 
 Light a candle (requires a flame source in inventory):
 \`\`\`
-var carried = store.getContents(player.id);
+var carried = lib.carried();
 var flameSrc = carried.filter(function(e) { return e.tags.has("flame-source"); });
 if (flameSrc.length === 0) {
-  return { output: "You have nothing to light it with.", events: [] };
+  return lib.result("You have nothing to light it with.");
 }
 if (object.properties.lit) {
-  return { output: "The candle is already lit.", events: [] };
+  return lib.result("The candle is already lit.");
 }
 return {
-  output: "You strike the " + flameSrc[0].properties.name + " and light the candle.",
-  events: [{ type: "set-property", entityId: object.id, property: "lit", value: true, description: "Candle lit" }]
+  output: "You strike the " + lib.ref(flameSrc[0]) + " and light the candle.",
+  events: [lib.setEvent(object.id, { property: "lit", value: true, description: "Candle lit" })]
 };
 \`\`\`
 
 Eat something (moves it to void):
 \`\`\`
 return {
-  output: "You eat the food. Not bad!",
-  events: [
-    { type: "set-property", entityId: object.id, property: "location", value: "void", description: "Food consumed" }
-  ]
+  output: "You eat the " + lib.ref(object) + ". Not bad!",
+  events: [lib.moveEvent(object.id, { to: "void", from: object.properties.location, description: "Food consumed" })]
 };
 \`\`\`
 
 Shake lantern (different output based on state):
 \`\`\`
 if (object.properties.switchedOn) {
-  return { output: "The lantern flickers as you shake it.", events: [] };
+  return lib.result("The lantern flickers as you shake it.");
 }
-return { output: "The lantern rattles. You hear liquid sloshing inside.", events: [] };
+return lib.result("The lantern rattles. You hear liquid sloshing inside.");
 \`\`\`
 
 ## Events
@@ -212,6 +213,35 @@ Property names MUST come from the Available Properties list. Do not invent new p
 - A "perform" with no events is fine — flavor text is good.
 - Prefer code over static message+events when the handler should react to object state.
 - Keep output to 1-2 sentences in classic text adventure style.`;
+
+/**
+ * Convert the LLM response into a perform code string for HandlerData.
+ */
+function buildPerformCode(response: {
+  decision: "perform" | "refuse";
+  message: string;
+  code?: string;
+  events: Array<{ type: string; property: string; value: unknown; description: string }>;
+}): string {
+  if (response.decision === "refuse") {
+    return `return lib.result(${JSON.stringify(response.message)});`;
+  }
+
+  if (response.code) {
+    return response.code;
+  }
+
+  // Static message + events
+  if (response.events.length === 0) {
+    return `return lib.result(${JSON.stringify(response.message)});`;
+  }
+
+  const eventStrs = response.events.map(
+    (e) =>
+      `lib.setEvent(object.id, ${JSON.stringify({ property: e.property, value: e.value, description: e.description })})`,
+  );
+  return `return { output: ${JSON.stringify(response.message)}, events: [${eventStrs.join(", ")}] };`;
+}
 
 /**
  * Ask the LLM to handle an unrecognized verb+object combination.
@@ -255,7 +285,6 @@ export async function handleVerbFallback(
     `[ai-fallback] Decision: ${response.decision} (${durationMs}ms) — "${response.message}"`,
   );
 
-  // Get the target entity for the handler
   const targetEntity =
     command.form === "transitive" || command.form === "prepositional"
       ? command.object
@@ -263,20 +292,20 @@ export async function handleVerbFallback(
         ? command.object
         : null;
 
-  // Build the serializable record
+  const handlerPrefix = response.decision === "refuse" ? "ai-refuse" : "ai-perform";
+  const entitySuffix = targetEntity ? targetEntity.id : "intransitive";
+
   const record: AiHandlerRecord = {
     createdAt: new Date().toISOString(),
     gameId,
-    decision: response.decision,
-    verb: command.verb,
-    form: command.form,
+    name: `${handlerPrefix}:${command.verb}-${entitySuffix}`,
+    pattern: { verb: command.verb, form: command.form },
+    priority: -1,
+    freeTurn: response.decision === "refuse",
     entityId: targetEntity ? targetEntity.id : undefined,
-    message: response.message,
-    eventTemplates: response.events,
-    code: response.code,
+    perform: buildPerformCode(response),
   };
 
-  // Persist and register
   saveHandlerRecord(record);
   const handler = recordToHandler(record);
   verbs.register(handler);

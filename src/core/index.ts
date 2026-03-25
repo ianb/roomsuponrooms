@@ -1,6 +1,5 @@
 export { processCommand } from "./world.js";
 export type { CommandResult } from "./world.js";
-export { createSampleWorld } from "./sample-world.js";
 
 export type { JSONSchema7, JSONSchema7Type } from "./json-schema.js";
 
@@ -28,3 +27,9 @@ export { defineBaseProperties } from "./base-properties.js";
 export { SeededRandom } from "./random.js";
 export { createGameRunner } from "./game-runner.js";
 export type { GameRunner } from "./game-runner.js";
+
+export { loadGameData } from "./game-loader.js";
+export type { GameData, EntityData, HandlerData, PropertyData } from "./game-data.js";
+export { HandlerLib } from "./handler-lib.js";
+export { handlerDataToHandler } from "./handler-eval.js";
+export { DEFAULT_HANDLERS } from "./default-handlers.js";
