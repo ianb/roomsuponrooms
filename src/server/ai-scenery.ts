@@ -132,10 +132,13 @@ export async function generateSceneryDescription(
     room: Entity;
     prompts?: GamePrompts;
   },
-): Promise<SceneryEntry> {
+): Promise<{
+  entry: SceneryEntry;
+  debug?: { systemPrompt: string; prompt: string; response: unknown; durationMs: number };
+}> {
   // Check cache first
   const cached = getCachedScenery(room, word);
-  if (cached) return cached;
+  if (cached) return { entry: cached };
 
   const systemPrompt = buildSystemPrompt({ room, store, prompts });
   const prompt = buildPrompt({ word, room });
@@ -167,5 +170,8 @@ export async function generateSceneryDescription(
     value: [...existing, entry],
   });
 
-  return entry;
+  return {
+    entry,
+    debug: { systemPrompt, prompt, response: result.object, durationMs },
+  };
 }

@@ -1,5 +1,6 @@
 import type { GameInstance } from "../games/registry.js";
 import type { GamePrompts } from "../core/game-data.js";
+import type { DebugInfo } from "../core/world.js";
 import { getPlayerRoom } from "../core/world.js";
 import {
   isSceneryWord,
@@ -11,6 +12,7 @@ import { appendEventLog } from "./event-log.js";
 
 interface SceneryResponse {
   output: string;
+  debug?: DebugInfo;
 }
 
 /** Check if an unresolved object is scenery and handle it */
@@ -21,11 +23,13 @@ export async function handleSceneryCheck(
     objectName,
     gameId,
     prompts,
+    debug,
   }: {
     verb: string;
     objectName: string;
     gameId: string;
     prompts?: GamePrompts;
+    debug?: boolean;
   },
 ): Promise<SceneryResponse | null> {
   const room = getPlayerRoom(game.store);
@@ -44,7 +48,7 @@ export async function handleSceneryCheck(
   }
 
   // Examine: generate or return cached description
-  const entry = await generateSceneryDescription(game.store, {
+  const result = await generateSceneryDescription(game.store, {
     word: objectName,
     room,
     prompts,
@@ -65,5 +69,14 @@ export async function handleSceneryCheck(
     timestamp: new Date().toISOString(),
   });
 
-  return { output: entry.description };
+  const debugInfo: DebugInfo | undefined =
+    debug && result.debug
+      ? {
+          parse: `${verb} "${objectName}" (scenery)`,
+          outcome: "scenery",
+          aiFallback: result.debug,
+        }
+      : undefined;
+
+  return { output: result.entry.description, debug: debugInfo };
 }
