@@ -32,7 +32,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     name: "take",
     pattern: {
       verb: "take",
-      verbAliases: ["get", "g", "grab", "carry", "hold", "pick"],
+      verbAliases: ["get", "g", "grab", "carry", "hold", "pick", "pick-up"],
       form: "transitive",
     },
     objectRequirements: { tags: ["portable"] },
@@ -45,7 +45,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     name: "take-fixed",
     pattern: {
       verb: "take",
-      verbAliases: ["get", "g", "grab", "carry", "hold", "pick"],
+      verbAliases: ["get", "g", "grab", "carry", "hold", "pick", "pick-up"],
       form: "transitive",
     },
     priority: -5,
@@ -134,7 +134,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
 
   {
     name: "switch-on",
-    pattern: { verb: "turn", verbAliases: ["switch", "light"], form: "transitive" },
+    pattern: { verb: "turn-on", verbAliases: ["switch", "light"], form: "transitive" },
     objectRequirements: { tags: ["device"] },
     check: "return !object.properties.switchedOn;",
     perform: "return lib.switchOn(object);",
@@ -142,26 +142,14 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
 
   {
     name: "switch-off",
-    pattern: { verb: "turn", verbAliases: ["switch", "extinguish", "douse"], form: "transitive" },
+    pattern: {
+      verb: "turn-off",
+      verbAliases: ["switch", "extinguish", "douse"],
+      form: "transitive",
+    },
     objectRequirements: { tags: ["device"] },
     check: "return !!object.properties.switchedOn;",
     perform: "return lib.switchOff(object);",
-  },
-
-  {
-    name: "turn-on-prep",
-    pattern: { verb: "turn", form: "prepositional", prep: "on" },
-    priority: 5,
-    perform:
-      "if (!object.tags.has('device')) return lib.result(\"You can't turn that on.\"); if (object.properties.switchedOn) return lib.result('The ' + lib.ref(object) + ' is already on.'); return lib.switchOn(object);",
-  },
-
-  {
-    name: "turn-off-prep",
-    pattern: { verb: "turn", form: "prepositional", prep: "from" },
-    priority: 5,
-    perform:
-      "if (!object.tags.has('device')) return lib.result(\"You can't turn that off.\"); if (!object.properties.switchedOn) return lib.result('The ' + lib.ref(object) + ' is already off.'); return lib.switchOff(object);",
   },
 
   {
