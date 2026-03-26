@@ -70,15 +70,41 @@ ${roomName}: ${roomDesc}
 <examine-word>${word}</examine-word>`;
 }
 
-/** Check if a word appears in the room description (case-insensitive, whole word) */
+/** Generate singular/plural variants of a word */
+function wordVariants(word: string): string[] {
+  const w = word.toLowerCase();
+  const variants = [w];
+  // singular → plural
+  if (w.endsWith("y")) {
+    variants.push(w.slice(0, -1) + "ies");
+  }
+  if (w.endsWith("s") || w.endsWith("sh") || w.endsWith("ch") || w.endsWith("x")) {
+    variants.push(w + "es");
+  }
+  variants.push(w + "s");
+  // plural → singular
+  if (w.endsWith("ies")) {
+    variants.push(w.slice(0, -3) + "y");
+  } else if (w.endsWith("es")) {
+    variants.push(w.slice(0, -2));
+  } else if (w.endsWith("s") && !w.endsWith("ss")) {
+    variants.push(w.slice(0, -1));
+  }
+  return [...new Set(variants)];
+}
+
+/** Check if a word (or a plural/singular variant) appears in the room description */
 export function isSceneryWord(word: string, room: Entity): boolean {
   const description = (room.properties["description"] as string) || "";
   const lower = description.toLowerCase();
-  const wordLower = word.toLowerCase();
-  // Check for whole word match
-  // eslint-disable-next-line security/detect-non-literal-regexp -- word is escaped above
-  const pattern = new RegExp(`\\b${wordLower.replace(/[$()*+.?[\\\]^{|}]/g, "\\$&")}\\b`, "i");
-  return pattern.test(lower);
+  const variants = wordVariants(word);
+  for (const variant of variants) {
+    const escaped = variant.replace(/[$()*+.?[\\\]^{|}]/g, "\\$&");
+    // eslint-disable-next-line security/detect-non-literal-regexp -- variant is escaped above
+    const pattern = new RegExp(`\\b${escaped}\\b`, "i");
+    if (pattern.test(lower)) return true;
+  }
+  return false;
 }
 
 /** Check if a verb is an examine-type verb */

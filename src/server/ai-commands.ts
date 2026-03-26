@@ -211,7 +211,7 @@ export async function handleUnresolvedExit(
     debug,
   });
 
-  // Move the player to the new room
+  // Move the player to the new room (session event — cleared on reset)
   store.setProperty(context.player.id, { name: "location", value: result.roomId });
   const moveEvent: WorldEvent = {
     type: "set-property",
@@ -220,16 +220,12 @@ export async function handleUnresolvedExit(
     value: result.roomId,
     description: `Moved ${context.direction}`,
   };
-  const allEvents = [...result.events, moveEvent];
-
-  // Persist events
-  if (allEvents.length > 0) {
-    appendEventLog(gameId, {
-      command: `go ${context.direction}`,
-      events: allEvents,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // Only persist the player move — AI world-building is saved via saveAiEntity
+  appendEventLog(gameId, {
+    command: `go ${context.direction}`,
+    events: [moveEvent],
+    timestamp: new Date().toISOString(),
+  });
 
   const roomDesc = describeCurrentRoom(store);
   return {

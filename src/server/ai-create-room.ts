@@ -251,6 +251,15 @@ export async function handleAiCreateRoom(
     }
   }
 
+  // Persist the modified exit so changes survive /reset
+  saveAiEntity({
+    createdAt: new Date().toISOString(),
+    gameId,
+    id: exit.id,
+    tags: Array.from(exit.tags),
+    properties: { ...exit.properties },
+  });
+
   // Return exit
   const roomSlug = roomId.replace("room:", "");
   const returnDir = reverseDirection(direction);

@@ -58,10 +58,16 @@ export function loadAiEntities(gameId: string, store: EntityStore): void {
   if (!content) return;
   const records = content.split("\n").map((line) => JSON.parse(line) as AiEntityRecord);
   for (const record of records) {
-    if (store.has(record.id)) continue;
-    store.create(record.id, {
-      tags: record.tags,
-      properties: record.properties,
-    });
+    if (store.has(record.id)) {
+      // Entity already exists (e.g., a pre-existing exit) — apply property overrides
+      for (const [key, value] of Object.entries(record.properties)) {
+        store.setProperty(record.id, { name: key, value });
+      }
+    } else {
+      store.create(record.id, {
+        tags: record.tags,
+        properties: record.properties,
+      });
+    }
   }
 }
