@@ -134,7 +134,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
 
   {
     name: "switch-on",
-    pattern: { verb: "turn-on", verbAliases: ["switch", "light"], form: "transitive" },
+    pattern: { verb: "turn-on", verbAliases: ["turn", "switch", "light"], form: "transitive" },
     objectRequirements: { tags: ["device"] },
     check: "return !object.properties.switchedOn;",
     perform: "return lib.switchOn(object);",
@@ -144,7 +144,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     name: "switch-off",
     pattern: {
       verb: "turn-off",
-      verbAliases: ["switch", "extinguish", "douse"],
+      verbAliases: ["turn", "switch", "extinguish", "douse"],
       form: "transitive",
     },
     objectRequirements: { tags: ["device"] },
