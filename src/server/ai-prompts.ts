@@ -1,9 +1,10 @@
-import type { Entity } from "../core/entity.js";
+import type { Entity, EntityStore } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
 
 export interface PromptContext {
   prompts?: GamePrompts;
   room: Entity;
+  store?: EntityStore;
 }
 
 const DEFAULT_STYLE =
@@ -19,6 +20,16 @@ function tag(name: string, content: string): string {
   return `<${name}>\n${content}\n</${name}>`;
 }
 
+function findRegion(context: PromptContext): Entity | null {
+  if (!context.store) return null;
+  const locationId = context.room.properties["location"] as string | undefined;
+  if (!locationId || locationId === "world") return null;
+  if (!context.store.has(locationId)) return null;
+  const parent = context.store.get(locationId);
+  if (parent.tags.has("region")) return parent;
+  return null;
+}
+
 /** Build the style/tone portion of a system prompt for verb fallback */
 export function composeVerbPrompt(context: PromptContext): string {
   const sections: string[] = [];
@@ -28,6 +39,14 @@ export function composeVerbPrompt(context: PromptContext): string {
 
   const verbGuidance = (context.prompts && context.prompts.worldVerb) || DEFAULT_VERB_GUIDANCE;
   sections.push(tag("verb-guidance", verbGuidance));
+
+  const region = findRegion(context);
+  if (region) {
+    const regionPrompt = region.properties["aiPrompt"] as string | undefined;
+    if (regionPrompt) {
+      sections.push(tag("region-context", regionPrompt));
+    }
+  }
 
   const roomPrompt = context.room.properties["aiPrompt"] as string | undefined;
   if (roomPrompt) {
@@ -47,6 +66,14 @@ export function composeCreatePrompt(context: PromptContext): string {
   const createGuidance =
     (context.prompts && context.prompts.worldCreate) || DEFAULT_CREATE_GUIDANCE;
   sections.push(tag("create-guidance", createGuidance));
+
+  const region = findRegion(context);
+  if (region) {
+    const regionPrompt = region.properties["aiPrompt"] as string | undefined;
+    if (regionPrompt) {
+      sections.push(tag("region-context", regionPrompt));
+    }
+  }
 
   const roomPrompt = context.room.properties["aiPrompt"] as string | undefined;
   if (roomPrompt) {

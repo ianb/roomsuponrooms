@@ -98,6 +98,23 @@ export function buildPropertiesSchema(
   return z.object(shape);
 }
 
+const REVERSE_DIRECTIONS: Record<string, string> = {
+  north: "south",
+  south: "north",
+  east: "west",
+  west: "east",
+  up: "down",
+  down: "up",
+  northeast: "southwest",
+  southwest: "northeast",
+  northwest: "southeast",
+  southeast: "northwest",
+};
+
+export function reverseDirection(direction: string): string {
+  return REVERSE_DIRECTIONS[direction.toLowerCase()] || "back";
+}
+
 export function collectTags(store: EntityStore): string[] {
   const tags = new Set<string>();
   const propertyNames = new Set(Object.keys(store.registry.definitions));

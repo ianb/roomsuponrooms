@@ -116,14 +116,14 @@ function buildPrompt(store: EntityStore, { command }: { command: ResolvedCommand
 
 function buildSystemPrompt(
   libClass: typeof HandlerLib,
-  { prompts, room }: { prompts?: GamePrompts; room: Entity },
+  { prompts, room, store }: { prompts?: GamePrompts; room: Entity; store: EntityStore },
 ): string {
   const libLines = libClass
     .describeLib()
     .map((line) => `  - ${line}`)
     .join("\n");
 
-  const styleSection = composeVerbPrompt({ prompts, room });
+  const styleSection = composeVerbPrompt({ prompts, room, store });
 
   return `<role>
 You are the game engine for a text adventure. The player has attempted an action that has no built-in handler. You must decide whether this action should work for this type of object.
@@ -278,7 +278,7 @@ export async function handleVerbFallback(
     debug?: boolean;
   },
 ): Promise<FallbackResult> {
-  const systemPrompt = buildSystemPrompt(libClass, { prompts, room });
+  const systemPrompt = buildSystemPrompt(libClass, { prompts, room, store });
   const prompt = buildPrompt(store, { command });
 
   console.log("[ai-fallback] Calling LLM for:", describeCommand(command));

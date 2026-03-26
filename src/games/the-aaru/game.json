@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "slug": "the-aaru",
+    "title": "The Aaru",
+    "description": "A thousand-year generation ship, now silent. You wake in a hibernation pod with no memory. Explore the vast, strange vessel and piece together what happened.",
+    "seed": 7
+  },
+  "properties": [
+    {
+      "name": "factionOrigin",
+      "description": "Which faction built or modified this area or object",
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "systemStatus",
+      "description": "Operational status of a ship system or device",
+      "schema": {
+        "type": "string",
+        "enum": ["operational", "degraded", "offline", "damaged", "unknown"]
+      }
+    },
+    {
+      "name": "dataContent",
+      "description": "Readable text content stored on a terminal, datapad, or inscription",
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "accessLevel",
+      "description": "Security clearance level required to use or open this (0 = none)",
+      "schema": {
+        "type": "number"
+      },
+      "defaultValue": 0
+    },
+    {
+      "name": "automated",
+      "description": "Whether this entity operates autonomously (robots, systems)",
+      "schema": {
+        "type": "boolean"
+      },
+      "defaultValue": false
+    }
+  ]
+}

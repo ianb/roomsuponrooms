@@ -7,6 +7,7 @@ interface PromptData {
   world: string | null;
   worldVerb: string | null;
   worldCreate: string | null;
+  region: string | null;
   room: string | null;
 }
 
@@ -70,6 +71,7 @@ function LayersView({ data }: { data: PromptData }) {
         content={data.worldCreate}
         fallback="(using default)"
       />
+      <PromptSection title="Region" content={data.region} fallback="(none)" />
       <PromptSection title="Room" content={data.room} fallback="(none)" />
     </div>
   );

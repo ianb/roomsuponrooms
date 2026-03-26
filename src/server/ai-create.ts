@@ -95,11 +95,13 @@ function buildPrompt(
 function buildCreateSystemPrompt({
   prompts,
   room,
+  store,
 }: {
   prompts?: GamePrompts;
   room: Entity;
+  store: EntityStore;
 }): string {
-  const styleSection = composeCreatePrompt({ prompts, room });
+  const styleSection = composeCreatePrompt({ prompts, room, store });
 
   return `<role>
 You are creating an object for a text adventure game. The player has asked you to create something, and you should produce an entity definition.
@@ -136,7 +138,7 @@ export async function handleAiCreate(
     debug,
   }: { description: string; room: Entity; gameId: string; prompts?: GamePrompts; debug?: boolean },
 ): Promise<AiCreateResult> {
-  const systemPrompt = buildCreateSystemPrompt({ prompts, room });
+  const systemPrompt = buildCreateSystemPrompt({ prompts, room, store });
   const prompt = buildPrompt(store, { description, room });
 
   console.log("[ai-create] Creating:", description);

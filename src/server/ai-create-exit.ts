@@ -101,8 +101,16 @@ function buildPrompt(
   return parts.join("\n\n");
 }
 
-function buildSystemPrompt({ prompts, room }: { prompts?: GamePrompts; room: Entity }): string {
-  const styleSection = composeCreatePrompt({ prompts, room });
+function buildSystemPrompt({
+  prompts,
+  room,
+  store,
+}: {
+  prompts?: GamePrompts;
+  room: Entity;
+  store: EntityStore;
+}): string {
+  const styleSection = composeCreatePrompt({ prompts, room, store });
 
   return `<role>
 You are creating an exit for a text adventure game. The player has asked you to create a passage, door, or other connection leading out of the current room. The exit does not have a destination yet \u2014 another AI will create the destination room later when the player goes through it.
@@ -137,7 +145,7 @@ export async function handleAiCreateExit(
     debug?: boolean;
   },
 ): Promise<AiCreateExitResult> {
-  const systemPrompt = buildSystemPrompt({ prompts, room });
+  const systemPrompt = buildSystemPrompt({ prompts, room, store });
   const prompt = buildPrompt(store, { instructions, room });
 
   console.log("[ai-create-exit] Creating exit:", instructions);

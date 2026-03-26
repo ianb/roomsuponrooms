@@ -19,6 +19,7 @@ import { getGame, listGames } from "../games/registry.js";
 // Import game registrations
 import "../games/test-world.js";
 import "../games/colossal-cave/index.js";
+import "../games/the-aaru/index.js";
 
 const activeGames: Map<string, GameInstance> = new Map();
 
@@ -199,17 +200,34 @@ export const appRouter = router({
     const players = game.store.findByTag("player");
     const player = players[0];
     if (!player)
-      return { verb: "", create: "", world: null, worldVerb: null, worldCreate: null, room: null };
+      return {
+        verb: "",
+        create: "",
+        world: null,
+        worldVerb: null,
+        worldCreate: null,
+        region: null,
+        room: null,
+      };
     const roomId = player.properties["location"] as string;
     const room = game.store.get(roomId);
-    const promptCtx = { prompts: game.prompts, room };
+    const promptCtx = { prompts: game.prompts, room, store: game.store };
     const roomPrompt = (room.properties["aiPrompt"] as string) || null;
+    const regionId = room.properties["location"] as string | undefined;
+    let regionPrompt: string | null = null;
+    if (regionId && regionId !== "world" && game.store.has(regionId)) {
+      const region = game.store.get(regionId);
+      if (region.tags.has("region")) {
+        regionPrompt = (region.properties["aiPrompt"] as string) || null;
+      }
+    }
     return {
       verb: composeVerbPrompt(promptCtx),
       create: composeCreatePrompt(promptCtx),
       world: (game.prompts && game.prompts.world) || null,
       worldVerb: (game.prompts && game.prompts.worldVerb) || null,
       worldCreate: (game.prompts && game.prompts.worldCreate) || null,
+      region: regionPrompt,
       room: roomPrompt,
     };
   }),
