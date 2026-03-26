@@ -10,6 +10,7 @@ export const BASE_LIB_DOCS: LibDoc[] = [
   { name: "ref", signature: "ref(entity)", description: "display name for output text" },
   { name: "setEvent", signature: "setEvent(entityId, {property, value, description})", description: "property change event" },
   { name: "moveEvent", signature: "moveEvent(entityId, {to, from, description})", description: "location change event" },
+  { name: "createEvent", signature: "createEvent(entityId, {tags, properties, description})", description: "create a new entity (item, NPC, etc.)" },
   { name: "carried", signature: "carried()", description: "entities the player is carrying" },
   { name: "contents", signature: "contents(entityId)", description: "entities inside a container/location" },
   { name: "findKey", signature: "findKey(object)", description: "find matching key in player inventory, or null" },

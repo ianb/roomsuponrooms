@@ -10,6 +10,7 @@ import {
   handleAiCreateExitCommand,
   handleAiCreateCommand,
   handleAiDestroyCommand,
+  handleAiDestroyVerbCommand,
   handleUnresolvedExit,
   handleVerbFallbackCommand,
 } from "./ai-commands.js";
@@ -125,6 +126,23 @@ export const appRouter = router({
         return { output: "[Reset]\n\n" + describeCurrentRoom(rebuilt.store), debug: undefined };
       }
 
+      if (trimmed === "help ai") {
+        return {
+          output: [
+            "AI & World-Editing Commands:",
+            "  ai create <description>      — Create an object in the current room",
+            "  ai create exit <description> — Create a new exit from the current room",
+            "  ai destroy <object>          — Remove an AI-created object",
+            "  ai destroy verb <search>     — Find and remove an AI-created verb handler",
+            "",
+            "System:",
+            "  /undo  — Undo the last action",
+            "  /reset — Reset the game to its initial state",
+          ].join("\n"),
+          debug: undefined,
+        };
+      }
+
       if (trimmed.startsWith("ai create exit ")) {
         const instructions = trimmed.slice("ai create exit ".length).trim();
         if (!instructions)
@@ -138,14 +156,44 @@ export const appRouter = router({
         return handleAiCreateCommand(game.store, { description, ...opts });
       }
 
+      if (trimmed.startsWith("ai destroy verb confirm ")) {
+        const name = trimmed.slice("ai destroy verb confirm ".length).trim();
+        if (!name) return { output: "Usage: ai destroy verb confirm <name>", debug: undefined };
+        return handleAiDestroyVerbCommand({
+          search: name,
+          confirm: true,
+          gameId: input.gameId,
+          verbs: game.verbs,
+        });
+      }
+
+      if (trimmed.startsWith("ai destroy verb ")) {
+        const search = trimmed.slice("ai destroy verb ".length).trim();
+        if (!search) return { output: "Usage: ai destroy verb <search>", debug: undefined };
+        return handleAiDestroyVerbCommand({
+          search,
+          confirm: false,
+          gameId: input.gameId,
+          verbs: game.verbs,
+        });
+      }
+
       if (trimmed.startsWith("ai destroy ")) {
         const objectName = trimmed.slice("ai destroy ".length).trim().toLowerCase();
         if (!objectName) return { output: "Usage: ai destroy <object>", debug: undefined };
         return handleAiDestroyCommand(game.store, { objectName, gameId: input.gameId });
       }
 
+      // Extract [bracketed instructions] for AI guidance
+      const bracketMatch = /\[([^\]]+)]/.exec(trimmed);
+      const aiInstructions = bracketMatch ? bracketMatch[1] : undefined;
+      const commandText = bracketMatch
+        ? trimmed.slice(0, bracketMatch.index).trim() +
+          trimmed.slice(bracketMatch.index + bracketMatch[0].length).trim()
+        : trimmed;
+
       const result = processCommand(game.store, {
-        input: trimmed,
+        input: commandText,
         verbs: game.verbs,
         debug: input.debug,
       });
@@ -163,6 +211,7 @@ export const appRouter = router({
           prompts: game.prompts,
           debug: input.debug,
           existingDebug: result.debug,
+          aiInstructions,
         });
         if (fallback.events.length > 0) {
           appendEventLog(input.gameId, {

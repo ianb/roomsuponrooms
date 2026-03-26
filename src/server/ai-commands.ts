@@ -7,11 +7,13 @@ import type { WorldEvent } from "../core/verb-types.js";
 import { appendEventLog } from "./event-log.js";
 import type { HandlerLib } from "../core/handler-lib.js";
 import { describeRoomFull } from "../core/describe.js";
+import { isRoomLit, darknessDescription } from "../core/darkness.js";
 import { handleAiCreate } from "./ai-create.js";
 import { handleAiCreateExit } from "./ai-create-exit.js";
 import { handleAiCreateRoom } from "./ai-create-room.js";
 import { handleVerbFallback } from "./verb-fallback.js";
 import { getAiEntityIds, removeAiEntity } from "./ai-entity-store.js";
+import { listAiHandlerRecords, removeAiHandler } from "./ai-handler-store.js";
 
 interface CommandResponse {
   output: string;
@@ -25,6 +27,9 @@ function describeCurrentRoom(store: EntityStore): string {
   if (!player) return "No player found.";
   const roomId = player.properties["location"] as string;
   const room = store.get(roomId);
+  if (!isRoomLit(store, { room, playerId: player.id })) {
+    return darknessDescription();
+  }
   return describeRoomFull(store, { room, playerId: player.id });
 }
 
@@ -125,13 +130,63 @@ export function handleAiDestroyCommand(
     }
   }
   if (!match) {
-    return { output: `No AI-created object matching "${objectName}" found.` };
+    // Check if there's a matching verb handler to suggest
+    const verbMatches = listAiHandlerRecords(gameId).filter((r) =>
+      r.name.toLowerCase().includes(objectName),
+    );
+    const hint = verbMatches.length > 0 ? `\nDid you mean: ai destroy verb ${objectName}` : "";
+    return { output: `No AI-created object matching "${objectName}" found.${hint}` };
   }
   const entity = store.get(match);
   const entityName = (entity.properties["name"] as string) || match;
   store.delete(match);
   removeAiEntity(gameId, match);
   return { output: `[Destroyed ${entityName} (${match})]` };
+}
+
+export function handleAiDestroyVerbCommand({
+  search,
+  confirm,
+  gameId,
+  verbs,
+}: {
+  search: string;
+  confirm: boolean;
+  gameId: string;
+  verbs: VerbRegistry;
+}): CommandResponse {
+  const records = listAiHandlerRecords(gameId);
+  const lower = search.toLowerCase();
+  const matches = records.filter((r) => r.name.toLowerCase().includes(lower));
+
+  if (matches.length === 0) {
+    return { output: `No AI verb handlers matching "${search}" found.` };
+  }
+
+  if (!confirm) {
+    const lines = matches.map((r) => {
+      const verb = r.pattern.verb;
+      const form = r.pattern.form;
+      const target = r.entityId || r.tag || "";
+      const confirmCmd = `ai destroy verb confirm ${r.name}`;
+      const header = `${r.name}  (${verb} ${form}${target ? " " + target : ""}) ((${confirmCmd}|delete))`;
+      const code = r.perform.length > 200 ? r.perform.slice(0, 200) + "..." : r.perform;
+      return `  ${header}\n    ${code}`;
+    });
+    return {
+      output: `Found ${matches.length} AI verb handler(s):\n${lines.join("\n")}`,
+    };
+  }
+
+  // Confirm mode — exact match required
+  const exact = records.find((r) => r.name === search);
+  if (!exact) {
+    return { output: `No AI verb handler with exact name "${search}" found.` };
+  }
+
+  removeAiHandler(gameId, exact.name);
+  verbs.removeByName(exact.name);
+  return { output: `[Destroyed verb handler: ${exact.name}]` };
 }
 
 export async function handleUnresolvedExit(
@@ -219,6 +274,7 @@ export async function handleVerbFallbackCommand(
     prompts,
     debug,
     existingDebug,
+    aiInstructions,
   }: {
     unhandled: UnhandledInput;
     gameId: string;
@@ -227,6 +283,7 @@ export async function handleVerbFallbackCommand(
     prompts?: GamePrompts;
     debug?: boolean;
     existingDebug?: DebugInfo;
+    aiInstructions?: string;
   },
 ): Promise<FallbackResponse> {
   const fallback = await handleVerbFallback(store, {
@@ -238,6 +295,7 @@ export async function handleVerbFallbackCommand(
     libClass,
     prompts,
     debug,
+    aiInstructions,
   });
   return {
     output: fallback.output,

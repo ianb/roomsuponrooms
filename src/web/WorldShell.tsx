@@ -82,8 +82,8 @@ export function WorldShell({
   }
 
   return (
-    <>
-      <div className="mb-2 flex items-center justify-end">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-end py-1">
         <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500">
           <input
             type="checkbox"
@@ -103,43 +103,30 @@ export function WorldShell({
         </div>
       ) : null}
       <div
-        className={`min-h-[300px] max-h-[500px] overflow-y-auto p-4 font-mono text-sm whitespace-pre-wrap ${
-          conversationMode
-            ? "rounded-b-lg border-x border-b border-cyan-700 bg-gray-950"
-            : "rounded-lg bg-gray-900"
+        className={`flex-1 overflow-y-auto p-4 font-mono text-sm whitespace-pre-wrap ${
+          conversationMode ? "border-x border-cyan-700 bg-gray-950" : "rounded-t-lg bg-gray-900"
         }`}
       >
         {log.map((entry, i) => (
-          <div
+          <LogEntryView
             key={i}
-            className={
-              entry.type === "input"
-                ? "text-sky-400"
-                : entry.type === "debug"
-                  ? "mt-1 border-l-2 border-yellow-700 pl-2 text-xs text-yellow-600"
-                  : entry.type === "system"
-                    ? "text-purple-300"
-                    : "text-gray-200"
-            }
-          >
-            {entry.type === "output" ? (
-              <HighlightedText
-                text={entry.text}
-                onEntityClick={onEntityClick}
-                onTopicClick={(word) => {
-                  setInput(word);
-                  if (inputRef.current) inputRef.current.focus();
-                }}
-              />
-            ) : (
-              entry.text
-            )}
-          </div>
+            entry={entry}
+            onEntityClick={onEntityClick}
+            onFillInput={(text) => {
+              setInput(text);
+              requestAnimationFrame(() => {
+                if (inputRef.current) inputRef.current.focus();
+              });
+            }}
+          />
         ))}
         {loading ? <AiThinkingIndicator /> : null}
         <div ref={logEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="mt-2 flex gap-2">
+      <form
+        onSubmit={handleSubmit}
+        className={`flex gap-2 rounded-b-lg p-2 ${conversationMode ? "border-x border-b border-cyan-700 bg-gray-950" : "bg-gray-900"}`}
+      >
         <input
           ref={inputRef}
           type="text"
@@ -161,7 +148,42 @@ export function WorldShell({
           Send
         </button>
       </form>
-    </>
+    </div>
+  );
+}
+
+function LogEntryView({
+  entry,
+  onEntityClick,
+  onFillInput,
+}: {
+  entry: LogEntry;
+  onEntityClick?: (id: string) => void;
+  onFillInput: (text: string) => void;
+}) {
+  return (
+    <div
+      className={
+        entry.type === "input"
+          ? "text-sky-400"
+          : entry.type === "debug"
+            ? "mt-1 border-l-2 border-yellow-700 pl-2 text-xs text-yellow-600"
+            : entry.type === "system"
+              ? "text-purple-300"
+              : "text-gray-200"
+      }
+    >
+      {entry.type === "output" ? (
+        <HighlightedText
+          text={entry.text}
+          onEntityClick={onEntityClick}
+          onTopicClick={(word) => onFillInput(word)}
+          onCommandClick={(cmd) => onFillInput(cmd)}
+        />
+      ) : (
+        entry.text
+      )}
+    </div>
   );
 }
 

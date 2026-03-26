@@ -143,7 +143,7 @@ ${styleSection}
 - Add 0-2 additional unresolved exits to keep the world expandable. Each needs a destinationIntent.
 - Add 0-2 contents (objects, NPCs, furniture) only if they make the room interesting or are implied by the intent.
 - You may optionally update the exit the player came through (exitUpdate) if, now that the destination is known, the exit name or description should change.
-- "dark" means pitch black \u2014 the player sees nothing without a light source. Don't place visible objects (glowing moss, lit torches) in dark rooms unless they have the "lit" property.
+- Rooms are lit by default \u2014 do NOT set "dark" unless the room is specifically meant to be pitch black and inaccessible without a light source. "dark" is a rare exception, not a default for dim or shadowy spaces.
 - Set aiPrompt on the room if there's useful context for future AI operations in this room.
 - Room contents should use existing tags and properties from the available lists.
 </guidelines>`;

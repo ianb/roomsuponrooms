@@ -89,6 +89,13 @@ export class VerbRegistry {
     this.handlers.push(handler);
   }
 
+  removeByName(name: string): boolean {
+    const idx = this.handlers.findIndex((h) => h.name === name);
+    if (idx === -1) return false;
+    this.handlers.splice(idx, 1);
+    return true;
+  }
+
   dispatch(context: VerbContext): DispatchResult {
     const candidates = this.findHandlers(context);
     const applicable = candidates.filter((h) => {
@@ -116,7 +123,12 @@ export class VerbRegistry {
     const result = performer.perform(context);
 
     for (const event of result.events) {
-      if (event.type === "set-property") {
+      if (event.type === "create-entity") {
+        if (!context.store.has(event.entityId)) {
+          const data = event.value as { tags: string[]; properties: Record<string, unknown> };
+          context.store.create(event.entityId, { tags: data.tags, properties: data.properties });
+        }
+      } else if (event.type === "set-property") {
         if (event.property) {
           context.store.setProperty(event.entityId, { name: event.property, value: event.value });
         }
@@ -159,7 +171,15 @@ export class VerbRegistry {
       }
       for (const event of result.events) {
         allEvents.push(event);
-        if (event.type === "set-property" && event.property) {
+        if (event.type === "create-entity") {
+          if (!systemContext.store.has(event.entityId)) {
+            const data = event.value as { tags: string[]; properties: Record<string, unknown> };
+            systemContext.store.create(event.entityId, {
+              tags: data.tags,
+              properties: data.properties,
+            });
+          }
+        } else if (event.type === "set-property" && event.property) {
           systemContext.store.setProperty(event.entityId, {
             name: event.property,
             value: event.value,

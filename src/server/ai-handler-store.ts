@@ -1,4 +1,4 @@
-import { readFileSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { VerbHandler } from "../core/verb-types.js";
 import type { VerbRegistry } from "../core/verbs.js";
@@ -45,4 +45,29 @@ export function recordToHandler(record: AiHandlerRecord): VerbHandler {
   const handler = handlerDataToHandler(record);
   handler.source = "ai-handler-store";
   return handler;
+}
+
+/** List all AI handler records for a game */
+export function listAiHandlerRecords(gameId: string): AiHandlerRecord[] {
+  const filePath = handlerFilePath(gameId);
+  if (!existsSync(filePath)) return [];
+  const content = readFileSync(filePath, "utf-8").trim();
+  if (!content) return [];
+  return content.split("\n").map((line) => JSON.parse(line) as AiHandlerRecord);
+}
+
+/** Remove an AI handler by name, rewriting the JSONL file */
+export function removeAiHandler(gameId: string, name: string): boolean {
+  const filePath = handlerFilePath(gameId);
+  if (!existsSync(filePath)) return false;
+  const content = readFileSync(filePath, "utf-8").trim();
+  if (!content) return false;
+  const lines = content.split("\n");
+  const filtered = lines.filter((line) => {
+    const record = JSON.parse(line) as AiHandlerRecord;
+    return record.name !== name;
+  });
+  if (filtered.length === lines.length) return false;
+  writeFileSync(filePath, filtered.length > 0 ? filtered.join("\n") + "\n" : "");
+  return true;
 }

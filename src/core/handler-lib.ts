@@ -53,6 +53,22 @@ export class HandlerLib {
     };
   }
 
+  createEvent(
+    entityId: string,
+    {
+      tags,
+      properties,
+      description,
+    }: { tags: string[]; properties: Record<string, unknown>; description: string },
+  ): WorldEvent {
+    return {
+      type: "create-entity",
+      entityId,
+      value: { tags, properties },
+      description,
+    };
+  }
+
   result(output: string): PerformResult {
     return { output, events: [] };
   }
@@ -279,10 +295,18 @@ export class HandlerLib {
     return {
       output: [
         "Commands:",
-        "  look/l — Look around    examine/x <thing> — Examine something",
-        "  go <dir> (or n/s/e/w) — Move    take/get <thing> — Pick up",
-        "  drop <thing> — Put down    put <thing> in <container>",
-        "  open/close <thing>    inventory/i — Check carrying",
+        "  look/l            — Look around",
+        "  examine/x <thing> — Examine something",
+        "  go <dir>          — Move (or n/s/e/w/ne/nw/se/sw/up/down)",
+        "  take/get <thing>  — Pick up",
+        "  drop <thing>      — Put down",
+        "  put <thing> in <container>",
+        "  open/close <thing>",
+        "  inventory/i       — Check what you are carrying",
+        "  talk/use <thing>  — Talk to an NPC or device",
+        "  score             — Show your score",
+        "",
+        'Type "help ai" for world-editing commands.',
       ].join("\n"),
       events: [],
     };

@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 
-const HIGHLIGHT_PATTERN = /{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>/g;
+const HIGHLIGHT_PATTERN =
+  /{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>|\(\(([^|]+)\|([^)]+)\)\)/g;
 
 interface TextSegment {
-  type: "text" | "entity" | "topic" | "direction";
+  type: "text" | "entity" | "topic" | "direction" | "command";
   text: string;
   entityId?: string;
+  command?: string;
 }
 
 function parseSegments(text: string): TextSegment[] {
@@ -24,6 +26,8 @@ function parseSegments(text: string): TextSegment[] {
       segments.push({ type: "topic", text: match[3] });
     } else if (match[4]) {
       segments.push({ type: "direction", text: match[4] });
+    } else if (match[5] && match[6]) {
+      segments.push({ type: "command", text: match[6], command: match[5] });
     }
     lastIndex = match.index + match[0].length;
     match = HIGHLIGHT_PATTERN.exec(text);
@@ -40,10 +44,12 @@ export function HighlightedText({
   text,
   onEntityClick,
   onTopicClick,
+  onCommandClick,
 }: {
   text: string;
   onEntityClick?: (entityId: string) => void;
   onTopicClick?: (word: string) => void;
+  onCommandClick?: (command: string) => void;
 }): ReactNode {
   const segments = parseSegments(text);
 
@@ -83,6 +89,21 @@ export function HighlightedText({
         <span key={i} className="text-emerald-400">
           {seg.text}
         </span>
+      );
+    }
+    if (seg.type === "command") {
+      return (
+        <button
+          key={i}
+          className="ml-1 cursor-pointer rounded border border-red-700 px-1.5 py-0.5 text-xs text-red-400 hover:bg-red-900/40"
+          onClick={() => {
+            if (onCommandClick && seg.command) {
+              onCommandClick(seg.command);
+            }
+          }}
+        >
+          {seg.text}
+        </button>
       );
     }
     return <span key={i}>{seg.text}</span>;
