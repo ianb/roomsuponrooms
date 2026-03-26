@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-const HIGHLIGHT_PATTERN = /{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]/g;
+const HIGHLIGHT_PATTERN = /{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>/g;
 
 interface TextSegment {
-  type: "text" | "entity" | "topic";
+  type: "text" | "entity" | "topic" | "direction";
   text: string;
   entityId?: string;
 }
@@ -19,11 +19,11 @@ function parseSegments(text: string): TextSegment[] {
       segments.push({ type: "text", text: text.slice(lastIndex, match.index) });
     }
     if (match[1] && match[2]) {
-      // Entity ref: {{entityId|displayText}}
       segments.push({ type: "entity", text: match[2], entityId: match[1] });
     } else if (match[3]) {
-      // Topic word: [[word]]
       segments.push({ type: "topic", text: match[3] });
+    } else if (match[4]) {
+      segments.push({ type: "direction", text: match[4] });
     }
     lastIndex = match.index + match[0].length;
     match = HIGHLIGHT_PATTERN.exec(text);
@@ -74,6 +74,13 @@ export function HighlightedText({
             }
           }}
         >
+          {seg.text}
+        </span>
+      );
+    }
+    if (seg.type === "direction") {
+      return (
+        <span key={i} className="text-emerald-400">
           {seg.text}
         </span>
       );

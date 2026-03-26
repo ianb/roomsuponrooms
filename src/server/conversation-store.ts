@@ -50,5 +50,5 @@ export function loadConversationData(
     }
   }
 
-  return { words };
+  return { words, closed: initial ? initial.closed : undefined };
 }

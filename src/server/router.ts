@@ -99,7 +99,7 @@ export const appRouter = router({
 
       // If in conversation mode, route single-word input to conversation engine
       if (game.conversationState) {
-        const convResult = handleConversationWord(game, {
+        const convResult = await handleConversationWord(game, {
           word: trimmed,
           gameId: input.gameId,
         });

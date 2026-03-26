@@ -41,6 +41,8 @@ export interface WordEffect {
 /** Full conversation data for an NPC, stored in a separate JSONL file */
 export interface ConversationData {
   words: WordEntry[];
+  /** If true, unknown words are always rejected — no AI fallback */
+  closed?: boolean;
 }
 
 /** In-memory state of an active conversation */

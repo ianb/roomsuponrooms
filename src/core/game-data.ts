@@ -8,6 +8,8 @@ export interface GamePrompts {
   worldVerb?: string;
   /** Additional guidance for entity creation AI */
   worldCreate?: string;
+  /** Additional guidance for NPC conversation AI */
+  worldConversation?: string;
 }
 
 /** Top-level game data file format — loaded from JSON */
@@ -31,6 +33,8 @@ export interface GameData {
 export interface ConversationFileData {
   npcId: string;
   words: WordEntryData[];
+  /** If true, unknown words are always rejected — no AI fallback */
+  closed?: boolean;
 }
 
 /** Word entry as stored in game data files */

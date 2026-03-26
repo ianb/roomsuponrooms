@@ -66,6 +66,7 @@ function readPrompts(dir: string): GamePrompts | null {
     ["world.md", "world"],
     ["world-verb.md", "worldVerb"],
     ["world-create.md", "worldCreate"],
+    ["world-conversation.md", "worldConversation"],
   ];
 
   const prompts: GamePrompts = {};
@@ -97,19 +98,21 @@ function readConversations(dir: string): Record<string, ConversationFileData> | 
     if (!content) continue;
     const words: WordEntryData[] = [];
     let npcId: string | null = null;
+    let closed: boolean | undefined;
     for (const line of content.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       const obj = JSON.parse(trimmed) as Record<string, unknown>;
       if ("npcId" in obj && !("word" in obj)) {
         npcId = obj.npcId as string;
+        if ("closed" in obj) closed = obj.closed as boolean;
       } else if ("word" in obj) {
         if ("npcId" in obj && !npcId) npcId = obj.npcId as string;
         words.push(obj as unknown as WordEntryData);
       }
     }
     if (npcId && words.length > 0) {
-      result[npcId] = { npcId, words };
+      result[npcId] = { npcId, words, closed };
     }
   }
 

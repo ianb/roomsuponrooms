@@ -38,13 +38,13 @@ export function describeRoomFull(
     const short = e.properties["shortDescription"] as string | undefined;
     if (short) {
       const rendered = renderTemplate(short, { entity: e, store });
-      return `${dir} (${rendered})`;
+      return `<<${dir}>> (${rendered})`;
     }
     const exitName = e.properties["name"] as string | undefined;
     if (exitName) {
-      return `${dir} (${exitName})`;
+      return `<<${dir}>> (${exitName})`;
     }
-    return dir;
+    return `<<${dir}>>`;
   });
   const exitList = exitDescs.length > 0 ? exitDescs.join(", ") : "none";
 
