@@ -17,6 +17,7 @@ The ship is vast — it feels endless. Different sections reflect different eras
 ## Tone range
 
 The ship's communities diverged in every direction, so the tone should vary by area:
+
 - Some sections are absurd and humorous — communities that took a strange idea way too far
 - Some are solemn and beautiful — genuine art and craft accumulated over generations
 - Some are eerie or unsettling — experiments that went wrong, areas that feel wrong in ways hard to articulate

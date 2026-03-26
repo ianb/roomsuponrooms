@@ -21,6 +21,10 @@ export function WorldShell({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [debugMode, setDebugMode] = useStickyState("extenso:debugMode", false);
+  const [conversationMode, setConversationMode] = useState<{
+    npcName: string;
+    knownWords: string[];
+  } | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,8 +58,17 @@ export function WorldShell({
     }
     entries.push({ type: "output", text: result.output });
 
-    if (result.debug) {
-      entries.push({ type: "debug", text: formatDebug(result.debug) });
+    // Update conversation mode state
+    if ("conversationMode" in result) {
+      const mode = result.conversationMode as {
+        npcName: string;
+        knownWords: string[];
+      } | null;
+      setConversationMode(mode || null);
+    }
+
+    if ("debug" in result && result.debug) {
+      entries.push({ type: "debug", text: formatDebug(result.debug as DebugData) });
     }
 
     setLog((prev) => [...prev, ...entries]);
@@ -81,7 +94,21 @@ export function WorldShell({
           Debug
         </label>
       </div>
-      <div className="min-h-[300px] max-h-[500px] overflow-y-auto rounded-lg bg-gray-900 p-4 font-mono text-sm whitespace-pre-wrap">
+      {conversationMode ? (
+        <div className="flex items-center gap-2 rounded-t-lg border-x border-t border-cyan-700 bg-cyan-950 px-3 py-2 text-sm text-cyan-200">
+          <span className="font-bold">{conversationMode.npcName}</span>
+          <span className="ml-auto text-xs text-cyan-400/70">
+            Type a topic word, or &quot;bye&quot; to leave
+          </span>
+        </div>
+      ) : null}
+      <div
+        className={`min-h-[300px] max-h-[500px] overflow-y-auto p-4 font-mono text-sm whitespace-pre-wrap ${
+          conversationMode
+            ? "rounded-b-lg border-x border-b border-cyan-700 bg-gray-950"
+            : "rounded-lg bg-gray-900"
+        }`}
+      >
         {log.map((entry, i) => (
           <div
             key={i}
@@ -96,7 +123,14 @@ export function WorldShell({
             }
           >
             {entry.type === "output" ? (
-              <HighlightedText text={entry.text} onEntityClick={onEntityClick} />
+              <HighlightedText
+                text={entry.text}
+                onEntityClick={onEntityClick}
+                onTopicClick={(word) => {
+                  setInput(word);
+                  if (inputRef.current) inputRef.current.focus();
+                }}
+              />
             ) : (
               entry.text
             )}
@@ -111,8 +145,12 @@ export function WorldShell({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter command..."
-          className="flex-1 rounded border border-gray-700 bg-gray-900 px-3 py-2 font-mono text-sm text-gray-100 placeholder-gray-500 focus:border-sky-500 focus:outline-none"
+          placeholder={conversationMode ? "Say a topic word..." : "Enter command..."}
+          className={`flex-1 rounded border px-3 py-2 font-mono text-sm text-gray-100 focus:outline-none ${
+            conversationMode
+              ? "border-cyan-700 bg-gray-950 placeholder-cyan-600 focus:border-cyan-500"
+              : "border-gray-700 bg-gray-900 placeholder-gray-500 focus:border-sky-500"
+          }`}
           autoFocus
         />
         <button

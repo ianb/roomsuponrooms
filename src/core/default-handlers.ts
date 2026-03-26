@@ -179,6 +179,33 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
   },
 
   {
+    name: "talk-to",
+    pattern: {
+      verb: "talk",
+      verbAliases: ["speak", "chat", "converse"],
+      form: "prepositional",
+      prep: "target",
+    },
+    tag: "talkable",
+    freeTurn: true,
+    perform:
+      'return { output: "", events: [{ type: "start-conversation", entityId: object.id, description: "Started conversation" }] };',
+  },
+
+  {
+    name: "talk-to-transitive",
+    pattern: {
+      verb: "talk",
+      verbAliases: ["speak", "chat", "converse", "use", "interact", "access"],
+      form: "transitive",
+    },
+    tag: "talkable",
+    freeTurn: true,
+    perform:
+      'return { output: "", events: [{ type: "start-conversation", entityId: object.id, description: "Started conversation" }] };',
+  },
+
+  {
     name: "[enter]",
     pattern: { verb: SYSTEM_VERBS.ENTER, form: "intransitive" },
     perform: "return lib.incrementVisits();",

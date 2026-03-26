@@ -15,6 +15,7 @@ import {
 } from "./ai-commands.js";
 import type { GameInstance } from "../games/registry.js";
 import { getGame, listGames } from "../games/registry.js";
+import { handleTalkTo, handleConversationWord } from "./conversation-commands.js";
 
 // Import game registrations
 import "../games/test-world.js";
@@ -59,6 +60,20 @@ function describeCurrentRoom(s: EntityStore): string {
   return describeRoomFull(s, { room, playerId: player.id });
 }
 
+/** Check command result events for a start-conversation event and activate conversation mode */
+function checkForConversationStart(
+  game: GameInstance,
+  { events, gameId }: { events: Array<{ type: string; entityId: string }>; gameId: string },
+): { output: string; conversationMode: { npcName: string; knownWords: string[] } | null } | null {
+  const startEvent = events.find((e) => e.type === "start-conversation");
+  if (!startEvent) return null;
+  const result = handleTalkTo(game, { npcId: startEvent.entityId, gameId });
+  return {
+    output: result.output,
+    conversationMode: result.conversationMode || null,
+  };
+}
+
 const gameInput = z.object({ gameId: z.string() });
 
 export const appRouter = router({
@@ -81,6 +96,19 @@ export const appRouter = router({
       const game = getOrCreateGame(input.gameId);
       const trimmed = input.text.trim();
       const opts = { gameId: input.gameId, prompts: game.prompts, debug: input.debug };
+
+      // If in conversation mode, route single-word input to conversation engine
+      if (game.conversationState) {
+        const convResult = handleConversationWord(game, {
+          word: trimmed,
+          gameId: input.gameId,
+        });
+        return {
+          output: convResult.output,
+          conversationMode: convResult.conversationMode,
+          debug: undefined,
+        };
+      }
 
       if (trimmed === "/undo") {
         const popped = popEventLog(input.gameId);
@@ -146,12 +174,27 @@ export const appRouter = router({
         return { output: fallback.output, aiOutput: fallback.aiOutput, debug: fallback.debug };
       }
 
-      if (result.events.length > 0) {
+      // Don't persist start-conversation events (ephemeral)
+      const persistEvents = result.events.filter((e) => e.type !== "start-conversation");
+      if (persistEvents.length > 0) {
         appendEventLog(input.gameId, {
           command: trimmed,
-          events: result.events,
+          events: persistEvents,
           timestamp: new Date().toISOString(),
         });
+      }
+
+      // Check if a start-conversation event was emitted
+      const convStart = checkForConversationStart(game, {
+        events: result.events,
+        gameId: input.gameId,
+      });
+      if (convStart) {
+        return {
+          output: convStart.output,
+          conversationMode: convStart.conversationMode,
+          debug: result.debug,
+        };
       }
 
       return { output: result.output, debug: result.debug };

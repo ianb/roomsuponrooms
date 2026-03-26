@@ -23,6 +23,37 @@ export interface GameData {
   properties?: PropertyData[];
   entities: EntityData[];
   handlers?: HandlerData[];
+  /** NPC conversation data, keyed by entity ID */
+  conversations?: Record<string, ConversationFileData>;
+}
+
+/** Conversation data as loaded from a game file */
+export interface ConversationFileData {
+  npcId: string;
+  words: WordEntryData[];
+}
+
+/** Word entry as stored in game data files */
+export interface WordEntryData {
+  word: string;
+  aliases?: string[];
+  conditions?: {
+    context?: string;
+    first?: boolean;
+    properties?: Record<string, unknown>;
+  };
+  narration: string;
+  response: string;
+  effects?: Array<{
+    type: "set-property" | "move" | "close-conversation";
+    entityId?: string;
+    property?: string;
+    value?: unknown;
+    from?: string;
+    description?: string;
+  }>;
+  highlights?: string[];
+  perform?: string;
 }
 
 /** Property definition in data format (mirrors PropertyDefinition) */
