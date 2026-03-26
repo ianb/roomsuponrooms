@@ -21,7 +21,13 @@ function ensureDataDir(): void {
 
 export function saveAiEntity(record: AiEntityRecord): void {
   ensureDataDir();
-  appendFileSync(entityFilePath(record.gameId), JSON.stringify(record) + "\n");
+  // Convert undefined values to null so they survive JSON serialization
+  const props: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record.properties)) {
+    props[key] = value === undefined ? null : value;
+  }
+  const saved = { ...record, properties: props };
+  appendFileSync(entityFilePath(record.gameId), JSON.stringify(saved) + "\n");
 }
 
 /** Get the set of AI-created entity IDs for a game */
@@ -61,7 +67,11 @@ export function loadAiEntities(gameId: string, store: EntityStore): void {
     if (store.has(record.id)) {
       // Entity already exists (e.g., a pre-existing exit) — apply property overrides
       for (const [key, value] of Object.entries(record.properties)) {
-        store.setProperty(record.id, { name: key, value });
+        if (value === null) {
+          store.removeProperty(record.id, key);
+        } else {
+          store.setProperty(record.id, { name: key, value });
+        }
       }
     } else {
       store.create(record.id, {
