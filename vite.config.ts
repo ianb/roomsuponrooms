@@ -13,6 +13,7 @@ export default defineConfig({
     proxy: {
       "/trpc": "http://localhost:3001",
       "/api": "http://localhost:3001",
+      "/auth": "http://localhost:3001",
     },
   },
 });

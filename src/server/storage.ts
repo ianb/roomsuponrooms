@@ -25,7 +25,24 @@ export interface EventLogEntry {
 export interface WordEntryRecord extends WordEntry {
   createdAt: string;
   gameId: string;
+  userId: string;
   npcId: string;
+}
+
+/** Identifies a user's session within a game */
+export interface SessionKey {
+  gameId: string;
+  userId: string;
+}
+
+/** A stored user record */
+export interface UserRecord {
+  id: string;
+  displayName: string;
+  email: string | null;
+  googleId: string | null;
+  createdAt: string;
+  lastLoginAt: string;
 }
 
 /**
@@ -48,13 +65,20 @@ export interface RuntimeStorage {
   listHandlers(gameId: string): Promise<AiHandlerRecord[]>;
   removeHandler(gameId: string, name: string): Promise<boolean>;
 
-  // --- Event Log ---
-  loadEvents(gameId: string): Promise<EventLogEntry[]>;
-  appendEvent(gameId: string, entry: EventLogEntry): Promise<void>;
-  clearEvents(gameId: string): Promise<void>;
-  popEvent(gameId: string): Promise<EventLogEntry | null>;
+  // --- Event Log (per-user) ---
+  loadEvents(session: SessionKey): Promise<EventLogEntry[]>;
+  appendEvent(session: SessionKey, entry: EventLogEntry): Promise<void>;
+  clearEvents(session: SessionKey): Promise<void>;
+  popEvent(session: SessionKey): Promise<EventLogEntry | null>;
 
-  // --- Conversations ---
-  loadConversationEntries(gameId: string, npcId: string): Promise<WordEntryRecord[]>;
+  // --- Conversations (per-user) ---
+  loadConversationEntries(session: SessionKey, npcId: string): Promise<WordEntryRecord[]>;
   saveWordEntry(record: WordEntryRecord): Promise<void>;
+
+  // --- Users ---
+  findUserByGoogleId(googleId: string): Promise<UserRecord | null>;
+  findUserById(id: string): Promise<UserRecord | null>;
+  findUserByName(name: string): Promise<UserRecord | null>;
+  createUser(record: UserRecord): Promise<void>;
+  updateLastLogin(userId: string): Promise<void>;
 }

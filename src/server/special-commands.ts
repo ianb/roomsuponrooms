@@ -2,6 +2,7 @@ import type { EntityStore } from "../core/index.js";
 import { describeRoomFull } from "../core/index.js";
 import type { GameInstance } from "../games/registry.js";
 import { getStorage } from "./storage-instance.js";
+import type { SessionKey } from "./storage.js";
 import { isRoomLit, darknessDescription } from "../core/darkness.js";
 import {
   handleAiCreateExitCommand,
@@ -36,21 +37,21 @@ export function handleSpecialCommand(
   trimmed: string,
   {
     game,
-    gameId,
+    session,
     opts,
     reinitGame,
   }: {
     game: GameInstance;
-    gameId: string;
+    session: SessionKey;
     opts: CommandOpts;
-    reinitGame?: (slug: string) => Promise<GameInstance>;
+    reinitGame?: (session: SessionKey) => Promise<GameInstance>;
   },
 ): CommandReturn | null {
   if (trimmed === "/undo" && reinitGame) {
     const doUndo = async () => {
-      const popped = await getStorage().popEvent(gameId);
+      const popped = await getStorage().popEvent(session);
       if (!popped) return { output: "Nothing to undo.", debug: undefined };
-      const rebuilt = await reinitGame(gameId);
+      const rebuilt = await reinitGame(session);
       return { output: "[Undone]\n\n" + describeCurrentRoom(rebuilt.store), debug: undefined };
     };
     return doUndo();
@@ -58,8 +59,8 @@ export function handleSpecialCommand(
 
   if (trimmed === "/reset" && reinitGame) {
     const doReset = async () => {
-      await getStorage().clearEvents(gameId);
-      const rebuilt = await reinitGame(gameId);
+      await getStorage().clearEvents(session);
+      const rebuilt = await reinitGame(session);
       return { output: "[Reset]\n\n" + describeCurrentRoom(rebuilt.store), debug: undefined };
     };
     return doReset();
@@ -97,19 +98,29 @@ export function handleSpecialCommand(
   if (trimmed.startsWith("ai destroy verb confirm ")) {
     const name = trimmed.slice("ai destroy verb confirm ".length).trim();
     if (!name) return { output: "Usage: ai destroy verb confirm <name>", debug: undefined };
-    return handleAiDestroyVerbCommand({ search: name, confirm: true, gameId, verbs: game.verbs });
+    return handleAiDestroyVerbCommand({
+      search: name,
+      confirm: true,
+      gameId: session.gameId,
+      verbs: game.verbs,
+    });
   }
 
   if (trimmed.startsWith("ai destroy verb ")) {
     const search = trimmed.slice("ai destroy verb ".length).trim();
     if (!search) return { output: "Usage: ai destroy verb <search>", debug: undefined };
-    return handleAiDestroyVerbCommand({ search, confirm: false, gameId, verbs: game.verbs });
+    return handleAiDestroyVerbCommand({
+      search,
+      confirm: false,
+      gameId: session.gameId,
+      verbs: game.verbs,
+    });
   }
 
   if (trimmed.startsWith("ai destroy ")) {
     const objectName = trimmed.slice("ai destroy ".length).trim().toLowerCase();
     if (!objectName) return { output: "Usage: ai destroy <object>", debug: undefined };
-    return handleAiDestroyCommand(game.store, { objectName, gameId });
+    return handleAiDestroyCommand(game.store, { objectName, gameId: session.gameId });
   }
 
   return null;

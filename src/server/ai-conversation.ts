@@ -6,6 +6,7 @@ import type { GamePrompts } from "../core/game-data.js";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
 import { composeConversationPrompt } from "./ai-prompts.js";
 import { getStorage } from "./storage-instance.js";
+import type { SessionKey } from "./storage.js";
 
 /** Max word entries before a conversation auto-closes to AI expansion */
 export const MAX_CONVERSATION_WORDS = 30;
@@ -133,7 +134,7 @@ export async function handleAiConversationFallback(
     room,
     state,
     existingWords,
-    gameId,
+    session,
     prompts,
   }: {
     word: string;
@@ -141,7 +142,7 @@ export async function handleAiConversationFallback(
     room: Entity;
     state: ConversationState;
     existingWords: WordEntry[];
-    gameId: string;
+    session: SessionKey;
     prompts?: GamePrompts;
   },
 ): Promise<AiConversationResult> {
@@ -178,7 +179,8 @@ export async function handleAiConversationFallback(
   await getStorage().saveWordEntry({
     ...entry,
     createdAt: new Date().toISOString(),
-    gameId,
+    gameId: session.gameId,
+    userId: session.userId,
     npcId: npc.id,
   });
 

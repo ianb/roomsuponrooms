@@ -8,13 +8,22 @@ interface StreamEvent {
   error?: string;
 }
 
+export interface AuthenticatedUser {
+  userId: string;
+  userName: string;
+}
+
 /**
  * Handle a command request with streaming status updates.
  * Sends NDJSON: {"phase":"ai"} when AI starts, {"phase":"done","result":{...}} when complete.
  */
-export async function handleCommandStream(request: Request): Promise<Response> {
+export async function handleCommandStream(
+  request: Request,
+  user: AuthenticatedUser,
+): Promise<Response> {
   const body = (await request.json()) as { gameId: string; text: string; debug?: boolean };
   const { gameId, text, debug } = body;
+  const session = { gameId, userId: user.userId };
 
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
@@ -26,12 +35,12 @@ export async function handleCommandStream(request: Request): Promise<Response> {
 
   const commandPromise = (async () => {
     try {
-      const game = await getOrCreateGame(gameId);
+      const game = await getOrCreateGame(session);
       const result = await executeCommand(
-        { gameId, text, debug },
+        { gameId, userId: user.userId, text, debug },
         {
           game,
-          reinitGame,
+          reinitGame: (s) => reinitGame(s),
           onAiStart() {
             send({ phase: "ai" });
           },

@@ -5,7 +5,7 @@ import type { UnresolvedExitContext } from "../core/movement.js";
 import type { VerbRegistry, ResolvedCommand } from "../core/verbs.js";
 import type { WorldEvent } from "../core/verb-types.js";
 import { getStorage } from "./storage-instance.js";
-import type { EventLogEntry } from "./storage.js";
+import type { EventLogEntry, SessionKey } from "./storage.js";
 import type { HandlerLib } from "../core/handler-lib.js";
 import { describeRoomFull } from "../core/describe.js";
 import { isRoomLit, darknessDescription } from "../core/darkness.js";
@@ -193,12 +193,12 @@ export async function handleUnresolvedExit(
   store: EntityStore,
   {
     context,
-    gameId,
+    session,
     prompts,
     debug,
   }: {
     context: UnresolvedExitContext;
-    gameId: string;
+    session: SessionKey;
     prompts?: GamePrompts;
     debug?: boolean;
   },
@@ -206,7 +206,7 @@ export async function handleUnresolvedExit(
   const result = await handleAiCreateRoom(store, {
     exit: context.exit,
     sourceRoom: context.room,
-    gameId,
+    gameId: session.gameId,
     prompts,
     debug,
   });
@@ -226,7 +226,7 @@ export async function handleUnresolvedExit(
     events: [moveEvent],
     timestamp: new Date().toISOString(),
   };
-  await getStorage().appendEvent(gameId, entry);
+  await getStorage().appendEvent(session, entry);
 
   const roomDesc = describeCurrentRoom(store);
   return {

@@ -1,7 +1,7 @@
 import { processCommand } from "../core/index.js";
 import type { GameInstance } from "../games/registry.js";
 import { getStorage } from "./storage-instance.js";
-import type { EventLogEntry } from "./storage.js";
+import type { EventLogEntry, SessionKey } from "./storage.js";
 import { handleUnresolvedExit, handleVerbFallbackCommand } from "./ai-commands.js";
 import { handleConversationWord, checkForConversationStart } from "./conversation-commands.js";
 import { handleSceneryCheck } from "./scenery-commands.js";
@@ -9,6 +9,7 @@ import { handleSpecialCommand } from "./special-commands.js";
 
 export interface CommandInput {
   gameId: string;
+  userId: string;
   text: string;
   debug?: boolean;
 }
@@ -22,7 +23,7 @@ export interface CommandResult {
 
 interface ExecuteOptions {
   game: GameInstance;
-  reinitGame: (slug: string) => Promise<GameInstance>;
+  reinitGame: (session: SessionKey) => Promise<GameInstance>;
   onAiStart?: () => void;
 }
 
@@ -31,13 +32,14 @@ export async function executeCommand(
   { game, reinitGame, onAiStart }: ExecuteOptions,
 ): Promise<CommandResult> {
   const trimmed = input.text.trim();
-  const opts = { gameId: input.gameId, prompts: game.prompts, debug: input.debug };
+  const session: SessionKey = { gameId: input.gameId, userId: input.userId };
+  const opts = { gameId: input.gameId, session, prompts: game.prompts, debug: input.debug };
 
   // Conversation mode: route single-word input to conversation engine
   if (game.conversationState) {
     const convResult = await handleConversationWord(game, {
       word: trimmed,
-      gameId: input.gameId,
+      session,
     });
     return {
       output: convResult.output,
@@ -46,7 +48,7 @@ export async function executeCommand(
     };
   }
 
-  const special = handleSpecialCommand(trimmed, { game, gameId: input.gameId, opts, reinitGame });
+  const special = handleSpecialCommand(trimmed, { game, session, opts, reinitGame });
   if (special) return await special;
 
   // Extract [bracketed instructions] for AI guidance
@@ -101,7 +103,7 @@ export async function executeCommand(
         events: fallback.events,
         timestamp: new Date().toISOString(),
       };
-      await getStorage().appendEvent(input.gameId, entry);
+      await getStorage().appendEvent(session, entry);
     }
     return { output: fallback.output, aiOutput: fallback.aiOutput, debug: fallback.debug };
   }
@@ -114,13 +116,13 @@ export async function executeCommand(
       events: persistEvents,
       timestamp: new Date().toISOString(),
     };
-    await getStorage().appendEvent(input.gameId, entry);
+    await getStorage().appendEvent(session, entry);
   }
 
   // Check if a start-conversation event was emitted
   const convStart = await checkForConversationStart(game, {
     events: result.events,
-    gameId: input.gameId,
+    session,
   });
   if (convStart) {
     return {

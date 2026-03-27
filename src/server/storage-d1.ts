@@ -4,6 +4,8 @@ import type {
   AiHandlerRecord,
   EventLogEntry,
   WordEntryRecord,
+  UserRecord,
+  SessionKey,
 } from "./storage.js";
 
 /**
@@ -32,44 +34,6 @@ interface D1ExecResult {
   count: number;
 }
 
-/** SQL to create the D1 tables */
-export const D1_SCHEMA = `
-CREATE TABLE IF NOT EXISTS ai_entities (
-  game_id TEXT NOT NULL,
-  id TEXT NOT NULL,
-  tags TEXT NOT NULL,
-  properties TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (game_id, id)
-);
-
-CREATE TABLE IF NOT EXISTS ai_handlers (
-  game_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  data TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (game_id, name)
-);
-
-CREATE TABLE IF NOT EXISTS events (
-  game_id TEXT NOT NULL,
-  seq INTEGER NOT NULL,
-  command TEXT NOT NULL,
-  events TEXT NOT NULL,
-  timestamp TEXT NOT NULL,
-  PRIMARY KEY (game_id, seq)
-);
-
-CREATE TABLE IF NOT EXISTS conversation_entries (
-  game_id TEXT NOT NULL,
-  npc_id TEXT NOT NULL,
-  word TEXT NOT NULL,
-  entry TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (game_id, npc_id, word)
-);
-`;
-
 interface EntityRow {
   game_id: string;
   id: string;
@@ -87,6 +51,7 @@ interface HandlerRow {
 
 interface EventRow {
   game_id: string;
+  user_id: string;
   seq: number;
   command: string;
   events: string;
@@ -95,10 +60,31 @@ interface EventRow {
 
 interface ConversationRow {
   game_id: string;
+  user_id: string;
   npc_id: string;
   word: string;
   entry: string;
   created_at: string;
+}
+
+interface UserRow {
+  id: string;
+  display_name: string;
+  email: string | null;
+  google_id: string | null;
+  created_at: string;
+  last_login_at: string;
+}
+
+function userRowToRecord(row: UserRow): UserRecord {
+  return {
+    id: row.id,
+    displayName: row.display_name,
+    email: row.email,
+    googleId: row.google_id,
+    createdAt: row.created_at,
+    lastLoginAt: row.last_login_at,
+  };
 }
 
 export class D1Storage implements RuntimeStorage {
@@ -195,12 +181,12 @@ export class D1Storage implements RuntimeStorage {
     return (result as unknown as { changes: number }).changes > 0;
   }
 
-  // --- Event Log ---
+  // --- Event Log (per-user) ---
 
-  async loadEvents(gameId: string): Promise<EventLogEntry[]> {
+  async loadEvents(session: SessionKey): Promise<EventLogEntry[]> {
     const result = await this.db
-      .prepare("SELECT * FROM events WHERE game_id = ? ORDER BY seq")
-      .bind(gameId)
+      .prepare("SELECT * FROM events WHERE game_id = ? AND user_id = ? ORDER BY seq")
+      .bind(session.gameId, session.userId)
       .all<EventRow>();
     return result.results.map((row) => ({
       command: row.command,
@@ -209,34 +195,46 @@ export class D1Storage implements RuntimeStorage {
     }));
   }
 
-  async appendEvent(gameId: string, entry: EventLogEntry): Promise<void> {
+  async appendEvent(session: SessionKey, entry: EventLogEntry): Promise<void> {
     const maxSeq = await this.db
-      .prepare("SELECT COALESCE(MAX(seq), 0) as max_seq FROM events WHERE game_id = ?")
-      .bind(gameId)
+      .prepare(
+        "SELECT COALESCE(MAX(seq), 0) as max_seq FROM events WHERE game_id = ? AND user_id = ?",
+      )
+      .bind(session.gameId, session.userId)
       .first<number>("max_seq");
     const nextSeq = (maxSeq || 0) + 1;
     await this.db
       .prepare(
-        `INSERT INTO events (game_id, seq, command, events, timestamp)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO events (game_id, user_id, seq, command, events, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .bind(gameId, nextSeq, entry.command, JSON.stringify(entry.events), entry.timestamp)
+      .bind(
+        session.gameId,
+        session.userId,
+        nextSeq,
+        entry.command,
+        JSON.stringify(entry.events),
+        entry.timestamp,
+      )
       .run();
   }
 
-  async clearEvents(gameId: string): Promise<void> {
-    await this.db.prepare("DELETE FROM events WHERE game_id = ?").bind(gameId).run();
+  async clearEvents(session: SessionKey): Promise<void> {
+    await this.db
+      .prepare("DELETE FROM events WHERE game_id = ? AND user_id = ?")
+      .bind(session.gameId, session.userId)
+      .run();
   }
 
-  async popEvent(gameId: string): Promise<EventLogEntry | null> {
+  async popEvent(session: SessionKey): Promise<EventLogEntry | null> {
     const row = await this.db
-      .prepare("SELECT * FROM events WHERE game_id = ? ORDER BY seq DESC LIMIT 1")
-      .bind(gameId)
+      .prepare("SELECT * FROM events WHERE game_id = ? AND user_id = ? ORDER BY seq DESC LIMIT 1")
+      .bind(session.gameId, session.userId)
       .first<EventRow>();
     if (!row) return null;
     await this.db
-      .prepare("DELETE FROM events WHERE game_id = ? AND seq = ?")
-      .bind(gameId, row.seq)
+      .prepare("DELETE FROM events WHERE game_id = ? AND user_id = ? AND seq = ?")
+      .bind(session.gameId, session.userId, row.seq)
       .run();
     return {
       command: row.command,
@@ -245,28 +243,88 @@ export class D1Storage implements RuntimeStorage {
     };
   }
 
-  // --- Conversations ---
+  // --- Conversations (per-user) ---
 
-  async loadConversationEntries(gameId: string, npcId: string): Promise<WordEntryRecord[]> {
+  async loadConversationEntries(session: SessionKey, npcId: string): Promise<WordEntryRecord[]> {
     const result = await this.db
       .prepare(
-        "SELECT * FROM conversation_entries WHERE game_id = ? AND npc_id = ? ORDER BY created_at",
+        "SELECT * FROM conversation_entries WHERE game_id = ? AND user_id = ? AND npc_id = ? ORDER BY created_at",
       )
-      .bind(gameId, npcId)
+      .bind(session.gameId, session.userId, npcId)
       .all<ConversationRow>();
     return result.results.map((row) => {
       const entry = JSON.parse(row.entry) as WordEntryRecord;
-      return { ...entry, createdAt: row.created_at, gameId: row.game_id, npcId: row.npc_id };
+      return {
+        ...entry,
+        createdAt: row.created_at,
+        gameId: row.game_id,
+        userId: row.user_id,
+        npcId: row.npc_id,
+      };
     });
   }
 
   async saveWordEntry(record: WordEntryRecord): Promise<void> {
     await this.db
       .prepare(
-        `INSERT OR REPLACE INTO conversation_entries (game_id, npc_id, word, entry, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO conversation_entries (game_id, user_id, npc_id, word, entry, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .bind(record.gameId, record.npcId, record.word, JSON.stringify(record), record.createdAt)
+      .bind(
+        record.gameId,
+        record.userId,
+        record.npcId,
+        record.word,
+        JSON.stringify(record),
+        record.createdAt,
+      )
+      .run();
+  }
+
+  // --- Users ---
+
+  async findUserByGoogleId(googleId: string): Promise<UserRecord | null> {
+    const row = await this.db
+      .prepare("SELECT * FROM users WHERE google_id = ?")
+      .bind(googleId)
+      .first<UserRow>();
+    return row ? userRowToRecord(row) : null;
+  }
+
+  async findUserById(id: string): Promise<UserRecord | null> {
+    const row = await this.db.prepare("SELECT * FROM users WHERE id = ?").bind(id).first<UserRow>();
+    return row ? userRowToRecord(row) : null;
+  }
+
+  async findUserByName(name: string): Promise<UserRecord | null> {
+    const row = await this.db
+      .prepare("SELECT * FROM users WHERE display_name = ?")
+      .bind(name)
+      .first<UserRow>();
+    return row ? userRowToRecord(row) : null;
+  }
+
+  async createUser(record: UserRecord): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO users (id, display_name, email, google_id, created_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        record.id,
+        record.displayName,
+        record.email,
+        record.googleId,
+        record.createdAt,
+        record.lastLoginAt,
+      )
+      .run();
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    await this.db
+      .prepare("UPDATE users SET last_login_at = ? WHERE id = ?")
+      .bind(new Date().toISOString(), userId)
       .run();
   }
 }

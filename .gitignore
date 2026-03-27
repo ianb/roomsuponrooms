@@ -4,6 +4,7 @@ dist/
 .thinking/local/
 .tap/
 .env
+client_secret_*.json
 data/
 generated/
 .wrangler/

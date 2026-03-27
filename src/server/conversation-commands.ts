@@ -8,7 +8,7 @@ import {
 import type { ConversationResult, WordEntry } from "../core/conversation.js";
 import { evaluateWordPerform, applyConversationEffects } from "../core/conversation-eval.js";
 import { getStorage } from "./storage-instance.js";
-import type { EventLogEntry } from "./storage.js";
+import type { EventLogEntry, SessionKey } from "./storage.js";
 import { handleAiConversationFallback, MAX_CONVERSATION_WORDS } from "./ai-conversation.js";
 
 interface ConversationResponse {
@@ -19,11 +19,11 @@ interface ConversationResponse {
 
 /** Load conversation data for an NPC, merging initial game data with stored entries */
 async function loadConversationData(
-  gameId: string,
+  session: SessionKey,
   { npcId, initial }: { npcId: string; initial: { words: WordEntry[]; closed?: boolean } | null },
 ): Promise<{ words: WordEntry[]; closed?: boolean }> {
   const words: WordEntry[] = initial ? [...initial.words] : [];
-  const stored = await getStorage().loadConversationEntries(gameId, npcId);
+  const stored = await getStorage().loadConversationEntries(session, npcId);
   words.push(...stored);
   return { words, closed: initial ? initial.closed : undefined };
 }
@@ -31,13 +31,13 @@ async function loadConversationData(
 /** Handle "talk to [npc]" — start a conversation */
 export async function handleTalkTo(
   game: GameInstance,
-  { npcId, gameId }: { npcId: string; gameId: string },
+  { npcId, session }: { npcId: string; session: SessionKey },
 ): Promise<ConversationResponse> {
   const npc = game.store.get(npcId);
   const npcName = (npc.properties["name"] as string) || npc.id;
 
   const initial = (game.conversations && game.conversations[npcId]) || null;
-  const data = await loadConversationData(gameId, { npcId, initial });
+  const data = await loadConversationData(session, { npcId, initial });
 
   if (data.words.length === 0) {
     return {
@@ -62,7 +62,7 @@ export async function handleTalkTo(
         events,
         timestamp: new Date().toISOString(),
       };
-      await getStorage().appendEvent(gameId, entry);
+      await getStorage().appendEvent(session, entry);
     }
   }
 
@@ -75,14 +75,14 @@ export async function handleTalkTo(
 /** Check command result events for a start-conversation event */
 export async function checkForConversationStart(
   game: GameInstance,
-  { events, gameId }: { events: Array<{ type: string; entityId: string }>; gameId: string },
+  { events, session }: { events: Array<{ type: string; entityId: string }>; session: SessionKey },
 ): Promise<{
   output: string;
   conversationMode: { npcName: string; knownWords: string[] } | null;
 } | null> {
   const startEvent = events.find((e) => e.type === "start-conversation");
   if (!startEvent) return null;
-  const result = await handleTalkTo(game, { npcId: startEvent.entityId, gameId });
+  const result = await handleTalkTo(game, { npcId: startEvent.entityId, session });
   return {
     output: result.output,
     conversationMode: result.conversationMode || null,
@@ -92,7 +92,7 @@ export async function checkForConversationStart(
 /** Handle a single word during an active conversation */
 export async function handleConversationWord(
   game: GameInstance,
-  { word, gameId }: { word: string; gameId: string },
+  { word, session }: { word: string; session: SessionKey },
 ): Promise<ConversationResponse> {
   const state = game.conversationState;
   if (!state) {
@@ -102,7 +102,7 @@ export async function handleConversationWord(
   const npc = game.store.get(state.npcId);
   const npcName = (npc.properties["name"] as string) || npc.id;
   const initial = (game.conversations && game.conversations[state.npcId]) || null;
-  const data = await loadConversationData(gameId, { npcId: state.npcId, initial });
+  const data = await loadConversationData(session, { npcId: state.npcId, initial });
 
   let result: ConversationResult;
   try {
@@ -112,7 +112,7 @@ export async function handleConversationWord(
       return handleUnknownWord(game, {
         word: err.word,
         npcName,
-        gameId,
+        session,
         data,
       });
     }
@@ -134,7 +134,7 @@ export async function handleConversationWord(
         events,
         timestamp: new Date().toISOString(),
       };
-      await getStorage().appendEvent(gameId, entry);
+      await getStorage().appendEvent(session, entry);
     }
   }
 
@@ -157,12 +157,12 @@ async function handleUnknownWord(
   {
     word,
     npcName,
-    gameId,
+    session,
     data,
   }: {
     word: string;
     npcName: string;
-    gameId: string;
+    session: SessionKey;
     data: { words: WordEntry[]; closed?: boolean };
   },
 ): Promise<ConversationResponse> {
@@ -204,7 +204,7 @@ async function handleUnknownWord(
     room,
     state,
     existingWords: data.words,
-    gameId,
+    session,
     prompts: game.prompts,
   });
 

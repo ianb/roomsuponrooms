@@ -6,6 +6,8 @@ import type {
   AiHandlerRecord,
   EventLogEntry,
   WordEntryRecord,
+  UserRecord,
+  SessionKey,
 } from "./storage.js";
 
 function ensureDir(filePath: string): void {
@@ -97,28 +99,30 @@ export class FileStorage implements RuntimeStorage {
     return true;
   }
 
-  // --- Event Log ---
+  // --- Event Log (per-user) ---
 
-  async loadEvents(gameId: string): Promise<EventLogEntry[]> {
-    return readJsonl<EventLogEntry>(this.path(`event-log-${gameId}.jsonl`));
+  async loadEvents(session: SessionKey): Promise<EventLogEntry[]> {
+    return readJsonl<EventLogEntry>(
+      this.path(`event-log-${session.gameId}-${session.userId}.jsonl`),
+    );
   }
 
-  async appendEvent(gameId: string, entry: EventLogEntry): Promise<void> {
-    appendJsonl(this.path(`event-log-${gameId}.jsonl`), entry);
+  async appendEvent(session: SessionKey, entry: EventLogEntry): Promise<void> {
+    appendJsonl(this.path(`event-log-${session.gameId}-${session.userId}.jsonl`), entry);
   }
 
-  async clearEvents(gameId: string): Promise<void> {
-    const filePath = this.path(`event-log-${gameId}.jsonl`);
+  async clearEvents(session: SessionKey): Promise<void> {
+    const filePath = this.path(`event-log-${session.gameId}-${session.userId}.jsonl`);
     if (existsSync(filePath)) {
       writeFileSync(filePath, "");
     }
   }
 
-  async popEvent(gameId: string): Promise<EventLogEntry | null> {
-    const entries = await this.loadEvents(gameId);
+  async popEvent(session: SessionKey): Promise<EventLogEntry | null> {
+    const entries = await this.loadEvents(session);
     if (entries.length === 0) return null;
     const popped = entries.pop()!;
-    const filePath = this.path(`event-log-${gameId}.jsonl`);
+    const filePath = this.path(`event-log-${session.gameId}-${session.userId}.jsonl`);
     ensureDir(filePath);
     if (entries.length === 0) {
       writeFileSync(filePath, "");
@@ -128,15 +132,52 @@ export class FileStorage implements RuntimeStorage {
     return popped;
   }
 
-  // --- Conversations ---
+  // --- Conversations (per-user) ---
 
-  async loadConversationEntries(gameId: string, npcId: string): Promise<WordEntryRecord[]> {
+  async loadConversationEntries(session: SessionKey, npcId: string): Promise<WordEntryRecord[]> {
     const safeId = npcId.replace(/:/g, "_");
-    return readJsonl<WordEntryRecord>(this.path("npc", gameId, `${safeId}.jsonl`));
+    return readJsonl<WordEntryRecord>(
+      this.path("npc", session.gameId, session.userId, `${safeId}.jsonl`),
+    );
   }
 
   async saveWordEntry(record: WordEntryRecord): Promise<void> {
     const safeId = record.npcId.replace(/:/g, "_");
-    appendJsonl(this.path("npc", record.gameId, `${safeId}.jsonl`), record);
+    appendJsonl(this.path("npc", record.gameId, record.userId, `${safeId}.jsonl`), record);
+  }
+
+  // --- Users ---
+
+  async findUserByGoogleId(googleId: string): Promise<UserRecord | null> {
+    const users = readJsonl<UserRecord>(this.path("users.jsonl"));
+    return users.find((u) => u.googleId === googleId) || null;
+  }
+
+  async findUserById(id: string): Promise<UserRecord | null> {
+    const users = readJsonl<UserRecord>(this.path("users.jsonl"));
+    return users.find((u) => u.id === id) || null;
+  }
+
+  async findUserByName(name: string): Promise<UserRecord | null> {
+    const users = readJsonl<UserRecord>(this.path("users.jsonl"));
+    return users.find((u) => u.displayName === name) || null;
+  }
+
+  async createUser(record: UserRecord): Promise<void> {
+    appendJsonl(this.path("users.jsonl"), record);
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    const filePath = this.path("users.jsonl");
+    if (!existsSync(filePath)) return;
+    const lines = readFileSync(filePath, "utf-8").trim().split("\n");
+    const updated = lines.map((line) => {
+      const record = JSON.parse(line) as UserRecord;
+      if (record.id === userId) {
+        return JSON.stringify({ ...record, lastLoginAt: new Date().toISOString() });
+      }
+      return line;
+    });
+    writeFileSync(filePath, updated.join("\n") + "\n");
   }
 }

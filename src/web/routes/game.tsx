@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { createRoute } from "@tanstack/react-router";
+import { useState, useContext } from "react";
+import { createRoute, Navigate } from "@tanstack/react-router";
 import { rootRoute } from "./__root.js";
 import { WorldShell } from "../WorldShell.js";
 import { EntityViewer } from "../EntityViewer.js";
 import { PromptViewer } from "../PromptViewer.js";
 import { useStickyState } from "../use-sticky-state.js";
+import { AuthContext } from "../auth.js";
 
 export const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -15,11 +16,16 @@ export const gameRoute = createRoute({
 type SidebarTab = "entities" | "prompts";
 
 function GamePage() {
+  const auth = useContext(AuthContext);
   const { gameId } = gameRoute.useParams();
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [sidebarTab, setSidebarTab] = useStickyState<SidebarTab>("extenso:sidebarTab", "entities");
   const [sidebarExpanded, setSidebarExpanded] = useStickyState("extenso:sidebarExpanded", false);
+
+  if (!auth.loading && !auth.user) {
+    return <Navigate to="/" />;
+  }
 
   function handleCommandComplete(): void {
     setRevision((r) => r + 1);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure } from "./trpc.js";
+import { router, publicProcedure, authedProcedure } from "./trpc.js";
 import { describeRoomFull } from "../core/index.js";
 import type { EntityStore } from "../core/index.js";
 import { recordToHandler } from "./handler-convert.js";
@@ -9,10 +9,12 @@ import { composeVerbPrompt, composeCreatePrompt } from "./ai-prompts.js";
 import type { GameInstance } from "../games/registry.js";
 import { getGame, listGames, isValidGameId } from "../games/registry.js";
 import { executeCommand } from "./execute-command.js";
+import type { SessionKey } from "./storage.js";
 
 // Game registrations are imported by the entry point (server/index.ts or worker.ts)
 // NOT here, so the router can be used with either fs-based or bundled game data.
 
+/** Cache key is "gameSlug:userId" */
 const activeGames: Map<string, GameInstance> = new Map();
 
 class GameNotFoundError extends Error {
@@ -45,38 +47,45 @@ function applyAiEntities(
   }
 }
 
-/** Create a fresh game instance, load AI entities, replay event log, load AI handlers */
-async function initGame(slug: string): Promise<GameInstance> {
-  const def = getGame(slug);
-  if (!def) throw new GameNotFoundError(slug);
+/** Create a fresh game instance for a specific user */
+async function initGame(session: SessionKey): Promise<GameInstance> {
+  const def = getGame(session.gameId);
+  if (!def) throw new GameNotFoundError(session.gameId);
   const instance = def.create();
   const storage = getStorage();
-  const aiEntities = await storage.loadAiEntities(slug);
+  // AI entities and handlers are shared across all users
+  const aiEntities = await storage.loadAiEntities(session.gameId);
   applyAiEntities(aiEntities, instance.store);
   instance.store.snapshot();
-  const events = await storage.loadEvents(slug);
+  // Events are per-user
+  const events = await storage.loadEvents(session);
   for (const entry of events) {
     applyEvents(instance.store, entry.events);
   }
-  const handlerRecords = await storage.loadAiHandlers(slug);
+  const handlerRecords = await storage.loadAiHandlers(session.gameId);
   for (const record of handlerRecords) {
     instance.verbs.register(recordToHandler(record));
   }
   return instance;
 }
 
-export async function getOrCreateGame(slug: string): Promise<GameInstance> {
-  const existing = activeGames.get(slug);
+function cacheKey(session: SessionKey): string {
+  return `${session.gameId}:${session.userId}`;
+}
+
+export async function getOrCreateGame(session: SessionKey): Promise<GameInstance> {
+  const key = cacheKey(session);
+  const existing = activeGames.get(key);
   if (existing) return existing;
-  const instance = await initGame(slug);
-  activeGames.set(slug, instance);
+  const instance = await initGame(session);
+  activeGames.set(key, instance);
   return instance;
 }
 
-/** Reinitialize a game and update the active games map */
-export async function reinitGame(slug: string): Promise<GameInstance> {
-  const instance = await initGame(slug);
-  activeGames.set(slug, instance);
+/** Reinitialize a game for a user and update the cache */
+export async function reinitGame(session: SessionKey): Promise<GameInstance> {
+  const instance = await initGame(session);
+  activeGames.set(cacheKey(session), instance);
   return instance;
 }
 
@@ -101,17 +110,22 @@ export const appRouter = router({
     }));
   }),
 
-  look: publicProcedure.input(gameInput).query(async ({ input }) => {
-    const game = await getOrCreateGame(input.gameId);
+  look: authedProcedure.input(gameInput).query(async ({ input, ctx }) => {
+    const session = { gameId: input.gameId, userId: ctx.userId };
+    const game = await getOrCreateGame(session);
     return { output: describeCurrentRoom(game.store) };
   }),
 
-  command: publicProcedure
+  command: authedProcedure
     .input(z.object({ gameId: validGameId, text: z.string(), debug: z.boolean().optional() }))
-    .mutation(async ({ input }) => {
-      const game = await getOrCreateGame(input.gameId);
+    .mutation(async ({ input, ctx }) => {
+      const session = { gameId: input.gameId, userId: ctx.userId };
+      const game = await getOrCreateGame(session);
       try {
-        return await executeCommand(input, { game, reinitGame });
+        return await executeCommand(
+          { gameId: input.gameId, userId: ctx.userId, text: input.text, debug: input.debug },
+          { game, reinitGame: (s: SessionKey) => reinitGame(s) },
+        );
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.error("[command] Error:", err);
@@ -119,13 +133,15 @@ export const appRouter = router({
       }
     }),
 
-  reset: publicProcedure.input(gameInput).mutation(async ({ input }) => {
-    const instance = await reinitGame(input.gameId);
+  reset: authedProcedure.input(gameInput).mutation(async ({ input, ctx }) => {
+    const session = { gameId: input.gameId, userId: ctx.userId };
+    const instance = await reinitGame(session);
     return { output: describeCurrentRoom(instance.store) };
   }),
 
-  entities: publicProcedure.input(gameInput).query(async ({ input }) => {
-    const game = await getOrCreateGame(input.gameId);
+  entities: authedProcedure.input(gameInput).query(async ({ input, ctx }) => {
+    const session = { gameId: input.gameId, userId: ctx.userId };
+    const game = await getOrCreateGame(session);
     const ids = game.store.getAllIds();
     const players = game.store.findByTag("player");
     const playerRoomId = players[0] ? (players[0].properties["location"] as string) || null : null;
@@ -145,18 +161,20 @@ export const appRouter = router({
     return { items, playerRoomId };
   }),
 
-  entity: publicProcedure
+  entity: authedProcedure
     .input(z.object({ gameId: validGameId, id: z.string() }))
-    .query(async ({ input }) => {
-      const game = await getOrCreateGame(input.gameId);
+    .query(async ({ input, ctx }) => {
+      const session = { gameId: input.gameId, userId: ctx.userId };
+      const game = await getOrCreateGame(session);
       if (!game.store.has(input.id)) return null;
       const current = game.store.getSnapshot(input.id);
       const initial = game.store.getInitialState(input.id);
       return { current, initial };
     }),
 
-  prompts: publicProcedure.input(gameInput).query(async ({ input }) => {
-    const game = await getOrCreateGame(input.gameId);
+  prompts: authedProcedure.input(gameInput).query(async ({ input, ctx }) => {
+    const session = { gameId: input.gameId, userId: ctx.userId };
+    const game = await getOrCreateGame(session);
     const players = game.store.findByTag("player");
     const player = players[0];
     if (!player)
