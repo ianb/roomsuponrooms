@@ -4,7 +4,7 @@ import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { setStorage } from "./storage-instance.js";
 import { FileStorage } from "./storage-file.js";
 import { appRouter } from "./router.js";
-import { handleCommandStream } from "./command-stream.js";
+import { handleCommandStreamNode } from "./command-stream.js";
 import { handleAuthRoute } from "./auth/routes.js";
 import type { AuthEnv } from "./auth/routes.js";
 import { verifyJwt, parseCookie } from "./auth/jwt.js";
@@ -74,16 +74,14 @@ server.post("/api/command", async (req, reply) => {
     reply.status(401).send({ error: "Unauthorized" });
     return;
   }
-  const webRequest = new Request("http://localhost/api/command", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(req.body),
+  const body = req.body as { gameId: string; text: string; debug?: boolean };
+  reply.hijack();
+  reply.raw.writeHead(200, {
+    "Content-Type": "application/x-ndjson",
+    "Transfer-Encoding": "chunked",
+    "Cache-Control": "no-cache",
   });
-  const response = await handleCommandStream(webRequest, user);
-  reply.header("content-type", "application/x-ndjson");
-  reply.header("transfer-encoding", "chunked");
-  reply.header("cache-control", "no-cache");
-  reply.send(response.body);
+  await handleCommandStreamNode({ body, user }, reply.raw);
 });
 
 server.register(fastifyTRPCPlugin, {
