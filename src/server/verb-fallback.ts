@@ -235,7 +235,7 @@ export async function handleVerbFallback(
   const notes = response.notes || undefined;
 
   if (response.decision === "refuse") {
-    return { output: response.message, notes, events: [], handler, debug: debugInfo };
+    return { output: `{!${response.message}!}`, notes, events: [], handler, debug: debugInfo };
   }
 
   // Execute immediately for the current command
