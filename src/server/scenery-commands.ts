@@ -42,9 +42,9 @@ export async function handleSceneryCheck(
   if (!isExamineVerb(verb)) {
     const cached = getCachedScenery(room, objectName);
     if (cached) {
-      return { output: cached.rejection };
+      return { output: `{!${cached.rejection}!}` };
     }
-    return { output: `You can't do that with the ${objectName}.` };
+    return { output: `{!You can't do that with the ${objectName}.!}` };
   }
 
   // Examine: generate or return cached description

@@ -140,7 +140,7 @@ export function processCommand(
   const parsed = parseCommand(input);
   if (!parsed) {
     return {
-      output: `I don't understand "${input}". Type "help" for commands.`,
+      output: `{!I don't understand "${input}". Type "help" for commands.!}`,
       events: [],
       debug: debug ? { parse: input, outcome: "unparseable" } : undefined,
     };
@@ -210,7 +210,7 @@ export function processCommand(
   }
 
   return {
-    output: `I don't know how to "${input}". Type "help" for commands.`,
+    output: `{!I don't know how to "${input}". Type "help" for commands.!}`,
     events: [],
     debug: debug ? { parse: describeParsed(parsed), outcome: "unhandled" } : undefined,
     unhandled: { command: resolved, player, room },

@@ -94,7 +94,7 @@ function resolveObject(
     const names = result.matches.map((m) => (m.properties["name"] as string) || m.id);
     return `Which "${name}" do you mean? ${names.join(", ")}`;
   }
-  if (!result) return `You don't see "${name}" here.`;
+  if (!result) return `{!You don't see "${name}" here.!}`;
   return result;
 }
 

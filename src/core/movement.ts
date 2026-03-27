@@ -60,7 +60,7 @@ export function tryMovement(store: EntityStore, input: string): MovementResult |
   if (exit) {
     if (exit.properties["locked"] === true) {
       const exitName = (exit.properties["name"] as string) || "way";
-      return { output: `The ${exitName} is locked.`, direction, moved: false, events: [] };
+      return { output: `{!The ${exitName} is locked.!}`, direction, moved: false, events: [] };
     }
     // Check for unresolved exit (has intent but no destination)
     if (
@@ -122,7 +122,7 @@ export function tryMovement(store: EntityStore, input: string): MovementResult |
   if (isExplicitGo) {
     const exitDirs = exits.map((e) => e.properties["direction"] as string);
     return {
-      output: `You can't go ${direction}. Available exits: ${exitDirs.join(", ")}`,
+      output: `{!You can't go ${direction}. Available exits: ${exitDirs.join(", ")}!}`,
       direction,
       moved: false,
       events: [],

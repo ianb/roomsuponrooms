@@ -133,7 +133,7 @@ function buildPerformCode(response: {
   events: Array<{ type: string; property: string; value: unknown; description: string }>;
 }): string {
   if (response.decision === "refuse") {
-    return `return lib.result(${JSON.stringify(response.message)});`;
+    return `return lib.result("{!" + ${JSON.stringify(response.message)} + "!}");`;
   }
 
   if (response.code) {

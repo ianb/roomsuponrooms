@@ -93,7 +93,7 @@ export class HandlerLib {
   checkCarryCapacity(): string | null {
     const capacity = (this.player.properties["carryingCapacity"] as number) || 0;
     if (capacity <= 0) return null;
-    if (this.carried().length >= capacity) return "You're carrying too many things already.";
+    if (this.carried().length >= capacity) return "{!You're carrying too many things already.!}";
     return null;
   }
 
@@ -234,13 +234,14 @@ export class HandlerLib {
 
   unlock(obj: Entity): PerformResult {
     const key = this.findKey(obj);
-    if (!key) return this.result(`You don't have anything to unlock the ${this.ref(obj)} with.`);
+    if (!key)
+      return this.result(`{!You don't have anything to unlock the ${this.ref(obj)} with.!}`);
     return this.unlockWith(obj, key);
   }
 
   lock(obj: Entity): PerformResult {
     const key = this.findKey(obj);
-    if (!key) return this.result(`You don't have anything to lock the ${this.ref(obj)} with.`);
+    if (!key) return this.result(`{!You don't have anything to lock the ${this.ref(obj)} with.!}`);
     return {
       output: `You lock the ${this.ref(obj)} with the ${this.ref(key)}.`,
       events: [
@@ -295,16 +296,11 @@ export class HandlerLib {
     return {
       output: [
         "Commands:",
-        "  look/l            — Look around",
-        "  examine/x <thing> — Examine something",
-        "  go <dir>          — Move (or n/s/e/w/ne/nw/se/sw/up/down)",
-        "  take/get <thing>  — Pick up",
-        "  drop <thing>      — Put down",
-        "  put <thing> in <container>",
-        "  open/close <thing>",
-        "  inventory/i       — Check what you are carrying",
-        "  talk/use <thing>  — Talk to an NPC or device",
-        "  score             — Show your score",
+        "  look/l — Look around    examine/x <thing> — Examine",
+        "  go <dir> (or n/s/e/w)   take/get <thing> — Pick up",
+        "  drop <thing>            put <thing> in <container>",
+        "  open/close <thing>      inventory/i — Check carrying",
+        "  talk/use <thing> — Talk to NPC/device    score",
         "",
         'Type "help ai" for world-editing commands.',
       ].join("\n"),

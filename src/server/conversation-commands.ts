@@ -30,7 +30,7 @@ export function handleTalkTo(
 
   if (data.words.length === 0) {
     return {
-      output: `${npcName} has nothing to say.`,
+      output: `{!${npcName} has nothing to say.!}`,
       conversationMode: null,
     };
   }
@@ -156,7 +156,7 @@ async function handleUnknownWord(
   // Closed conversations always reject
   if (data.closed) {
     return {
-      output: `${npcName} doesn't respond to that.`,
+      output: `{!${npcName} doesn't respond to that.!}`,
       conversationMode: { npcName, knownWords },
     };
   }
@@ -164,7 +164,7 @@ async function handleUnknownWord(
   // Auto-close if conversation has grown too large
   if (data.words.length >= MAX_CONVERSATION_WORDS) {
     return {
-      output: `${npcName} doesn't respond to that.`,
+      output: `{!${npcName} doesn't respond to that.!}`,
       conversationMode: { npcName, knownWords },
     };
   }
@@ -175,7 +175,7 @@ async function handleUnknownWord(
   const player = players[0];
   if (!player) {
     return {
-      output: `${npcName} doesn't respond to that.`,
+      output: `{!${npcName} doesn't respond to that.!}`,
       conversationMode: { npcName, knownWords },
     };
   }
@@ -195,8 +195,8 @@ async function handleUnknownWord(
   if (!aiResult.entry) {
     const rejection =
       aiResult.rejectionType === "no-words"
-        ? "You can't find the words to say that."
-        : `${npcName} doesn't respond to that.`;
+        ? "{!You can't find the words to say that.!}"
+        : `{!${npcName} doesn't respond to that.!}`;
     return {
       output: rejection,
       conversationMode: { npcName, knownWords },
@@ -268,7 +268,7 @@ function applyPerformCode(
     const npcName = (npc.properties["name"] as string) || npc.id;
     return {
       ...result,
-      output: performResult.response || `${npcName} doesn't respond to that.`,
+      output: performResult.response || `{!${npcName} doesn't respond to that.!}`,
     };
   }
 

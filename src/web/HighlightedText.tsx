@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
 const HIGHLIGHT_PATTERN =
-  /{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>|\(\(([^|]+)\|([^)]+)\)\)/g;
+  /{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>|\(\(([^|]+)\|([^)]+)\)\)|{!([^!]+)!}/g;
 
 interface TextSegment {
-  type: "text" | "entity" | "topic" | "direction" | "command";
+  type: "text" | "entity" | "topic" | "direction" | "command" | "refusal";
   text: string;
   entityId?: string;
   command?: string;
@@ -28,6 +28,8 @@ function parseSegments(text: string): TextSegment[] {
       segments.push({ type: "direction", text: match[4] });
     } else if (match[5] && match[6]) {
       segments.push({ type: "command", text: match[6], command: match[5] });
+    } else if (match[7]) {
+      segments.push({ type: "refusal", text: match[7] });
     }
     lastIndex = match.index + match[0].length;
     match = HIGHLIGHT_PATTERN.exec(text);
@@ -88,6 +90,13 @@ export function HighlightedText({
       return (
         <span key={i} className="text-emerald-400">
           {seg.text}
+        </span>
+      );
+    }
+    if (seg.type === "refusal") {
+      return (
+        <span key={i} className="italic text-gray-300/80">
+          &#x2205; {seg.text}
         </span>
       );
     }

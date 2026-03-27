@@ -50,7 +50,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     },
     priority: -5,
     perform:
-      "if (object.properties.takeRefusal) return lib.result(object.properties.takeRefusal); if (object.properties.fixed) return lib.result('The ' + lib.ref(object) + ' is fixed in place.'); return lib.result('You can\\'t take the ' + lib.ref(object) + '.');",
+      "if (object.properties.takeRefusal) return lib.result('{!' + object.properties.takeRefusal + '!}'); if (object.properties.fixed) return lib.result('{!The ' + lib.ref(object) + ' is fixed in place.!}'); return lib.result('{!You can\\'t take the ' + lib.ref(object) + '.!}');",
   },
 
   {
