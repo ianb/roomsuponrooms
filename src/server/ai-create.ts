@@ -6,6 +6,7 @@ import { getLlm, getLlmProviderOptions } from "./llm.js";
 import { describeProperties, collectTags, buildPropertiesSchema } from "./ai-prompt-helpers.js";
 import { composeCreatePrompt } from "./ai-prompts.js";
 import { saveAiEntity } from "./ai-entity-store.js";
+import { removeMatchingScenery } from "./ai-scenery.js";
 
 export interface AiCreateResult {
   output: string;
@@ -200,6 +201,9 @@ export async function handleAiCreate(
     tags: response.tags,
     properties,
   });
+
+  // Remove any scenery cache entries that match the new entity's name/aliases
+  removeMatchingScenery(store, { room, name: response.name, aliases: response.aliases });
 
   const debugInfo: AiCreateDebugInfo | undefined = debug
     ? { systemPrompt, prompt, response, schema: z.toJSONSchema(objectSchema), durationMs }

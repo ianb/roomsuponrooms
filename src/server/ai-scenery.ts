@@ -55,8 +55,8 @@ ${styleSection}
 <guidelines>
 - Write a vivid 1-3 sentence description of what the player sees on closer inspection.
 - Stay consistent with the room description and world tone.
-- The "rejection" is what happens if the player tries to take, use, or otherwise interact with this detail. Keep it brief and in-character.
-- These are decorative/atmospheric elements — they should reward curiosity but not be interactive beyond looking.
+- The "rejection" is a brief response when the player tries to interact with this beyond looking. It can be physical ("fastened to the wall"), dismissive ("that won't really help"), or just deflecting ("you have more important things to worry about"). Variety is good — don't always construct a physical reason.
+- These are atmospheric elements — they reward curiosity but aren't interactive beyond looking.
 </guidelines>`;
 }
 
@@ -118,6 +118,20 @@ export function getCachedScenery(room: Entity, word: string): SceneryEntry | nul
   if (!scenery) return null;
   const lower = word.toLowerCase();
   return scenery.find((s) => s.word.toLowerCase() === lower) || null;
+}
+
+/** Remove scenery entries that match a name or aliases (e.g., when an entity is created) */
+export function removeMatchingScenery(
+  store: EntityStore,
+  { room, name, aliases }: { room: Entity; name: string; aliases: string[] },
+): void {
+  const scenery = room.properties["scenery"] as SceneryEntry[] | undefined;
+  if (!scenery || scenery.length === 0) return;
+  const words = new Set([name.toLowerCase(), ...aliases.map((a) => a.toLowerCase())]);
+  const filtered = scenery.filter((s) => !words.has(s.word.toLowerCase()));
+  if (filtered.length < scenery.length) {
+    store.setProperty(room.id, { name: "scenery", value: filtered });
+  }
 }
 
 /** Generate and cache a scenery description via AI */
