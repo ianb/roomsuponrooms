@@ -33,3 +33,7 @@ export function getGame(slug: string): GameDefinition | null {
 export function listGames(): GameDefinition[] {
   return Array.from(games.values());
 }
+
+export function isValidGameId(slug: string): boolean {
+  return games.has(slug);
+}

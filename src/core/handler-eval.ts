@@ -8,6 +8,7 @@ import type {
 } from "./verb-types.js";
 import type { HandlerData } from "./game-data.js";
 import { HandlerLib } from "./handler-lib.js";
+import { buildSandboxedFunction } from "./sandbox.js";
 
 export type LibFactory = (context: VerbContext) => HandlerLib;
 
@@ -30,36 +31,30 @@ function getIndirect(context: VerbContext): Entity | null {
   return null;
 }
 
+function handlerVars(context: VerbContext, createLib: LibFactory): Record<string, unknown> {
+  return {
+    lib: createLib(context),
+    object: getTarget(context),
+    indirect: getIndirect(context),
+    player: context.player,
+    room: context.room,
+    store: context.store,
+    command: context.command,
+  };
+}
+
 function buildCheck(code: string, createLib: LibFactory): (context: VerbContext) => CheckResult {
-  const fn = new Function("lib", "object", "indirect", "player", "room", "store", "command", code);
+  const fn = buildSandboxedFunction(code);
   return (context: VerbContext): CheckResult => {
-    const lib = createLib(context);
-    const result = fn(
-      lib,
-      getTarget(context),
-      getIndirect(context),
-      context.player,
-      context.room,
-      context.store,
-      context.command,
-    );
+    const result = fn(handlerVars(context, createLib));
     return { applies: !!result };
   };
 }
 
 function buildVeto(code: string, createLib: LibFactory): (context: VerbContext) => VetoResult {
-  const fn = new Function("lib", "object", "indirect", "player", "room", "store", "command", code);
+  const fn = buildSandboxedFunction(code);
   return (context: VerbContext): VetoResult => {
-    const lib = createLib(context);
-    const result = fn(
-      lib,
-      getTarget(context),
-      getIndirect(context),
-      context.player,
-      context.room,
-      context.store,
-      context.command,
-    );
+    const result = fn(handlerVars(context, createLib));
     if (typeof result === "string") {
       return { blocked: true, output: result };
     }
@@ -71,18 +66,9 @@ function buildPerform(
   code: string,
   createLib: LibFactory,
 ): (context: VerbContext) => PerformResult {
-  const fn = new Function("lib", "object", "indirect", "player", "room", "store", "command", code);
+  const fn = buildSandboxedFunction(code);
   return (context: VerbContext): PerformResult => {
-    const lib = createLib(context);
-    const result = fn(
-      lib,
-      getTarget(context),
-      getIndirect(context),
-      context.player,
-      context.room,
-      context.store,
-      context.command,
-    ) as PerformResult;
+    const result = fn(handlerVars(context, createLib)) as PerformResult;
     if (!result || typeof result.output !== "string") {
       return { output: "Something strange happens, but nothing changes.", events: [] };
     }

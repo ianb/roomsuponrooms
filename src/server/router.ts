@@ -7,7 +7,7 @@ import { loadAiEntities } from "./ai-entity-store.js";
 import { replayEventLog } from "./event-log.js";
 import { composeVerbPrompt, composeCreatePrompt } from "./ai-prompts.js";
 import type { GameInstance } from "../games/registry.js";
-import { getGame, listGames } from "../games/registry.js";
+import { getGame, listGames, isValidGameId } from "../games/registry.js";
 import { executeCommand } from "./execute-command.js";
 
 // Import game registrations
@@ -60,7 +60,8 @@ function describeCurrentRoom(s: EntityStore): string {
   return describeRoomFull(s, { room, playerId: player.id });
 }
 
-const gameInput = z.object({ gameId: z.string() });
+const validGameId = z.string().refine(isValidGameId, { message: "Unknown game" });
+const gameInput = z.object({ gameId: validGameId });
 
 export const appRouter = router({
   games: publicProcedure.query(() => {
@@ -77,7 +78,7 @@ export const appRouter = router({
   }),
 
   command: publicProcedure
-    .input(z.object({ gameId: z.string(), text: z.string(), debug: z.boolean().optional() }))
+    .input(z.object({ gameId: validGameId, text: z.string(), debug: z.boolean().optional() }))
     .mutation(async ({ input }) => {
       const game = getOrCreateGame(input.gameId);
       try {
@@ -116,7 +117,7 @@ export const appRouter = router({
   }),
 
   entity: publicProcedure
-    .input(z.object({ gameId: z.string(), id: z.string() }))
+    .input(z.object({ gameId: validGameId, id: z.string() }))
     .query(({ input }) => {
       const game = getOrCreateGame(input.gameId);
       if (!game.store.has(input.id)) return null;

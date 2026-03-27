@@ -2,6 +2,7 @@ import type { Entity, EntityStore } from "./entity.js";
 import type { WordEntry, WordEffect, ConversationState } from "./conversation.js";
 import { HandlerLib } from "./handler-lib.js";
 import type { VerbContext, WorldEvent } from "./verb-types.js";
+import { runSandboxed } from "./sandbox.js";
 
 interface PerformContext {
   npc: Entity;
@@ -41,11 +42,18 @@ export function evaluateWordPerform(
   };
   const lib = new HandlerLib(verbContext);
 
-  const fn = new Function("lib", "npc", "player", "room", "store", "word", "state", entry.perform);
-  const result = fn(lib, context.npc, context.player, context.room, context.store, context.word, {
-    currentWord: context.state.currentWord,
-    seenWords: Array.from(context.state.seenWords),
-    knownWords: Array.from(context.state.knownWords),
+  const result = runSandboxed(entry.perform, {
+    lib,
+    npc: context.npc,
+    player: context.player,
+    room: context.room,
+    store: context.store,
+    word: context.word,
+    state: {
+      currentWord: context.state.currentWord,
+      seenWords: Array.from(context.state.seenWords),
+      knownWords: Array.from(context.state.knownWords),
+    },
   }) as PerformResult;
 
   if (!result || typeof result !== "object") return null;

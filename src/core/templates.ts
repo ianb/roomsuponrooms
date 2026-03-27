@@ -1,4 +1,5 @@
 import type { EntityStore, Entity } from "./entity.js";
+import { evalTemplate } from "./sandbox.js";
 
 /**
  * Evaluate template expressions in a string.
@@ -8,8 +9,6 @@ import type { EntityStore, Entity } from "./entity.js";
  * - `entity(id)` — look up another entity's properties
  * - `has(tag)` — check if the entity has a tag
  * - `contents()` — get names of entities inside this one
- *
- * Uses new Function for now — will be replaced with proper sandboxing later.
  */
 export function renderTemplate(
   template: string,
@@ -38,12 +37,8 @@ export function renderTemplate(
   }
 
   try {
-    // Build a function that evaluates the template as a tagged template literal
-    // We convert ${expr} in the string to actual template literal expressions
-    const fn = new Function("self", "entity", "has", "contents", "return `" + template + "`;");
-    return fn(self, entityLookup, has, contents) as string;
+    return evalTemplate(template, { self, entity: entityLookup, has, contents });
   } catch (_e) {
-    // If evaluation fails, return the raw template
     return template;
   }
 }
