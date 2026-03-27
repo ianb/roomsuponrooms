@@ -1,10 +1,14 @@
-import $t from "sval";
+import { createContext, runInNewContext } from "node:vm";
 
-/** Globals that must be blocked in the sandbox */
+/** Default timeout for sandboxed code execution (ms) */
+const DEFAULT_TIMEOUT_MS = 5000;
+
+/** Globals that are explicitly blocked in the sandbox */
 const BLOCKED_GLOBALS: Record<string, undefined> = {
   process: undefined,
   require: undefined,
   global: undefined,
+  globalThis: undefined,
   module: undefined,
   __dirname: undefined,
   __filename: undefined,
@@ -13,24 +17,30 @@ const BLOCKED_GLOBALS: Record<string, undefined> = {
   XMLHttpRequest: undefined,
   WebSocket: undefined,
   Worker: undefined,
+  setTimeout: undefined,
+  setInterval: undefined,
+  setImmediate: undefined,
+  clearTimeout: undefined,
+  clearInterval: undefined,
+  clearImmediate: undefined,
+  queueMicrotask: undefined,
+  structuredClone: undefined,
 };
 
 /**
- * Run a code string in a sandboxed environment.
+ * Run a code string in a sandboxed V8 context with a timeout.
  *
  * The code is wrapped in a function body (so `return` works) and
  * executed with only the provided variables in scope. Node/browser
  * globals are blocked.
  */
 export function runSandboxed(code: string, variables: Record<string, unknown>): unknown {
-  const interpreter = new $t({
-    ecmaVer: "latest",
-    sourceType: "script",
-    sandBox: true,
+  const sandbox = { ...BLOCKED_GLOBALS, ...variables, __result: undefined as unknown };
+  const context = createContext(sandbox);
+  runInNewContext("__result = (function() { " + code + " })();", context, {
+    timeout: DEFAULT_TIMEOUT_MS,
   });
-  interpreter.import({ ...BLOCKED_GLOBALS, ...variables });
-  interpreter.run("exports.result = (function() { " + code + " })();");
-  return interpreter.exports.result;
+  return sandbox.__result;
 }
 
 /**
@@ -40,17 +50,12 @@ export function runSandboxed(code: string, variables: Record<string, unknown>): 
 export function buildSandboxedFunction(
   code: string,
 ): (variables: Record<string, unknown>) => unknown {
-  // Validate syntax by parsing once
-  const wrappedCode = "exports.result = (function() { " + code + " })();";
+  const wrappedCode = "__result = (function() { " + code + " })();";
   return (variables: Record<string, unknown>): unknown => {
-    const interpreter = new $t({
-      ecmaVer: "latest",
-      sourceType: "script",
-      sandBox: true,
-    });
-    interpreter.import({ ...BLOCKED_GLOBALS, ...variables });
-    interpreter.run(wrappedCode);
-    return interpreter.exports.result;
+    const sandbox = { ...BLOCKED_GLOBALS, ...variables, __result: undefined as unknown };
+    const context = createContext(sandbox);
+    runInNewContext(wrappedCode, context, { timeout: DEFAULT_TIMEOUT_MS });
+    return sandbox.__result;
   };
 }
 
@@ -59,21 +64,9 @@ export function buildSandboxedFunction(
  * The code is a template literal body (no backticks).
  */
 export function evalTemplate(template: string, variables: Record<string, unknown>): string {
-  const interpreter = new $t({
-    ecmaVer: "latest",
-    sourceType: "script",
-    sandBox: true,
-  });
-  // SVal reserves "self" (browser global), so remap it to _self and rewrite templates
-  const vars = { ...BLOCKED_GLOBALS, ...variables };
-  let processedTemplate = template;
-  if ("self" in vars) {
-    vars._self = vars.self;
-    delete vars.self;
-    processedTemplate = template.replace(/\bself\b/g, "_self");
-  }
-  interpreter.import(vars);
-  interpreter.run("exports.result = `" + processedTemplate + "`;");
-  const result = interpreter.exports.result;
+  const sandbox = { ...BLOCKED_GLOBALS, ...variables, __result: undefined as unknown };
+  const context = createContext(sandbox);
+  runInNewContext("__result = `" + template + "`;", context, { timeout: DEFAULT_TIMEOUT_MS });
+  const result = sandbox.__result;
   return typeof result === "string" ? result : String(result);
 }
