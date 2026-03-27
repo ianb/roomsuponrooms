@@ -1,18 +1,23 @@
-import { resolve } from "node:path";
 import type { RuntimeStorage } from "./storage.js";
-import { FileStorage } from "./storage-file.js";
 
 let storage: RuntimeStorage | null = null;
+
+class StorageNotConfiguredError extends Error {
+  constructor() {
+    super("RuntimeStorage not configured — call setStorage() before accessing storage");
+    this.name = "StorageNotConfiguredError";
+  }
+}
 
 /** Get the current runtime storage instance */
 export function getStorage(): RuntimeStorage {
   if (!storage) {
-    storage = new FileStorage(resolve(process.cwd(), "data"));
+    throw new StorageNotConfiguredError();
   }
   return storage;
 }
 
-/** Set the runtime storage instance (for D1, testing, etc.) */
+/** Set the runtime storage instance (call from entry point) */
 export function setStorage(s: RuntimeStorage): void {
   storage = s;
 }

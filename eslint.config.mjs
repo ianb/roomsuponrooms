@@ -14,10 +14,4 @@ export default [
       "import/order": "off",
     },
   },
-  {
-    files: ["src/games/_bundled-data.ts"],
-    rules: {
-      "max-lines": "off",
-    },
-  },
 ];

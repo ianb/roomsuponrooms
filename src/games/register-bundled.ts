@@ -4,7 +4,7 @@
  */
 import { loadGameData } from "../core/game-loader.js";
 import { registerGame } from "./registry.js";
-import { bundledGames } from "./_bundled-data.js";
+import { bundledGames } from "../../generated/bundled-data.js";
 
 for (const data of bundledGames) {
   registerGame({

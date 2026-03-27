@@ -15,6 +15,7 @@ import type { D1Database } from "./server/storage-d1.js";
 
 interface Env {
   DB: D1Database;
+  ASSETS: { fetch: (req: Request) => Promise<Response> };
 }
 
 export default {
@@ -33,7 +34,7 @@ export default {
       });
     }
 
-    // TODO: serve static assets from Workers Sites / R2
-    return new Response("Not Found", { status: 404 });
+    // Everything else: static assets (SPA fallback configured in wrangler.toml)
+    return env.ASSETS.fetch(request);
   },
 };

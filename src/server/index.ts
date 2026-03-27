@@ -1,12 +1,17 @@
+import { resolve } from "node:path";
 import Fastify from "fastify";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
+import { setStorage } from "./storage-instance.js";
+import { FileStorage } from "./storage-file.js";
+import { appRouter } from "./router.js";
 
-// Register games from disk (fs-based) before importing the router
+// Register games from disk (fs-based)
 import "../games/test-world.js";
 import "../games/colossal-cave/index.js";
 import "../games/the-aaru/index.js";
 
-import { appRouter } from "./router.js";
+// Configure file-based storage
+setStorage(new FileStorage(resolve(process.cwd(), "data")));
 
 const server = Fastify();
 

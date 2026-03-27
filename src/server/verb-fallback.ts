@@ -5,7 +5,7 @@ import type { ResolvedCommand, VerbHandler, WorldEvent } from "../core/verb-type
 import type { VerbRegistry } from "../core/verbs.js";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
 import type { AiHandlerRecord } from "./storage.js";
-import { recordToHandler } from "./ai-handler-store.js";
+import { recordToHandler } from "./handler-convert.js";
 import { getStorage } from "./storage-instance.js";
 import { describeProperties, collectTags } from "./ai-prompt-helpers.js";
 import type { HandlerLib } from "../core/handler-lib.js";
