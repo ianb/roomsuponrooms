@@ -138,7 +138,13 @@ function buildPerformCode(response: {
   }
 
   if (response.code) {
-    return response.code;
+    // Fix common AI mistakes: accessing entity fields directly instead of via .properties
+    return response.code
+      .replace(/\bobject\.description\b/g, "object.properties.description")
+      .replace(/\bobject\.name\b/g, "object.properties.name")
+      .replace(/\bplayer\.location\b/g, "player.properties.location")
+      .replace(/\broom\.description\b/g, "room.properties.description")
+      .replace(/\broom\.name\b/g, "room.properties.name");
   }
 
   // Static message + events
