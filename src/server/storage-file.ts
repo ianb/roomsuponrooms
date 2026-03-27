@@ -163,6 +163,11 @@ export class FileStorage implements RuntimeStorage {
     return users.find((u) => u.displayName === name) || null;
   }
 
+  async hasAnyUsers(): Promise<boolean> {
+    const users = readJsonl<UserRecord>(this.path("users.jsonl"));
+    return users.length > 0;
+  }
+
   async createUser(record: UserRecord): Promise<void> {
     appendJsonl(this.path("users.jsonl"), record);
   }

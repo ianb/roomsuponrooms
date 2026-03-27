@@ -3,8 +3,11 @@
  * (via Request/Response web standard API).
  */
 import { getStorage } from "../storage-instance.js";
-import type { UserRecord } from "../storage.js";
+import type { UserRecord, UserRole } from "../storage.js";
 import { signJwt, verifyJwt, parseCookie, sessionCookie, clearSessionCookie } from "./jwt.js";
+
+const ALL_ROLES: UserRole[] = ["admin", "ai", "debug", "player"];
+const DEFAULT_ROLES: UserRole[] = ["player"];
 
 export interface AuthEnv {
   jwtSecret: string;
@@ -31,19 +34,33 @@ function generateId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function rolesForNewUser(): Promise<UserRole[]> {
+  const storage = getStorage();
+  const hasUsers = await storage.hasAnyUsers();
+  return hasUsers ? DEFAULT_ROLES : ALL_ROLES;
+}
+
+/** Ensure roles are present on a user record (handles pre-migration records) */
+function ensureRoles(user: UserRecord): UserRecord {
+  if (user.roles && user.roles.length > 0) return user;
+  return { ...user, roles: DEFAULT_ROLES };
+}
+
 async function findOrCreateGoogleUser(info: GoogleUserInfo): Promise<UserRecord> {
   const storage = getStorage();
   const existing = await storage.findUserByGoogleId(info.id);
   if (existing) {
     await storage.updateLastLogin(existing.id);
-    return existing;
+    return ensureRoles(existing);
   }
+  const roles = await rolesForNewUser();
   const now = new Date().toISOString();
   const record: UserRecord = {
     id: generateId(),
     displayName: info.name,
     email: info.email,
     googleId: info.id,
+    roles,
     createdAt: now,
     lastLoginAt: now,
   };
@@ -56,7 +73,7 @@ async function findOrCreateDevUser(name: string): Promise<UserRecord> {
   const existing = await storage.findUserByName(name);
   if (existing) {
     await storage.updateLastLogin(existing.id);
-    return existing;
+    return { ...existing, roles: ALL_ROLES };
   }
   const now = new Date().toISOString();
   const record: UserRecord = {
@@ -64,6 +81,7 @@ async function findOrCreateDevUser(name: string): Promise<UserRecord> {
     displayName: name,
     email: null,
     googleId: null,
+    roles: ALL_ROLES,
     createdAt: now,
     lastLoginAt: now,
   };
@@ -132,7 +150,7 @@ async function handleMe(request: Request, env: AuthEnv): Promise<Response> {
   }
   return jsonResponse(
     {
-      user: { userId: payload.sub, displayName: payload.name },
+      user: { userId: payload.sub, displayName: payload.name, roles: payload.roles },
       devMode,
     },
     {},
@@ -192,7 +210,10 @@ async function handleGoogleCallback(url: URL, env: AuthEnv): Promise<Response> {
   const userInfo = (await userRes.json()) as GoogleUserInfo;
 
   const user = await findOrCreateGoogleUser(userInfo);
-  const jwt = await signJwt({ sub: user.id, name: user.displayName }, env.jwtSecret);
+  const jwt = await signJwt(
+    { sub: user.id, name: user.displayName, roles: user.roles },
+    env.jwtSecret,
+  );
   return redirectResponse("/", {
     "Set-Cookie": sessionCookie(jwt, { secure: env.secure }),
   });
@@ -205,7 +226,10 @@ async function handleDevLogin(request: Request, env: AuthEnv): Promise<Response>
     return jsonResponse({ error: "Name is required" }, { status: 400 });
   }
   const user = await findOrCreateDevUser(name);
-  const jwt = await signJwt({ sub: user.id, name: user.displayName }, env.jwtSecret);
+  const jwt = await signJwt(
+    { sub: user.id, name: user.displayName, roles: user.roles },
+    env.jwtSecret,
+  );
   return jsonResponse(
     { user: { userId: user.id, displayName: user.displayName } },
     {

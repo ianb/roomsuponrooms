@@ -39,14 +39,14 @@ function getAuthEnv(env: Env, request: Request): AuthEnv {
 async function extractUser(
   request: Request,
   jwtSecret: string,
-): Promise<{ userId: string; userName: string } | null> {
+): Promise<{ userId: string; userName: string; roles: string[] } | null> {
   const cookie = request.headers.get("Cookie");
   if (!cookie) return null;
   const token = parseCookie(cookie, "session");
   if (!token) return null;
   const payload = await verifyJwt(token, jwtSecret);
   if (!payload) return null;
-  return { userId: payload.sub, userName: payload.name };
+  return { userId: payload.sub, userName: payload.name, roles: payload.roles };
 }
 
 export default {
@@ -80,6 +80,7 @@ export default {
         createContext: () => ({
           userId: user ? user.userId : null,
           userName: user ? user.userName : null,
+          roles: user ? user.roles : [],
         }),
       });
     }

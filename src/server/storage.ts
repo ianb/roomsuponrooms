@@ -35,12 +35,16 @@ export interface SessionKey {
   userId: string;
 }
 
+/** Known user roles */
+export type UserRole = "admin" | "ai" | "debug" | "player";
+
 /** A stored user record */
 export interface UserRecord {
   id: string;
   displayName: string;
   email: string | null;
   googleId: string | null;
+  roles: UserRole[];
   createdAt: string;
   lastLoginAt: string;
 }
@@ -79,6 +83,7 @@ export interface RuntimeStorage {
   findUserByGoogleId(googleId: string): Promise<UserRecord | null>;
   findUserById(id: string): Promise<UserRecord | null>;
   findUserByName(name: string): Promise<UserRecord | null>;
+  hasAnyUsers(): Promise<boolean>;
   createUser(record: UserRecord): Promise<void>;
   updateLastLogin(userId: string): Promise<void>;
 }

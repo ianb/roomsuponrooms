@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import { trpc } from "./trpc.js";
 import { HighlightedText } from "./HighlightedText.js";
 import { useStickyState } from "./use-sticky-state.js";
 import { DebugView } from "./DebugView.js";
 import type { DebugData } from "./DebugView.js";
 import { streamCommand } from "./stream-command.js";
+import { AuthContext } from "./auth.js";
 
 interface LogEntry {
   type: "input" | "output" | "debug" | "system";
@@ -42,6 +43,8 @@ export function WorldShell({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState<"thinking" | "ai" | null>(null);
+  const auth = useContext(AuthContext);
+  const canDebug = auth.user && auth.user.roles ? auth.user.roles.includes("debug") : false;
   const [debugMode, setDebugMode] = useStickyState("extenso:debugMode", false);
   const [conversationMode, setConversationMode] = useState<{
     npcName: string;
@@ -104,17 +107,19 @@ export function WorldShell({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-end py-1">
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500">
-          <input
-            type="checkbox"
-            checked={debugMode}
-            onChange={(e) => setDebugMode(e.target.checked)}
-            className="accent-sky-500"
-          />
-          Debug
-        </label>
-      </div>
+      {canDebug ? (
+        <div className="flex items-center justify-end py-1">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500">
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={(e) => setDebugMode(e.target.checked)}
+              className="accent-sky-500"
+            />
+            Debug
+          </label>
+        </div>
+      ) : null}
       {conversationMode ? (
         <div className="flex items-center gap-2 rounded-t-lg border-x border-t border-cyan-700 bg-cyan-950 px-3 py-2 text-sm text-cyan-200">
           <span className="font-bold">{conversationMode.npcName}</span>

@@ -31,14 +31,14 @@ function getAuthEnv(): AuthEnv {
 
 async function extractUser(
   cookieHeader: string | undefined,
-): Promise<{ userId: string; userName: string } | null> {
+): Promise<{ userId: string; userName: string; roles: string[] } | null> {
   if (!cookieHeader) return null;
   const token = parseCookie(cookieHeader, "session");
   if (!token) return null;
   const secret = process.env["JWT_SECRET"] || DEV_JWT_SECRET;
   const payload = await verifyJwt(token, secret);
   if (!payload) return null;
-  return { userId: payload.sub, userName: payload.name };
+  return { userId: payload.sub, userName: payload.name, roles: payload.roles };
 }
 
 const server = Fastify();
@@ -93,6 +93,7 @@ server.register(fastifyTRPCPlugin, {
       return {
         userId: user ? user.userId : null,
         userName: user ? user.userName : null,
+        roles: user ? user.roles : [],
       };
     },
   },

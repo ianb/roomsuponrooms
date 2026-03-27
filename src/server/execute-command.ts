@@ -12,6 +12,7 @@ export interface CommandInput {
   userId: string;
   text: string;
   debug?: boolean;
+  roles?: string[];
 }
 
 export interface CommandResult {
@@ -33,7 +34,14 @@ export async function executeCommand(
 ): Promise<CommandResult> {
   const trimmed = input.text.trim();
   const session: SessionKey = { gameId: input.gameId, userId: input.userId };
-  const opts = { gameId: input.gameId, session, prompts: game.prompts, debug: input.debug };
+  const hasAiRole = !input.roles || input.roles.includes("ai");
+  const opts = {
+    gameId: input.gameId,
+    session,
+    prompts: game.prompts,
+    debug: input.debug,
+    hasAiRole,
+  };
 
   // Conversation mode: route single-word input to conversation engine
   if (game.conversationState) {
@@ -66,12 +74,14 @@ export async function executeCommand(
   });
 
   if (result.unresolvedExit) {
+    if (!hasAiRole) return { output: result.output || "You can't go that way." };
     if (onAiStart) onAiStart();
     return handleUnresolvedExit(game.store, { context: result.unresolvedExit, ...opts });
   }
 
   // Check for scenery — words in the room description that can be examined
   if (result.unresolvedObject) {
+    if (!hasAiRole) return { output: result.output || "You don't see that here." };
     if (onAiStart) onAiStart();
     const sceneryResult = await handleSceneryCheck(game, {
       verb: result.unresolvedObject.verb,
@@ -86,6 +96,7 @@ export async function executeCommand(
   }
 
   if (result.unhandled) {
+    if (!hasAiRole) return { output: result.output || "I don't understand that." };
     if (onAiStart) onAiStart();
     const fallback = await handleVerbFallbackCommand(game.store, {
       unhandled: result.unhandled,

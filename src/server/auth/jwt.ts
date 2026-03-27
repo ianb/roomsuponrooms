@@ -6,6 +6,7 @@
 export interface JwtPayload {
   sub: string;
   name: string;
+  roles: string[];
   iat: number;
   exp: number;
 }
@@ -44,7 +45,7 @@ const HEADER_B64 = base64urlEncode(encoder.encode(JSON.stringify({ alg: "HS256",
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
 
 export async function signJwt(
-  payload: { sub: string; name: string },
+  payload: { sub: string; name: string; roles: string[] },
   secret: string,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);

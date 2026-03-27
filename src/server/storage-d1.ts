@@ -72,6 +72,7 @@ interface UserRow {
   display_name: string;
   email: string | null;
   google_id: string | null;
+  roles: string;
   created_at: string;
   last_login_at: string;
 }
@@ -82,6 +83,7 @@ function userRowToRecord(row: UserRow): UserRecord {
     displayName: row.display_name,
     email: row.email,
     googleId: row.google_id,
+    roles: JSON.parse(row.roles) as UserRecord["roles"],
     createdAt: row.created_at,
     lastLoginAt: row.last_login_at,
   };
@@ -304,17 +306,23 @@ export class D1Storage implements RuntimeStorage {
     return row ? userRowToRecord(row) : null;
   }
 
+  async hasAnyUsers(): Promise<boolean> {
+    const row = await this.db.prepare("SELECT 1 FROM users LIMIT 1").first<{ 1: number }>();
+    return row !== null;
+  }
+
   async createUser(record: UserRecord): Promise<void> {
     await this.db
       .prepare(
-        `INSERT INTO users (id, display_name, email, google_id, created_at, last_login_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO users (id, display_name, email, google_id, roles, created_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         record.id,
         record.displayName,
         record.email,
         record.googleId,
+        JSON.stringify(record.roles),
         record.createdAt,
         record.lastLoginAt,
       )

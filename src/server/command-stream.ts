@@ -12,6 +12,7 @@ interface StreamEvent {
 export interface AuthenticatedUser {
   userId: string;
   userName: string;
+  roles: string[];
 }
 
 /**
@@ -37,7 +38,7 @@ export async function handleCommandStream(
         try {
           const game = await getOrCreateGame(session);
           const result = await executeCommand(
-            { gameId, userId: user.userId, text, debug },
+            { gameId, userId: user.userId, text, debug, roles: user.roles },
             {
               game,
               reinitGame: (s) => reinitGame(s),
@@ -90,7 +91,7 @@ export async function handleCommandStreamNode(
   try {
     const game = await getOrCreateGame(session);
     const result = await executeCommand(
-      { gameId, userId: user.userId, text, debug },
+      { gameId, userId: user.userId, text, debug, roles: user.roles },
       {
         game,
         reinitGame: (s) => reinitGame(s),

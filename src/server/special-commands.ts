@@ -15,6 +15,7 @@ interface CommandOpts {
   gameId: string;
   prompts?: GameInstance["prompts"];
   debug?: boolean;
+  hasAiRole?: boolean;
 }
 
 type CommandReturn =
@@ -81,6 +82,10 @@ export function handleSpecialCommand(
       ].join("\n"),
       debug: undefined,
     };
+  }
+
+  if (trimmed.startsWith("ai ") && !opts.hasAiRole) {
+    return { output: "You don't have permission to use AI commands.", debug: undefined };
   }
 
   if (trimmed.startsWith("ai create exit ")) {

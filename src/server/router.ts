@@ -123,7 +123,13 @@ export const appRouter = router({
       const game = await getOrCreateGame(session);
       try {
         return await executeCommand(
-          { gameId: input.gameId, userId: ctx.userId, text: input.text, debug: input.debug },
+          {
+            gameId: input.gameId,
+            userId: ctx.userId,
+            text: input.text,
+            debug: input.debug,
+            roles: ctx.roles,
+          },
           { game, reinitGame: (s: SessionKey) => reinitGame(s) },
         );
       } catch (err: unknown) {
