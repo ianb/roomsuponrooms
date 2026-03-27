@@ -11,6 +11,7 @@ interface AiFallbackDebug {
   systemPrompt: string;
   prompt: string;
   response?: unknown;
+  schema?: unknown;
   durationMs: number;
 }
 
@@ -82,7 +83,19 @@ function AiDebugView({ ai }: { ai: AiFallbackDebug }) {
           expanded={expandedSection === "response"}
           onClick={() => toggle("response")}
         />
+        {ai.schema ? (
+          <CollapseButton
+            label="schema"
+            expanded={expandedSection === "schema"}
+            onClick={() => toggle("schema")}
+          />
+        ) : null}
       </div>
+      {expandedSection === "schema" && ai.schema ? (
+        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs text-yellow-600/80">
+          {JSON.stringify(ai.schema, null, 2)}
+        </pre>
+      ) : null}
       {expandedSection === "system" && ai.systemPrompt ? (
         <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs text-yellow-600/80">
           {ai.systemPrompt}

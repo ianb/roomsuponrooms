@@ -22,6 +22,7 @@ export interface DebugInfo {
     systemPrompt: string;
     prompt: string;
     response: unknown;
+    schema?: unknown;
     durationMs: number;
   };
 }

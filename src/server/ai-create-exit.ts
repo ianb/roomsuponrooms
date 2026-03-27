@@ -17,6 +17,7 @@ export interface AiCreateExitDebugInfo {
   systemPrompt: string;
   prompt: string;
   response: unknown;
+  schema?: unknown;
   durationMs: number;
 }
 
@@ -151,9 +152,10 @@ export async function handleAiCreateExit(
   console.log("[ai-create-exit] Creating exit:", instructions);
   const startTime = Date.now();
 
+  const objectSchema = buildExitSchema(store);
   const result = await generateObject({
     model: getLlm(),
-    schema: buildExitSchema(store),
+    schema: objectSchema,
     system: systemPrompt,
     prompt,
     providerOptions: getLlmProviderOptions(),
@@ -203,7 +205,7 @@ export async function handleAiCreateExit(
   });
 
   const debugInfo: AiCreateExitDebugInfo | undefined = debug
-    ? { systemPrompt, prompt, response, durationMs }
+    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(objectSchema), durationMs }
     : undefined;
 
   const summaryParts = [`[Created exit: ${response.name} (${response.direction})]`];

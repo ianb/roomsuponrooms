@@ -15,6 +15,7 @@ export interface FallbackDebugInfo {
   systemPrompt: string;
   prompt: string;
   response: unknown;
+  schema?: unknown;
   durationMs: number;
 }
 
@@ -228,7 +229,7 @@ export async function handleVerbFallback(
   verbs.register(handler);
 
   const debugInfo: FallbackDebugInfo | undefined = debug
-    ? { systemPrompt, prompt, response, durationMs }
+    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(fallbackResponseSchema), durationMs }
     : undefined;
 
   const notes = response.notes || undefined;

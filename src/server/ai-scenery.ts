@@ -134,7 +134,13 @@ export async function generateSceneryDescription(
   },
 ): Promise<{
   entry: SceneryEntry;
-  debug?: { systemPrompt: string; prompt: string; response: unknown; durationMs: number };
+  debug?: {
+    systemPrompt: string;
+    prompt: string;
+    response: unknown;
+    schema?: unknown;
+    durationMs: number;
+  };
 }> {
   // Check cache first
   const cached = getCachedScenery(room, word);
@@ -172,6 +178,12 @@ export async function generateSceneryDescription(
 
   return {
     entry,
-    debug: { systemPrompt, prompt, response: result.object, durationMs },
+    debug: {
+      systemPrompt,
+      prompt,
+      response: result.object,
+      schema: z.toJSONSchema(responseSchema),
+      durationMs,
+    },
   };
 }

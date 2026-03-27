@@ -18,6 +18,7 @@ export interface AiCreateRoomDebugInfo {
   systemPrompt: string;
   prompt: string;
   response: unknown;
+  schema?: unknown;
   durationMs: number;
 }
 
@@ -190,9 +191,10 @@ export async function handleAiCreateRoom(
   const direction = (exit.properties["direction"] as string) || "unknown";
   console.log("[ai-create-room] Materializing room via:", direction);
   const startTime = Date.now();
+  const objectSchema = buildRoomSchema(store);
   const result = await generateObject({
     model: getLlm(),
-    schema: buildRoomSchema(store),
+    schema: objectSchema,
     system: systemPrompt,
     prompt,
     providerOptions: getLlmProviderOptions(),
@@ -305,7 +307,7 @@ export async function handleAiCreateRoom(
   }
 
   const debugInfo: AiCreateRoomDebugInfo | undefined = debug
-    ? { systemPrompt, prompt, response, durationMs }
+    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(objectSchema), durationMs }
     : undefined;
   return {
     output: roomData.description,

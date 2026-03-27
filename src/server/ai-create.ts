@@ -17,6 +17,7 @@ export interface AiCreateDebugInfo {
   systemPrompt: string;
   prompt: string;
   response: unknown;
+  schema?: unknown;
   durationMs: number;
 }
 
@@ -144,9 +145,10 @@ export async function handleAiCreate(
   console.log("[ai-create] Creating:", description);
   const startTime = Date.now();
 
+  const objectSchema = buildCreateSchema(store);
   const result = await generateObject({
     model: getLlm(),
-    schema: buildCreateSchema(store),
+    schema: objectSchema,
     system: systemPrompt,
     prompt,
     providerOptions: getLlmProviderOptions(),
@@ -200,7 +202,7 @@ export async function handleAiCreate(
   });
 
   const debugInfo: AiCreateDebugInfo | undefined = debug
-    ? { systemPrompt, prompt, response, durationMs }
+    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(objectSchema), durationMs }
     : undefined;
 
   // Build a summary of the created entity
