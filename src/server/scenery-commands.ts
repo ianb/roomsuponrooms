@@ -8,7 +8,7 @@ import {
   getCachedScenery,
   generateSceneryDescription,
 } from "./ai-scenery.js";
-import { appendEventLog } from "./event-log.js";
+import { saveAiEntity } from "./ai-entity-store.js";
 
 interface SceneryResponse {
   output: string;
@@ -54,19 +54,13 @@ export async function handleSceneryCheck(
     prompts,
   });
 
-  // Persist the scenery cache as an event
-  appendEventLog(gameId, {
-    command: `examine ${objectName}`,
-    events: [
-      {
-        type: "set-property",
-        entityId: room.id,
-        property: "scenery",
-        value: room.properties["scenery"],
-        description: `Cached scenery: ${objectName}`,
-      },
-    ],
-    timestamp: new Date().toISOString(),
+  // Persist scenery as permanent world-building (survives /reset)
+  saveAiEntity({
+    createdAt: new Date().toISOString(),
+    gameId,
+    id: room.id,
+    tags: Array.from(room.tags),
+    properties: { ...room.properties },
   });
 
   const debugInfo: DebugInfo | undefined =
