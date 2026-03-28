@@ -12,7 +12,7 @@ function AboutPage() {
     <div className="mx-auto max-w-2xl p-8">
       <h1 className="mb-6 text-2xl font-bold">About Rooms Upon Rooms</h1>
 
-      <div className="space-y-4 text-gray-300">
+      <div className="space-y-4 text-content/70">
         <p>
           Rooms Upon Rooms is an AI-powered text adventure engine. Explore worlds that grow and
           respond as you play — rooms materialize, characters converse, and the world expands
@@ -21,7 +21,7 @@ function AboutPage() {
 
         <p>
           Created by{" "}
-          <a href="https://ianbicking.org" className="text-sky-400 hover:text-sky-300">
+          <a href="https://ianbicking.org" className="text-accent hover:text-accent-hover">
             Ian Bicking
           </a>
           .
@@ -30,21 +30,21 @@ function AboutPage() {
         <div className="flex items-center gap-4">
           <a
             href="https://github.com/ianb/roomsuponrooms"
-            className="flex items-center gap-2 text-gray-400 hover:text-gray-200"
+            className="flex items-center gap-2 text-content/50 hover:text-content/70"
           >
             <GitHubIcon />
             <span>GitHub</span>
           </a>
           <a
             href="https://bsky.app/profile/ianbicking.org"
-            className="flex items-center gap-2 text-gray-400 hover:text-gray-200"
+            className="flex items-center gap-2 text-content/50 hover:text-content/70"
           >
             <BlueSkyIcon />
             <span>Bluesky</span>
           </a>
           <a
             href="https://hachyderm.io/@ianbicking"
-            className="flex items-center gap-2 text-gray-400 hover:text-gray-200"
+            className="flex items-center gap-2 text-content/50 hover:text-content/70"
             // eslint-disable-next-line react/no-invalid-html-attribute -- rel="me" is valid for Mastodon verification
             rel="me"
           >

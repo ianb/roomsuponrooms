@@ -22,7 +22,7 @@ export function PromptViewer({ gameId, revision }: { gameId: string; revision: n
   }, [gameId, revision]);
 
   if (!data) {
-    return <div className="p-3 text-sm text-gray-400">Loading prompts...</div>;
+    return <div className="p-3 text-sm text-content/50">Loading prompts...</div>;
   }
 
   const tabs: Array<{ key: typeof activeTab; label: string }> = [
@@ -33,15 +33,15 @@ export function PromptViewer({ gameId, revision }: { gameId: string; revision: n
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex border-b border-gray-700">
+      <div className="flex border-b border-content/15">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 px-2 py-1.5 text-xs ${
               activeTab === tab.key
-                ? "border-b-2 border-blue-400 text-blue-400"
-                : "text-gray-400 hover:text-gray-200"
+                ? "border-b-2 border-accent text-accent"
+                : "text-content/50 hover:text-content/70"
             }`}
           >
             {tab.label}
@@ -78,7 +78,9 @@ function LayersView({ data }: { data: PromptData }) {
 }
 
 function ComposedView({ content }: { content: string }) {
-  return <pre className="whitespace-pre-wrap text-xs leading-relaxed text-gray-300">{content}</pre>;
+  return (
+    <pre className="whitespace-pre-wrap text-xs leading-relaxed text-content/70">{content}</pre>
+  );
 }
 
 function PromptSection({
@@ -92,13 +94,13 @@ function PromptSection({
 }) {
   return (
     <div>
-      <h3 className="mb-1 text-xs font-semibold text-gray-400">{title}</h3>
+      <h3 className="mb-1 text-xs font-semibold text-content/50">{title}</h3>
       {content ? (
-        <pre className="whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs leading-relaxed text-gray-300">
+        <pre className="whitespace-pre-wrap rounded bg-input p-2 text-xs leading-relaxed text-content/70">
           {content}
         </pre>
       ) : (
-        <span className="text-xs italic text-gray-500">{fallback}</span>
+        <span className="text-xs italic text-content/40">{fallback}</span>
       )}
     </div>
   );

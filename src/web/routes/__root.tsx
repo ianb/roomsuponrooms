@@ -25,7 +25,7 @@ function RootLayout() {
 
   return (
     <AuthContext value={{ user, devMode, loading }}>
-      <div className="flex min-h-screen flex-col bg-gray-950 text-gray-100">
+      <div className="flex min-h-screen flex-col bg-page text-content">
         <NavBar />
         <div className="flex min-h-0 flex-1 flex-col">
           <Outlet />
@@ -43,13 +43,13 @@ function NavBar() {
   const isHomePage = matchRoute({ to: "/" });
 
   return (
-    <nav className="border-b border-gray-800 px-4 py-2">
+    <nav className="border-b border-content/10 px-4 py-2">
       <div className="mx-auto flex max-w-5xl items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           {isHomePage ? (
-            <span className="font-bold text-gray-100">Rooms Upon Rooms</span>
+            <span className="font-bold text-content">Rooms Upon Rooms</span>
           ) : (
-            <Link to="/" className="font-bold text-gray-400 hover:text-gray-200">
+            <Link to="/" className="font-bold text-content/50 hover:text-content/70">
               Rooms Upon Rooms
             </Link>
           )}
@@ -61,7 +61,7 @@ function NavBar() {
           {auth.loading ? null : auth.user ? (
             <UserIndicator name={auth.user.displayName} />
           ) : (
-            <Link to="/" className="text-gray-500 hover:text-gray-300">
+            <Link to="/" className="text-content/40 hover:text-content/70">
               Sign in
             </Link>
           )}
@@ -83,8 +83,8 @@ function GameBreadcrumb({ gameId }: { gameId: string }) {
 
   return (
     <>
-      <span className="text-gray-600">/</span>
-      <span className="text-gray-300">{title || gameId}</span>
+      <span className="text-content/25">/</span>
+      <span className="text-content/70">{title || gameId}</span>
     </>
   );
 }
@@ -97,8 +97,8 @@ function UserIndicator({ name }: { name: string }) {
 
   return (
     <>
-      <span className="text-gray-400">{name}</span>
-      <button onClick={handleLogout} className="text-gray-600 hover:text-gray-300">
+      <span className="text-content/50">{name}</span>
+      <button onClick={handleLogout} className="text-content/25 hover:text-content/70">
         Sign out
       </button>
     </>
@@ -107,22 +107,22 @@ function UserIndicator({ name }: { name: string }) {
 
 function Footer() {
   return (
-    <footer className="border-t border-gray-800 px-4 py-3">
-      <div className="mx-auto flex max-w-2xl items-center justify-between text-xs text-gray-500">
+    <footer className="border-t border-content/10 px-4 py-3">
+      <div className="mx-auto flex max-w-2xl items-center justify-between text-xs text-content/40">
         <div className="flex gap-4">
-          <Link to="/about" className="hover:text-gray-300">
+          <Link to="/about" className="hover:text-content/70">
             About
           </Link>
-          <Link to="/privacy" className="hover:text-gray-300">
+          <Link to="/privacy" className="hover:text-content/70">
             Privacy
           </Link>
-          <Link to="/tos" className="hover:text-gray-300">
+          <Link to="/tos" className="hover:text-content/70">
             Terms
           </Link>
         </div>
         <a
           href="https://github.com/ianb/roomsuponrooms"
-          className="hover:text-gray-300"
+          className="hover:text-content/70"
           aria-label="GitHub"
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">

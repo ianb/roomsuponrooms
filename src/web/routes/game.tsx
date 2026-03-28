@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
 import { createRoute, Navigate } from "@tanstack/react-router";
 import { rootRoute } from "./__root.js";
 import { WorldShell } from "../WorldShell.js";
@@ -6,6 +6,7 @@ import { EntityViewer } from "../EntityViewer.js";
 import { PromptViewer } from "../PromptViewer.js";
 import { useStickyState } from "../use-sticky-state.js";
 import { AuthContext } from "../auth.js";
+import { trpc } from "../trpc.js";
 
 export const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -23,6 +24,18 @@ function GamePage() {
   const [revision, setRevision] = useState(0);
   const [sidebarTab, setSidebarTab] = useStickyState<SidebarTab>("extenso:sidebarTab", "entities");
   const [sidebarExpanded, setSidebarExpanded] = useStickyState("extenso:sidebarExpanded", false);
+
+  useEffect(() => {
+    trpc.games.query().then((games) => {
+      const match = games.find((g) => g.slug === gameId);
+      if (match && match.theme) {
+        document.documentElement.setAttribute("data-theme", match.theme);
+      }
+    });
+    return () => {
+      document.documentElement.removeAttribute("data-theme");
+    };
+  }, [gameId]);
 
   if (!auth.loading && !auth.user) {
     return <Navigate to="/" />;
@@ -45,15 +58,15 @@ function GamePage() {
       </div>
       {canDebug ? (
         <div
-          className={`flex ${sidebarExpanded ? "w-2/3" : "w-72"} flex-col border-l border-gray-700 bg-gray-900`}
+          className={`flex ${sidebarExpanded ? "w-2/3" : "w-72"} flex-col border-l border-content/15 bg-surface`}
         >
-          <div className="flex border-b border-gray-700">
+          <div className="flex border-b border-content/15">
             <button
               onClick={() => setSidebarTab("entities")}
               className={`flex-1 px-2 py-1.5 text-xs ${
                 sidebarTab === "entities"
-                  ? "border-b-2 border-blue-400 text-blue-400"
-                  : "text-gray-400 hover:text-gray-200"
+                  ? "border-b-2 border-accent text-accent"
+                  : "text-content/50 hover:text-content/70"
               }`}
             >
               Entities
@@ -62,15 +75,15 @@ function GamePage() {
               onClick={() => setSidebarTab("prompts")}
               className={`flex-1 px-2 py-1.5 text-xs ${
                 sidebarTab === "prompts"
-                  ? "border-b-2 border-blue-400 text-blue-400"
-                  : "text-gray-400 hover:text-gray-200"
+                  ? "border-b-2 border-accent text-accent"
+                  : "text-content/50 hover:text-content/70"
               }`}
             >
               AI Prompts
             </button>
             <button
               onClick={() => setSidebarExpanded(!sidebarExpanded)}
-              className="px-2 py-1.5 text-xs text-gray-500 hover:text-gray-300"
+              className="px-2 py-1.5 text-xs text-content/40 hover:text-content/70"
               title={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
             >
               {sidebarExpanded ? "▷" : "◁"}

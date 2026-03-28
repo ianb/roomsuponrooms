@@ -45,7 +45,6 @@ export function EntityViewer({
     });
   }, [revision, gameId]);
 
-  // Re-fetch detail for the selected entity when it changes or the world updates
   useEffect(() => {
     if (!selectedId) return;
     trpc.entity.query({ gameId, id: selectedId }).then((result) => {
@@ -71,7 +70,6 @@ export function EntityViewer({
     setDetails(new Map());
   }
 
-  // Split entities: current room + its contents vs everything else
   const roomEntities: EntityListItem[] = [];
   const otherEntities: EntityListItem[] = [];
   for (const e of entities) {
@@ -87,21 +85,21 @@ export function EntityViewer({
 
   return (
     <div className="flex h-full flex-col text-xs">
-      <div className="flex items-center justify-between border-b border-gray-700 px-3 py-2">
-        <span className="font-bold text-gray-300">Entities</span>
+      <div className="flex items-center justify-between border-b border-content/15 px-3 py-2">
+        <span className="font-bold text-content/70">Entities</span>
         <div className="flex items-center gap-2">
-          <label className="flex cursor-pointer items-center gap-1 text-gray-500">
+          <label className="flex cursor-pointer items-center gap-1 text-content/40">
             <input
               type="checkbox"
               checked={showDiff}
               onChange={(e) => setShowDiff(e.target.checked)}
-              className="accent-sky-500"
+              className="accent-accent"
             />
             Diff
           </label>
           <button
             onClick={refreshEntities}
-            className="text-gray-500 hover:text-gray-300"
+            className="text-content/40 hover:text-content/70"
             title="Refresh"
           >
             ↻
@@ -110,9 +108,8 @@ export function EntityViewer({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Current room section */}
-        <div className="border-b border-gray-700">
-          <div className="px-3 py-1.5 text-[10px] font-bold tracking-wide text-sky-400 uppercase">
+        <div className="border-b border-content/15">
+          <div className="px-3 py-1.5 text-[10px] font-bold tracking-wide text-accent uppercase">
             Current Room
           </div>
           <EntityGroup
@@ -124,11 +121,10 @@ export function EntityViewer({
           />
         </div>
 
-        {/* Other entities section (collapsed by default) */}
         <div>
           <button
             onClick={() => setOthersExpanded(!othersExpanded)}
-            className="flex w-full items-center gap-1 px-3 py-1.5 text-left text-[10px] font-bold tracking-wide text-gray-500 uppercase hover:text-gray-400"
+            className="flex w-full items-center gap-1 px-3 py-1.5 text-left text-[10px] font-bold tracking-wide text-content/40 uppercase hover:text-content/50"
           >
             <span>{othersExpanded ? "▾" : "▸"}</span>
             All Other Entities ({otherEntities.length})
@@ -165,7 +161,7 @@ function EntityGroup({
     <>
       {Object.entries(grouped).map(([tag, items]) => (
         <div key={tag}>
-          <div className="px-3 py-1 text-[10px] font-bold tracking-wide text-gray-500 uppercase">
+          <div className="px-3 py-1 text-[10px] font-bold tracking-wide text-content/40 uppercase">
             {tag}
           </div>
           {items.map((e) => (
@@ -199,26 +195,23 @@ function EntityRow({
 }) {
   const changedIndicator = showDiff && entity.hasChanges;
   return (
-    <div className="border-b border-gray-800/50">
+    <div className="border-b border-content/8">
       <button
         onClick={onToggle}
-        className={`flex w-full items-center gap-1 px-3 py-1 text-left hover:bg-gray-800 ${
-          selected ? "bg-gray-800 text-sky-400" : "text-gray-300"
+        className={`flex w-full items-center gap-1 px-3 py-1 text-left hover:bg-input ${
+          selected ? "bg-input text-accent" : "text-content/70"
         }`}
       >
-        <span className="text-gray-600">{selected ? "▾" : "▸"}</span>
-        {changedIndicator ? <span className="text-yellow-500">●</span> : null}
+        <span className="text-content/25">{selected ? "▾" : "▸"}</span>
+        {changedIndicator ? <span className="text-caution">●</span> : null}
         {entity.name !== entity.id && <span>{entity.name} </span>}
-        <span className="font-mono text-gray-600">{entity.id}</span>
+        <span className="font-mono text-content/25">{entity.id}</span>
       </button>
       {selected && detail !== null ? (
-        <div className="bg-gray-850 px-3 py-2">
+        <div className="bg-input/50 px-3 py-2">
           <div className="mb-1 flex flex-wrap gap-1">
             {detail.current.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] text-sky-400"
-              >
+              <span key={tag} className="rounded bg-input px-1.5 py-0.5 text-[10px] text-accent">
                 {tag}
               </span>
             ))}
@@ -266,26 +259,28 @@ function PropertyTable({
   }
 
   if (rows.length === 0) {
-    return <div className="text-gray-600 italic">{showDiff ? "No changes" : "No properties"}</div>;
+    return (
+      <div className="text-content/25 italic">{showDiff ? "No changes" : "No properties"}</div>
+    );
   }
 
   return (
     <table className="w-full">
       <tbody>
         {rows.map((row) => (
-          <tr key={row.key} className={row.changed ? "bg-yellow-900/20" : ""}>
+          <tr key={row.key} className={row.changed ? "bg-caution/10" : ""}>
             <td
               className={`pr-2 align-top font-bold ${
                 row.removed
-                  ? "text-red-500 line-through"
+                  ? "text-removed line-through"
                   : row.added
-                    ? "text-green-500"
-                    : "text-gray-400"
+                    ? "text-added"
+                    : "text-content/50"
               }`}
             >
               {row.key}
             </td>
-            <td className="text-gray-300">{formatValue(row.value)}</td>
+            <td className="text-content/70">{formatValue(row.value)}</td>
           </tr>
         ))}
       </tbody>
@@ -308,7 +303,6 @@ function groupByTag(entities: EntityListItem[]): Record<string, EntityListItem[]
     if (!groups[tag]) groups[tag] = [];
     groups[tag].push(e);
   }
-  // Sort exits to the end
   const sorted: Record<string, EntityListItem[]> = {};
   const exitGroup = groups["exit"];
   for (const [tag, items] of Object.entries(groups)) {

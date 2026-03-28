@@ -20,6 +20,8 @@ export interface GameData {
     description: string;
     /** Seed for the random number generator (default: 1) */
     seed?: number;
+    /** Theme name for visual styling (default: none/site default) */
+    theme?: string;
   };
   prompts?: GamePrompts;
   properties?: PropertyData[];

@@ -107,6 +107,7 @@ export const appRouter = router({
       slug: g.slug,
       title: g.title,
       description: g.description,
+      theme: g.theme || null,
     }));
   }),
 

@@ -9,14 +9,14 @@ export const privacyRoute = createRoute({
 
 function PrivacyPolicyPage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-8 text-sm text-gray-300">
-      <h1 className="text-2xl font-bold text-gray-100">Privacy Policy</h1>
-      <p className="text-gray-500">Effective date: March 28, 2026</p>
+    <div className="mx-auto max-w-2xl space-y-4 p-8 text-sm text-content/70">
+      <h1 className="text-2xl font-bold text-content">Privacy Policy</h1>
+      <p className="text-content/40">Effective date: March 28, 2026</p>
 
       <p>
         roomsuponrooms.com (the &ldquo;Site&rdquo;) is owned and operated by Ian Bicking. Ian
         Bicking can be contacted at:{" "}
-        <a href="mailto:ian@ianbicking.org" className="text-sky-400 hover:text-sky-300">
+        <a href="mailto:ian@ianbicking.org" className="text-accent hover:text-accent-hover">
           ian@ianbicking.org
         </a>
       </p>
@@ -50,7 +50,7 @@ function PrivacyPolicyPage() {
           will not collect any additional data beyond the data listed below without notifying you
           first.
         </p>
-        <h3 className="font-bold text-gray-200">Data Collected Automatically</h3>
+        <h3 className="font-bold text-content/80">Data Collected Automatically</h3>
         <p>
           When you visit and use our Site, we may automatically collect and store the following
           information:
@@ -137,7 +137,7 @@ function PrivacyPolicyPage() {
           contact us:
         </p>
         <p>
-          <a href="mailto:ian@ianbicking.org" className="text-sky-400 hover:text-sky-300">
+          <a href="mailto:ian@ianbicking.org" className="text-accent hover:text-accent-hover">
             ian@ianbicking.org
           </a>
         </p>
@@ -154,7 +154,7 @@ function PrivacyPolicyPage() {
         <p>We use the following types of cookies on our Site:</p>
         <ol className="ml-6 list-decimal space-y-1">
           <li>
-            <strong className="text-gray-200">Functional cookies</strong> &mdash; used to remember
+            <strong className="text-content/80">Functional cookies</strong> &mdash; used to remember
             the selections you make on our Site so that your selections are saved for your next
             visits.
           </li>
@@ -167,7 +167,7 @@ function PrivacyPolicyPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-bold text-gray-100">{title}</h2>
+      <h2 className="text-lg font-bold text-content">{title}</h2>
       {children}
     </section>
   );

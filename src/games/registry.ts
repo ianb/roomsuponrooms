@@ -8,6 +8,7 @@ export interface GameDefinition {
   slug: string;
   title: string;
   description: string;
+  theme?: string;
   create: () => GameInstance;
 }
 

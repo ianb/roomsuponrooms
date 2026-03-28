@@ -109,28 +109,28 @@ export function WorldShell({
     <div className="flex h-full flex-col">
       {canDebug ? (
         <div className="flex items-center justify-end py-1">
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-content/40">
             <input
               type="checkbox"
               checked={debugMode}
               onChange={(e) => setDebugMode(e.target.checked)}
-              className="accent-sky-500"
+              className="accent-accent"
             />
             Debug
           </label>
         </div>
       ) : null}
       {conversationMode ? (
-        <div className="flex items-center gap-2 rounded-t-lg border-x border-t border-cyan-700 bg-cyan-950 px-3 py-2 text-sm text-cyan-200">
+        <div className="flex items-center gap-2 rounded-t-lg border-x border-t border-convo/50 bg-convo-bg px-3 py-2 text-sm text-convo/80">
           <span className="font-bold">{conversationMode.npcName}</span>
-          <span className="ml-auto text-xs text-cyan-400/70">
+          <span className="ml-auto text-xs text-convo/50">
             Type a topic word, or &quot;bye&quot; to leave
           </span>
         </div>
       ) : null}
       <div
         className={`flex-1 overflow-y-auto p-4 font-mono text-sm whitespace-pre-wrap ${
-          conversationMode ? "border-x border-cyan-700 bg-gray-950" : "rounded-t-lg bg-gray-900"
+          conversationMode ? "border-x border-convo/50 bg-page" : "rounded-t-lg bg-surface"
         }`}
       >
         {log.map((entry, i) => (
@@ -151,7 +151,7 @@ export function WorldShell({
       </div>
       <form
         onSubmit={handleSubmit}
-        className={`flex gap-2 rounded-b-lg p-2 ${conversationMode ? "border-x border-b border-cyan-700 bg-gray-950" : "bg-gray-900"}`}
+        className={`flex gap-2 rounded-b-lg p-2 ${conversationMode ? "border-x border-b border-convo/50 bg-page" : "bg-surface"}`}
       >
         <input
           ref={inputRef}
@@ -159,17 +159,17 @@ export function WorldShell({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={conversationMode ? "Say a topic word..." : "Enter command..."}
-          className={`flex-1 rounded border px-3 py-2 font-mono text-sm text-gray-100 focus:outline-none ${
+          className={`flex-1 rounded border px-3 py-2 font-mono text-sm text-content focus:outline-none ${
             conversationMode
-              ? "border-cyan-700 bg-gray-950 placeholder-cyan-600 focus:border-cyan-500"
-              : "border-gray-700 bg-gray-900 placeholder-gray-500 focus:border-sky-500"
+              ? "border-convo/50 bg-page placeholder-convo/40 focus:border-convo"
+              : "border-content/15 bg-surface placeholder-content/40 focus:border-accent"
           }`}
           autoFocus
         />
         <button
           type="submit"
           disabled={loading}
-          className="rounded bg-sky-700 px-4 py-2 font-mono text-sm text-gray-100 hover:bg-sky-600 disabled:opacity-50"
+          className="rounded bg-accent-bold px-4 py-2 font-mono text-sm text-content hover:bg-accent-bold/80 disabled:opacity-50"
         >
           Send
         </button>
@@ -191,12 +191,12 @@ function LogEntryView({
     <div
       className={
         entry.type === "input"
-          ? "text-sky-400"
+          ? "text-accent"
           : entry.type === "debug"
-            ? "mt-1 border-l-2 border-yellow-700 pl-2 text-xs text-yellow-600"
+            ? "mt-1 border-l-2 border-caution/50 pl-2 text-xs text-caution/70"
             : entry.type === "system"
-              ? "text-purple-300"
-              : "text-gray-200"
+              ? "text-ai/70"
+              : "text-content/70"
       }
     >
       {entry.type === "output" ? (
@@ -226,7 +226,7 @@ function ThinkingIndicator({ phase }: { phase: "thinking" | "ai" | null }) {
   if (!visible && phase !== "ai") return null;
 
   const text = phase === "ai" ? "Asking the AI..." : "Thinking...";
-  const color = phase === "ai" ? "text-purple-400" : "text-gray-400";
+  const color = phase === "ai" ? "text-ai" : "text-content/50";
 
   return <div className={`${color} animate-pulse`}>{text}</div>;
 }

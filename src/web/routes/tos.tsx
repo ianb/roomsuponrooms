@@ -9,8 +9,8 @@ export const tosRoute = createRoute({
 
 function TermsOfServicePage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-8 text-sm text-gray-300">
-      <h1 className="text-2xl font-bold text-gray-100">Terms of Service</h1>
+    <div className="mx-auto max-w-2xl space-y-4 p-8 text-sm text-content/70">
+      <h1 className="text-2xl font-bold text-content">Terms of Service</h1>
 
       <p>
         These terms and conditions (the &ldquo;Terms and Conditions&rdquo;) govern the use of
@@ -129,13 +129,13 @@ function TermsOfServicePage() {
           follows:
         </p>
         <p>
-          <a href="mailto:ian@ianbicking.org" className="text-sky-400 hover:text-sky-300">
+          <a href="mailto:ian@ianbicking.org" className="text-accent hover:text-accent-hover">
             ian@ianbicking.org
           </a>
         </p>
       </Section>
 
-      <p className="text-gray-500">Effective Date: March 28, 2026</p>
+      <p className="text-content/40">Effective Date: March 28, 2026</p>
     </div>
   );
 }
@@ -143,7 +143,7 @@ function TermsOfServicePage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-bold text-gray-100">{title}</h2>
+      <h2 className="text-lg font-bold text-content">{title}</h2>
       {children}
     </section>
   );

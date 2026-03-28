@@ -3,7 +3,8 @@
     "slug": "colossal-cave",
     "title": "Colossal Cave Adventure",
     "description": "The classic text adventure by Will Crowther and Don Woods. Explore a vast cave system, collect treasures, and avoid dangers.",
-    "seed": 42
+    "seed": 42,
+    "theme": "cave"
   },
   "properties": [
     {

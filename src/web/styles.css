@@ -1,6 +1,125 @@
 @import "tailwindcss";
 
-@theme {
-  --font-mono: "Roboto Mono", ui-monospace, monospace;
-  --font-sans: "Roboto Mono", ui-monospace, monospace;
+@theme inline {
+  --font-mono: var(--th-font-mono);
+  --font-sans: var(--th-font-sans);
+  --font-heading: var(--th-font-heading);
+
+  /* Surfaces */
+  --color-page: var(--th-page);
+  --color-surface: var(--th-surface);
+  --color-input: var(--th-input);
+
+  /* Content (use with opacity: text-content, text-content/60, border-content/15) */
+  --color-content: var(--th-content);
+
+  /* Accent (links, buttons, interactive) */
+  --color-accent: var(--th-accent);
+  --color-accent-hover: var(--th-accent-hover);
+  --color-accent-bold: var(--th-accent-bold);
+
+  /* Game: conversation mode */
+  --color-convo: var(--th-convo);
+  --color-convo-bg: var(--th-convo-bg);
+
+  /* Game: highlighted text types */
+  --color-highlight-entity: var(--th-highlight-entity);
+  --color-highlight-topic: var(--th-highlight-topic);
+  --color-highlight-direction: var(--th-highlight-direction);
+
+  /* Game: AI/system indicators */
+  --color-ai: var(--th-ai);
+
+  /* Game: command buttons */
+  --color-command: var(--th-command);
+
+  /* Semantic: danger/caution */
+  --color-danger: var(--th-danger);
+  --color-caution: var(--th-caution);
+
+  /* Semantic: diff indicators */
+  --color-added: var(--th-added);
+  --color-removed: var(--th-removed);
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+
+  :root {
+    /* Fonts */
+    --th-font-mono: "Roboto Mono", ui-monospace, monospace;
+    --th-font-sans: "Roboto Mono", ui-monospace, monospace;
+    --th-font-heading: "Roboto Mono", ui-monospace, monospace;
+
+    /* Surfaces */
+    --th-page: oklch(0.145 0.014 260);       /* gray-950 */
+    --th-surface: oklch(0.205 0.015 260);     /* gray-900 */
+    --th-input: oklch(0.269 0.015 260);       /* gray-800 */
+
+    /* Content */
+    --th-content: oklch(0.925 0.006 260);     /* gray-100 */
+
+    /* Accent */
+    --th-accent: oklch(0.685 0.155 230);      /* sky-400 */
+    --th-accent-hover: oklch(0.750 0.130 230); /* sky-300 */
+    --th-accent-bold: oklch(0.500 0.155 230); /* sky-700 */
+
+    /* Game: conversation */
+    --th-convo: oklch(0.600 0.130 195);       /* cyan-400/500 area */
+    --th-convo-bg: oklch(0.200 0.040 195);    /* cyan-950 area */
+
+    /* Game: highlights */
+    --th-highlight-entity: oklch(0.730 0.150 85);  /* amber-400 */
+    --th-highlight-topic: oklch(0.680 0.130 195);  /* cyan-400 */
+    --th-highlight-direction: oklch(0.680 0.160 160); /* emerald-400 */
+
+    /* Game: AI */
+    --th-ai: oklch(0.650 0.165 300);          /* purple-400 */
+
+    /* Game: commands */
+    --th-command: oklch(0.580 0.200 25);      /* red-400 */
+
+    /* Semantic */
+    --th-danger: oklch(0.580 0.200 25);       /* red-400/500 */
+    --th-caution: oklch(0.680 0.170 85);      /* yellow-500 */
+
+    /* Diff */
+    --th-added: oklch(0.650 0.200 145);       /* green-500 */
+    --th-removed: oklch(0.580 0.200 25);      /* red-500 */
+  }
+
+  /* Colossal Cave: earthy stone cavern feel */
+  [data-theme="cave"] {
+    --th-font-sans: "Roboto Mono", ui-monospace, monospace;
+    --th-font-mono: "Roboto Mono", ui-monospace, monospace;
+    --th-font-heading: Georgia, "Times New Roman", serif;
+
+    --th-page: oklch(0.15 0.01 60);           /* warm dark brown */
+    --th-surface: oklch(0.20 0.015 55);       /* slightly lighter stone */
+    --th-input: oklch(0.26 0.015 50);         /* warm gray-brown */
+
+    --th-content: oklch(0.88 0.02 70);        /* warm off-white */
+
+    --th-accent: oklch(0.70 0.12 70);         /* warm amber */
+    --th-accent-hover: oklch(0.78 0.10 70);   /* lighter amber */
+    --th-accent-bold: oklch(0.50 0.12 55);    /* deep amber-brown */
+
+    --th-convo: oklch(0.65 0.10 160);         /* muted teal */
+    --th-convo-bg: oklch(0.20 0.03 160);      /* dark teal */
+
+    --th-highlight-entity: oklch(0.75 0.14 85);  /* golden */
+    --th-highlight-topic: oklch(0.65 0.10 160);  /* teal */
+    --th-highlight-direction: oklch(0.65 0.12 140); /* sage green */
+
+    --th-ai: oklch(0.60 0.12 300);            /* muted purple */
+    --th-command: oklch(0.60 0.15 25);        /* dusty red */
+
+    --th-danger: oklch(0.58 0.18 25);
+    --th-caution: oklch(0.70 0.14 85);        /* warm yellow */
+
+    --th-added: oklch(0.60 0.15 145);
+    --th-removed: oklch(0.58 0.18 25);
+  }
 }

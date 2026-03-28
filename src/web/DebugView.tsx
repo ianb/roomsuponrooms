@@ -66,7 +66,7 @@ function AiDebugView({ ai }: { ai: AiFallbackDebug }) {
 
   return (
     <div className="mt-1">
-      <div className="text-yellow-500">AI ({formatDuration(ai.durationMs)})</div>
+      <div className="text-caution">AI ({formatDuration(ai.durationMs)})</div>
       <div className="mt-0.5 flex flex-wrap gap-1">
         <CollapseButton
           label="system"
@@ -92,22 +92,22 @@ function AiDebugView({ ai }: { ai: AiFallbackDebug }) {
         ) : null}
       </div>
       {expandedSection === "schema" && ai.schema ? (
-        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs text-yellow-600/80">
+        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-input p-2 text-xs text-caution/70">
           {JSON.stringify(ai.schema, null, 2)}
         </pre>
       ) : null}
       {expandedSection === "system" && ai.systemPrompt ? (
-        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs text-yellow-600/80">
+        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-input p-2 text-xs text-caution/70">
           {ai.systemPrompt}
         </pre>
       ) : null}
       {expandedSection === "prompt" ? (
-        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs text-yellow-600/80">
+        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-input p-2 text-xs text-caution/70">
           {ai.prompt}
         </pre>
       ) : null}
       {expandedSection === "response" ? (
-        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-gray-800 p-2 text-xs text-yellow-600/80">
+        <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-input p-2 text-xs text-caution/70">
           {JSON.stringify(ai.response, null, 2)}
         </pre>
       ) : null}
@@ -128,8 +128,8 @@ function CollapseButton({
     <button
       className={`rounded border px-1.5 py-0.5 text-xs ${
         expanded
-          ? "border-yellow-600 bg-yellow-900/40 text-yellow-400"
-          : "border-yellow-800 text-yellow-700 hover:text-yellow-500"
+          ? "border-caution/50 bg-caution/15 text-caution"
+          : "border-caution/30 text-caution/60 hover:text-caution"
       }`}
       onClick={onClick}
     >

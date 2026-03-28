@@ -60,7 +60,7 @@ export function HighlightedText({
       return (
         <span
           key={i}
-          className="cursor-pointer text-amber-400 hover:underline"
+          className="cursor-pointer text-highlight-entity hover:underline"
           onClick={() => {
             if (onEntityClick && seg.entityId) {
               onEntityClick(seg.entityId);
@@ -75,7 +75,7 @@ export function HighlightedText({
       return (
         <span
           key={i}
-          className="cursor-pointer text-cyan-400 hover:underline"
+          className="cursor-pointer text-highlight-topic hover:underline"
           onClick={() => {
             if (onTopicClick) {
               onTopicClick(seg.text.toLowerCase());
@@ -88,15 +88,15 @@ export function HighlightedText({
     }
     if (seg.type === "direction") {
       return (
-        <span key={i} className="text-emerald-400">
+        <span key={i} className="text-highlight-direction">
           {seg.text}
         </span>
       );
     }
     if (seg.type === "refusal") {
       return (
-        <span key={i} className="italic text-gray-300/80">
-          <span className="not-italic text-red-400/70">&#x2205;</span> {seg.text}
+        <span key={i} className="italic text-content/60">
+          <span className="not-italic text-danger/70">&#x2205;</span> {seg.text}
         </span>
       );
     }
@@ -104,7 +104,7 @@ export function HighlightedText({
       return (
         <button
           key={i}
-          className="ml-1 cursor-pointer rounded border border-red-700 px-1.5 py-0.5 text-xs text-red-400 hover:bg-red-900/40"
+          className="ml-1 cursor-pointer rounded border border-command/50 px-1.5 py-0.5 text-xs text-command hover:bg-command/15"
           onClick={() => {
             if (onCommandClick && seg.command) {
               onCommandClick(seg.command);
