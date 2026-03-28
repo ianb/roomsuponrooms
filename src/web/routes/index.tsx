@@ -25,22 +25,39 @@ function HomePage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl p-8">
+    <div className="mx-auto max-w-2xl px-6 py-12">
+      {/* Hero */}
+      <div className="mb-12">
+        <h1 className="mb-4 text-center text-3xl font-bold tracking-tight text-gray-50">
+          Rooms Upon Rooms Upon Rooms
+        </h1>
+        <p className="text-gray-400">
+          Text adventure worlds with rooms to explore, objects to interact with, and characters to
+          talk to. But the map doesn&rsquo;t end. Walk through an exit and new rooms appear. Say
+          something unexpected to an NPC and they&rsquo;ll find a way to respond. Everything that
+          gets created sticks around. The world grows permanently.
+        </p>
+      </div>
+
+      {/* Sign in prompt (only when not logged in) */}
       {!auth.loading && !auth.user ? <LoginSection devMode={auth.devMode} /> : null}
 
-      <p className="mb-6 text-gray-400">Choose an adventure:</p>
-      <div className="space-y-4">
-        {games.map((game) => (
-          <Link
-            key={game.slug}
-            to="/game/$gameId"
-            params={{ gameId: game.slug }}
-            className="block rounded-lg border border-gray-700 bg-gray-900 p-4 hover:border-sky-500 hover:bg-gray-800"
-          >
-            <h2 className="text-lg font-bold text-sky-400">{game.title}</h2>
-            <p className="mt-1 text-sm text-gray-400">{game.description}</p>
-          </Link>
-        ))}
+      {/* Game list */}
+      <div className="mb-4">
+        <h2 className="mb-4 text-lg font-bold text-gray-200">Adventures</h2>
+        <div className="space-y-3">
+          {games.map((game) => (
+            <Link
+              key={game.slug}
+              to="/game/$gameId"
+              params={{ gameId: game.slug }}
+              className="block rounded-lg border border-gray-700 bg-gray-900 p-4 hover:border-sky-500 hover:bg-gray-800"
+            >
+              <h3 className="font-bold text-sky-400">{game.title}</h3>
+              <p className="mt-1 text-sm text-gray-400">{game.description}</p>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -65,7 +82,7 @@ function LoginSection({ devMode }: { devMode: boolean }) {
 
   if (devMode) {
     return (
-      <div className="mb-6 rounded-lg border border-gray-700 bg-gray-900 p-6">
+      <div className="mb-8 rounded-lg border border-gray-700 bg-gray-900 p-6">
         <p className="mb-4 text-gray-400">Sign in to play:</p>
         <form onSubmit={handleDevLogin} className="flex gap-2">
           <input
@@ -89,11 +106,11 @@ function LoginSection({ devMode }: { devMode: boolean }) {
   }
 
   return (
-    <div className="mb-6 rounded-lg border border-gray-700 bg-gray-900 p-6">
-      <p className="mb-4 text-gray-400">Sign in to play:</p>
+    <div className="mb-8 rounded-lg border border-gray-700 bg-gray-900 p-6 text-center">
+      <p className="mb-4 text-gray-400">Sign in to start exploring</p>
       <a
         href="/auth/google"
-        className="inline-block rounded bg-sky-700 px-4 py-2 font-medium text-gray-100 hover:bg-sky-600"
+        className="inline-block rounded bg-sky-700 px-6 py-2 font-medium text-gray-100 hover:bg-sky-600"
       >
         Sign in with Google
       </a>
