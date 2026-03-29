@@ -45,10 +45,11 @@ With code: JavaScript function body — use "code" for handlers that need condit
 The code has access to these variables:
 
 - object — the target entity: { id, tags (Set), properties (object) }
+- indirect — the second entity for "verb X prep Y" commands (e.g. "use wrench on panel" → object=wrench, indirect=panel). Null for transitive/prepositional commands.
 - player — the player entity (same shape)
 - room — the current room entity
 - store — the entity store
-- command — the parsed command
+- command — the parsed command (command.form, command.verb, command.prep)
 - lib — helper library:
 ${libLines}
 
@@ -96,6 +97,20 @@ if (object.properties.switchedOn) {
 return lib.result("The lantern rattles. You hear liquid sloshing inside.");
 \`\`\`
 
+Use one object on another (ditransitive — object + indirect):
+\`\`\`
+if (!indirect) {
+  return lib.result("Use it on what?");
+}
+if (!indirect.tags.has("device") || indirect.properties.powered) {
+  return lib.result("That doesn't seem to help.");
+}
+return {
+  output: "You connect the " + lib.ref(object) + " to the " + lib.ref(indirect) + ". It hums to life.",
+  events: [lib.setEvent(indirect.id, { property: "powered", value: true, description: "Powered on" })]
+};
+\`\`\`
+
 Strip copper wire from an object (creates a new item for the player):
 \`\`\`
 if (object.properties.description.includes("stripped")) {
@@ -117,10 +132,11 @@ Entity creation: lib.createEvent(entityId, { tags, properties, description }). U
 </events>
 
 <guidelines>
-- Be conservative. Most unusual actions should be refused.
 - Only "perform" if physically plausible given the object's tags and properties.
 - Do not destroy important game objects without very good reason.
 - A "perform" with no events is fine — flavor text is good.
 - Prefer code over static message+events when the handler should react to object state.
+- When the player combines two objects (ditransitive commands like "use X on Y", "put X in Y", "attach X to Y"), favor outcomes that change the world — unlocking, powering, transforming, or revealing something. These combinations are often the most interesting moments in the game.
+- For ditransitive handlers, use "indirect" to reference the second object. Check both objects' tags and properties to decide if the combination makes sense.
 </guidelines>`;
 }

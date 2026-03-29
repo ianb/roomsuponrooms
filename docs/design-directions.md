@@ -315,7 +315,7 @@ Based on effort vs. impact:
 3. ~~**Better parse failures** (#6)~~ — **Done.** Parse breakdown and allowed forms now shown on resolution failures.
 4. ~~**Affordance-oriented descriptions** (#7)~~ — **Done.** Creation prompts and schemas now steer descriptions toward interactive details.
 5. **Nearby entity context** (#1) — Medium effort. Makes AI generation context-aware, creates a connected world. Combines powerfully with secrets.
-6. **Use X with Y guidance** (#2) — Prompt changes + some context gathering. Improves the most interesting interactions.
+6. ~~**Use X with Y guidance** (#2)~~ — **Done.** Verb fallback prompt now documents `indirect` variable, adds ditransitive code example, and steers AI toward mechanical outcomes for combinations.
 7. ~~**Room prompts with secrets** (#4)~~ — **Done.** Secrets backfilled on existing game content, creation prompt guidance added for both worlds.
 8. **Richer properties** (#3) — Needs per-world design work. Creates interaction vocabulary.
 9. **Overlapping systems** (#9) — Architectural. Start with property-based reactions as a prototype.
