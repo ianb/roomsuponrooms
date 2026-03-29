@@ -25,7 +25,9 @@ function RootLayout() {
 
   return (
     <AuthContext value={{ user, devMode, loading }}>
-      <div className="flex min-h-screen flex-col bg-page text-content">
+      <div
+        className={`flex flex-col bg-page text-content ${isGamePage ? "h-screen" : "min-h-screen"}`}
+      >
         <NavBar />
         <div className="flex min-h-0 flex-1 flex-col">
           <Outlet />
