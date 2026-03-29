@@ -1,2 +1,2 @@
-{"id":"npc:dwarf","tags":["npc","dwarf"],"properties":{"location":"void","name":"Dwarf","description":"A threatening little dwarf hides in the shadows.","aliases":["dwarf","nasty","mean","threatening"],"fixed":true,"remaining":5,"hasAxe":true}}
-{"id":"npc:pirate","tags":["npc"],"properties":{"location":"void","name":"Pirate","fixed":true,"spotted":false,"rich":false,"retired":false}}
+{"id": "npc:dwarf", "tags": ["npc", "dwarf"], "properties": {"location": "void", "name": "Dwarf", "description": "A threatening little dwarf hides in the shadows.", "aliases": ["dwarf", "nasty", "mean", "threatening"], "fixed": true, "remaining": 5, "hasAxe": true}}
+{"id": "npc:pirate", "tags": ["npc"], "properties": {"location": "void", "name": "Pirate", "fixed": true, "spotted": false, "rich": false, "retired": false}}

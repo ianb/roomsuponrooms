@@ -20,6 +20,10 @@ Cultural artifacts should feel personal and specific — carvings, textiles, pai
 
 For terminals and data sources, include specific but fragmentary information. Partial logs, status readouts, crew records with unfamiliar conventions. Don't explain everything — leave gaps that invite curiosity.
 
+## Secrets
+
+When creating objects, consider adding a secret — hidden interactive potential that the player can discover through experimentation. Good secrets for this world: devices that interact with other devices, objects that respond to unexpected actions (singing, warming, submerging), connections between areas (a vine network, a shared power conduit), or information that can only be accessed through creative use. Secrets should reward curiosity, not require specific knowledge.
+
 ## What to avoid
 
 Weapons (this isn't a combat game), generic sci-fi tropes, anything that feels like it came from a template rather than from a thousand years of human creativity. Lean toward the strange, the beautiful, the funny, and the puzzling.
