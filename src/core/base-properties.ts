@@ -124,6 +124,12 @@ export function defineBaseProperties(registry: PropertyRegistry): void {
       schema: { type: "string" },
     },
     {
+      name: "secret",
+      description:
+        "Hidden interactive potential not obvious from the description — guides AI verb resolution (not shown to players)",
+      schema: { type: "string" },
+    },
+    {
       name: "scenery",
       description: "Scenery descriptions for atmospheric details in a room",
       schema: { type: "array" },

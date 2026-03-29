@@ -46,12 +46,16 @@ function buildSystemPrompt({
   prompts?: GamePrompts;
 }): string {
   const styleSection = composeVerbPrompt({ prompts, room, store });
+  const roomSecret = room.properties["secret"] as string | undefined;
+  const secretSection = roomSecret
+    ? `\n<secret>\nHidden information about this room. Be aware of it when describing scenery, but don't reveal it directly. If the scenery word naturally relates to the secret, let hints emerge.\n\n${roomSecret}\n</secret>\n`
+    : "";
   return `<role>
 You are describing a scenery detail in a text adventure room. The player is examining something mentioned in the room description. This is atmospheric detail, not a full game object — it exists to make the world feel richer.
 </role>
 
 ${styleSection}
-
+${secretSection}
 <guidelines>
 - Write a vivid 1-3 sentence description of what the player sees on closer inspection.
 - Stay consistent with the room description and world tone.

@@ -8,10 +8,10 @@ import {
   describeProperties,
   collectTags,
   filterKnownProperties,
-  buildPropertiesSchema,
   reverseDirection,
 } from "./ai-prompt-helpers.js";
 import { composeCreatePrompt } from "./ai-prompts.js";
+import { buildRoomSchema } from "./ai-create-room-schema.js";
 import { getStorage } from "./storage-instance.js";
 import type { AuthoringInfo } from "./storage.js";
 
@@ -22,76 +22,12 @@ export interface AiCreateRoomDebugInfo {
   schema?: unknown;
   durationMs: number;
 }
-
 export interface AiCreateRoomResult {
   output: string;
   notes?: string;
   roomId: string;
   events: WorldEvent[];
   debug?: AiCreateRoomDebugInfo;
-}
-
-const ROOM_EXCLUDED = [
-  "name",
-  "description",
-  "location",
-  "aliases",
-  "direction",
-  "destination",
-  "destinationIntent",
-];
-
-function buildRoomSchema(store: EntityStore) {
-  const propsSchema = buildPropertiesSchema(store, { exclude: ROOM_EXCLUDED });
-  return z.object({
-    room: z.object({
-      idSlug: z.string().describe("Short kebab-case slug for the room ID."),
-      name: z.string().describe("Display name for the room."),
-      description: z.string().describe("Full room description. 2-4 sentences."),
-      tags: z.array(z.string()).describe("Tags for the room. Always include 'room'."),
-      properties: propsSchema,
-      exitUpdate: z
-        .object({
-          name: z.string().optional().describe("New name for the exit, if it should change."),
-          description: z
-            .string()
-            .optional()
-            .describe("New description for the exit, if it should change."),
-        })
-        .optional()
-        .describe("Optional changes to the exit the player came through."),
-      additionalExits: z
-        .array(
-          z.object({
-            direction: z.string(),
-            name: z.string(),
-            description: z.string(),
-            destinationIntent: z
-              .string()
-              .describe("What this exit should lead to when materialized."),
-            aliases: z.array(z.string()),
-            properties: propsSchema,
-          }),
-        )
-        .describe("Additional unresolved exits (not the return exit). 0-2 exits."),
-      contents: z
-        .array(
-          z.object({
-            idSlug: z.string(),
-            idCategory: z.string(),
-            name: z.string(),
-            description: z.string(),
-            tags: z.array(z.string()),
-            aliases: z.array(z.string()),
-            properties: propsSchema,
-          }),
-        )
-        .describe("Objects/NPCs in the new room. Keep sparse, 0-2 items."),
-    }),
-    notes: z
-      .string()
-      .describe("Your reasoning about this room. Shown to the game designer, not the player."),
-  });
 }
 
 function describeExitForLlm(entity: Entity): string {
@@ -133,20 +69,19 @@ function buildSystemPrompt(ctx: {
 }): string {
   const styleSection = composeCreatePrompt(ctx);
   return `<role>
-You are creating a new room for a text adventure game. The player has walked through an exit that leads to an unmaterialized destination. You must create the room, its contents, and any additional exits.
+You are creating a new room for a text adventure. The player walked through an exit to an unmaterialized destination. Create the room, contents, and any additional exits.
 </role>
 
 ${styleSection}
 
 <guidelines>
-- The room must match the exit's destinationIntent \u2014 that's the primary constraint.
-- Write the room description as what the player sees when entering. 2-4 sentences, vivid but concise.
-- A return exit to the source room is created automatically \u2014 do NOT include it in additionalExits.
-- Add 0-2 additional unresolved exits to keep the world expandable. Each needs a destinationIntent.
-- Add 0-2 contents (objects, NPCs, furniture) only if they make the room interesting or are implied by the intent.
-- You may optionally update the exit the player came through (exitUpdate) if, now that the destination is known, the exit name or description should change.
-- Rooms are lit by default \u2014 do NOT set "dark" unless the room is specifically meant to be pitch black and inaccessible without a light source. "dark" is a rare exception, not a default for dim or shadowy spaces.
-- Set aiPrompt on the room if there's useful context for future AI operations in this room.
+- The room must match the exit's destinationIntent — that's the primary constraint.
+- Room description: what the player sees when entering. 2-4 sentences, vivid but concise.
+- A return exit is created automatically — do NOT include it in additionalExits.
+- Add 0-2 additional unresolved exits (each needs a destinationIntent) and 0-2 contents.
+- You may update the entry exit (exitUpdate) if, now that the destination is known, its name/description should change.
+- Rooms are lit by default — only set "dark" for pitch-black rooms requiring a light source.
+- Set aiPrompt if there's useful context for future AI operations in this room.
 - Room contents should use existing tags and properties from the available lists.
 </guidelines>`;
 }
@@ -213,6 +148,7 @@ export async function handleAiCreateRoom(
     name: roomData.name,
     description: roomData.description,
     ...roomData.properties,
+    ...(roomData.secret ? { secret: roomData.secret } : {}),
   });
   await createAndSave(store, {
     id: roomId,
@@ -307,14 +243,13 @@ export async function handleAiCreateRoom(
     await createAndSave(store, { id: iid, tags: item.tags, properties: ip, gameId, authoring });
   }
 
-  const debugInfo: AiCreateRoomDebugInfo | undefined = debug
-    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(objectSchema), durationMs }
-    : undefined;
   return {
     output: roomData.description,
     notes: response.notes || undefined,
     roomId,
     events,
-    debug: debugInfo,
+    debug: debug
+      ? { systemPrompt, prompt, response, schema: z.toJSONSchema(objectSchema), durationMs }
+      : undefined,
   };
 }

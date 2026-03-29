@@ -311,7 +311,7 @@ All of these require some concept of a "turn counter" or "event since last inter
 Based on effort vs. impact:
 
 1. **Conversation effects** (#5) — Bug fix. Small, specific, immediately makes NPCs more interesting.
-2. **Entity secrets** (#8) — New property + prompt changes. Adds hidden depth to every entity, creates discovery/mastery loop.
+2. ~~**Entity secrets** (#8)~~ — **Done.** `secret` property added, generated during creation, consumed in verb fallback, conversations, and scenery. Backfilled on existing game content.
 3. ~~**Better parse failures** (#6)~~ — **Done.** Parse breakdown and allowed forms now shown on resolution failures.
 4. **Affordance-oriented descriptions** (#7) — Prompt change only. Makes every room and object more interactive.
 5. **Nearby entity context** (#1) — Medium effort. Makes AI generation context-aware, creates a connected world. Combines powerfully with secrets.

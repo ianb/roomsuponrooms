@@ -37,10 +37,13 @@ const responseSchema = z.object({
   notes: z.string().describe("Your reasoning. Shown to game designer, not the player."),
 });
 
+const HIDDEN_PROPERTIES = new Set(["secret", "aiPrompt"]);
+
 function describeNpcForLlm(npc: Entity): string {
   const tags = Array.from(npc.tags).join(", ");
   const props: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(npc.properties)) {
+    if (HIDDEN_PROPERTIES.has(key)) continue;
     props[key] = value;
   }
   return `id: ${npc.id}\ntags: [${tags}]\nproperties: ${JSON.stringify(props)}`;
@@ -73,6 +76,11 @@ function buildSystemPrompt({
 }): string {
   const styleSection = composeConversationPrompt({ prompts, room, store });
 
+  const npcSecret = npc.properties["secret"] as string | undefined;
+  const secretSection = npcSecret
+    ? `\n<secret>\nHidden information the player doesn't know. Be aware of this when responding, but don't reveal it directly. If the player's topic naturally engages with the secret, let it partially emerge — reward their intuition.\n\n${npcSecret}\n</secret>\n`
+    : "";
+
   return `<role>
 You are extending the conversation tree for an NPC/device in a text adventure. The player has said a word that has no existing response. You must decide whether this NPC would respond to this topic, and if so, generate the response.
 
@@ -84,7 +92,7 @@ ${styleSection}
 <npc>
 ${describeNpcForLlm(npc)}
 </npc>
-
+${secretSection}
 <guidelines>
 - The player can only say SINGLE WORDS. The word is a trigger, not literal speech.
 - "narration" describes what the player actually said or did (use quotes for speech).

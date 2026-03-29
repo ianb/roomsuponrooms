@@ -55,6 +55,12 @@ function buildCreateSchema(store: EntityStore) {
       .array(z.string())
       .describe("Alternative names the player can use to refer to this object."),
     properties: buildPropertiesSchema(store, { exclude: EXCLUDED_PROPERTIES }),
+    secret: z
+      .string()
+      .optional()
+      .describe(
+        "Optional hidden potential not obvious from the description. Guides future AI verb resolution but is never shown to the player. Should describe interactive possibilities: an unexpected use, a hidden connection, a reaction to specific conditions. 1-2 sentences. Not everything needs a secret.",
+      ),
     notes: z
       .string()
       .describe(
@@ -194,6 +200,9 @@ export async function handleAiCreate(
   }
   if (response.aliases.length > 0) {
     properties.aliases = response.aliases;
+  }
+  if (response.secret) {
+    properties.secret = response.secret;
   }
 
   // Create the entity

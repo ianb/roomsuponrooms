@@ -78,11 +78,13 @@ function entityName(entity: Entity): string {
   return (entity.properties["name"] as string) || entity.id;
 }
 
+const HIDDEN_PROPERTIES = new Set(["description", "shortDescription", "secret", "aiPrompt"]);
+
 function describeEntityForLlm(entity: Entity): string {
   const tags = Array.from(entity.tags).join(", ");
   const props: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(entity.properties)) {
-    if (key === "description" || key === "shortDescription") continue;
+    if (HIDDEN_PROPERTIES.has(key)) continue;
     props[key] = value;
   }
   return `- id: ${entity.id}\n  tags: [${tags}]\n  properties: ${JSON.stringify(props)}`;
@@ -90,7 +92,11 @@ function describeEntityForLlm(entity: Entity): string {
 
 function buildPrompt(
   store: EntityStore,
-  { command, aiInstructions }: { command: ResolvedCommand; aiInstructions?: string },
+  {
+    command,
+    room,
+    aiInstructions,
+  }: { command: ResolvedCommand; room: Entity; aiInstructions?: string },
 ): string {
   const parts: string[] = [];
 
@@ -110,6 +116,20 @@ function buildPrompt(
       return `${describeEntityForLlm(e)}\n  description: "${desc}"`;
     });
     parts.push(`<target-objects>\n${descs.join("\n\n")}\n</target-objects>`);
+  }
+
+  // Collect secrets from involved entities and the room
+  const secrets: string[] = [];
+  const roomSecret = room.properties["secret"] as string | undefined;
+  if (roomSecret) secrets.push(`Room: ${roomSecret}`);
+  for (const e of involved) {
+    const s = e.properties["secret"] as string | undefined;
+    if (s) secrets.push(`${e.properties["name"] || e.id}: ${s}`);
+  }
+  if (secrets.length > 0) {
+    parts.push(
+      `<secret>\nHidden information the player doesn't know. Be aware of this when resolving the action, but don't reveal it directly. If the player's action naturally engages with a secret, let it emerge — reward their intuition.\n\n${secrets.join("\n")}\n</secret>`,
+    );
   }
 
   parts.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
@@ -192,7 +212,7 @@ export async function handleVerbFallback(
   },
 ): Promise<FallbackResult> {
   const systemPrompt = buildSystemPrompt(libClass, { prompts, room, store });
-  const prompt = buildPrompt(store, { command, aiInstructions });
+  const prompt = buildPrompt(store, { command, room, aiInstructions });
 
   console.log("[ai-fallback] Calling LLM for:", describeCommand(command));
   const startTime = Date.now();
