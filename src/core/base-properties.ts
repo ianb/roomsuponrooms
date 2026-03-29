@@ -102,6 +102,12 @@ export function defineBaseProperties(registry: PropertyRegistry): void {
       schema: { type: "string" },
     },
     {
+      name: "worn",
+      description: "Whether a wearable item is currently being worn by the player",
+      schema: { type: "boolean" },
+      defaultValue: false,
+    },
+    {
       name: "depositPoints",
       description: "Score points awarded when this treasure is deposited",
       schema: { type: "number" },
