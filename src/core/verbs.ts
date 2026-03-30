@@ -1,6 +1,5 @@
 import type { Entity } from "./entity.js";
 import type {
-  ParsedCommand,
   ResolvedCommand,
   WorldEvent,
   VerbHandler,
@@ -9,6 +8,7 @@ import type {
   EntityRequirements,
   DispatchResult,
 } from "./verb-types.js";
+import { resolvePrep } from "./command-parser.js";
 
 export type {
   ParsedCommand,
@@ -25,87 +25,7 @@ export type {
 } from "./verb-types.js";
 
 export { resolveCommand } from "./resolve.js";
-
-// --- Preposition groups ---
-
-export const PREP_GROUPS: Record<string, string[]> = {
-  containment: ["in", "into", "inside"],
-  surface: ["on", "onto"],
-  target: ["to", "toward", "towards"],
-  instrument: ["with", "using"],
-  source: ["from", "out of"],
-  direction: ["at", "toward", "towards"],
-  beneath: ["under", "beneath", "below"],
-};
-
-function resolvePrep(prep: string): string {
-  for (const [group, members] of Object.entries(PREP_GROUPS)) {
-    if (members.includes(prep)) return group;
-  }
-  return prep;
-}
-
-// --- Prepositions ---
-
-const PREPOSITIONS = new Set([
-  "in",
-  "on",
-  "off",
-  "to",
-  "with",
-  "at",
-  "from",
-  "under",
-  "into",
-  "onto",
-]);
-
-// --- Compound verbs (two-word verbs treated as a single verb) ---
-
-const COMPOUND_VERBS = new Set(["turn on", "turn off", "pick up", "put on", "take off"]);
-
-// --- Parser ---
-
-export function parseCommand(input: string): ParsedCommand | null {
-  const words = input.trim().toLowerCase().split(/\s+/);
-  if (words.length === 0) return null;
-
-  let verb = words[0];
-  if (!verb) return null;
-
-  // Check for compound verbs (e.g. "turn on lamp" → verb="turn-on", object="lamp")
-  let verbWordCount = 1;
-  if (words.length >= 2) {
-    const compound = `${words[0]} ${words[1]}`;
-    if (COMPOUND_VERBS.has(compound)) {
-      verb = `${words[0]}-${words[1]}`;
-      verbWordCount = 2;
-    }
-  }
-
-  const rest = words.slice(verbWordCount);
-  if (rest.length === 0) {
-    return { form: "intransitive", verb };
-  }
-
-  for (let i = 0; i < rest.length; i++) {
-    const word = rest[i];
-    if (word && PREPOSITIONS.has(word)) {
-      const before = rest.slice(0, i).join(" ");
-      const after = rest.slice(i + 1).join(" ");
-
-      if (!after) return null;
-
-      if (before) {
-        return { form: "ditransitive", verb, object: before, prep: word, indirect: after };
-      }
-      return { form: "prepositional", verb, prep: word, object: after };
-    }
-  }
-
-  const object = rest.join(" ");
-  return { form: "transitive", verb, object };
-}
+export { parseCommand, PREP_GROUPS, resolvePrep } from "./command-parser.js";
 
 // --- Verb registry and dispatch ---
 
@@ -237,6 +157,38 @@ export class VerbRegistry {
       }
     }
     return { outputs, events: allEvents };
+  }
+
+  /** Add a verb alias to all handlers that match a given verb */
+  addVerbAlias(existingVerb: string, newAlias: string): void {
+    for (const handler of this.handlers) {
+      if (handler.pattern.verb === existingVerb) {
+        if (!handler.pattern.verbAliases) {
+          handler.pattern.verbAliases = [];
+        }
+        if (!handler.pattern.verbAliases.includes(newAlias)) {
+          handler.pattern.verbAliases.push(newAlias);
+        }
+      }
+    }
+  }
+
+  /** Find handlers that could match if the verb were different (for alias detection) */
+  findAlternateVerbs(context: VerbContext): Array<{ verb: string; handler: string }> {
+    const seen = new Set<string>();
+    const results: Array<{ verb: string; handler: string }> = [];
+    for (const handler of this.handlers) {
+      // Skip if it already matches the current verb
+      if (this.patternMatches(handler.pattern, context.command)) continue;
+      // Check if it would match with a different verb (same form, same entities)
+      if (handler.pattern.form !== context.command.form) continue;
+      if (!this.specificityMatches(handler, context)) continue;
+      const verb = handler.pattern.verb;
+      if (seen.has(verb)) continue;
+      seen.add(verb);
+      results.push({ verb, handler: handler.name });
+    }
+    return results;
   }
 
   private findHandlers(context: VerbContext): VerbHandler[] {

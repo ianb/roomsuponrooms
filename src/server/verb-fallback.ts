@@ -1,17 +1,16 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import type { EntityStore, Entity } from "../core/entity.js";
-import type { ResolvedCommand, VerbHandler, WorldEvent } from "../core/verb-types.js";
+import type { ResolvedCommand, VerbHandler, VerbContext, WorldEvent } from "../core/verb-types.js";
 import type { VerbRegistry } from "../core/verbs.js";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
 import type { AiHandlerRecord, AuthoringInfo } from "./storage.js";
 import { recordToHandler } from "./handler-convert.js";
 import { getStorage } from "./storage-instance.js";
 import { executeAndSave, buildPerformCode } from "./handler-execute.js";
-import { describeProperties, collectTags } from "./ai-prompt-helpers.js";
 import type { HandlerLib } from "../core/handler-lib.js";
 import type { GamePrompts } from "../core/game-data.js";
-import { buildSystemPrompt } from "./verb-fallback-prompt.js";
+import { buildSystemPrompt, buildFallbackPrompt, describeCommand } from "./verb-fallback-prompt.js";
 
 export interface FallbackDebugInfo {
   systemPrompt: string;
@@ -30,20 +29,25 @@ export interface FallbackResult {
 }
 
 const fallbackResponseSchema = z.object({
-  decision: z.enum(["perform", "refuse"]).describe(
+  decision: z.enum(["perform", "refuse", "alias"]).describe(
     `"perform" if the action makes physical/logical sense for this type of object.
-"refuse" if you understand the intent but the action shouldn't work.`,
+"refuse" if you understand the intent but the action shouldn't work.
+"alias" if this verb is just a synonym for an existing verb listed in <existing-verbs>. Use the aliasOf field to specify which verb.`,
   ),
+  aliasOf: z
+    .string()
+    .optional()
+    .describe("Only for alias: the existing verb this is a synonym for."),
   message: z
     .string()
     .describe(
-      "For refuse: the refusal message. For perform without code: a static result message. For perform with code: a brief description of what the handler does (not shown to player).",
+      "For refuse: the refusal message. For perform without code: a static result message. For perform with code: a brief description of what the handler does (not shown to player). For alias: leave empty.",
     ),
   code: z
     .string()
     .optional()
     .describe(
-      "JavaScript function body for perform handlers that need conditional logic. Only used when decision is 'perform'. Has access to lib, object, player, room, store, command. Must return { output: string, events: WorldEvent[] }.",
+      "JavaScript function body for perform handlers that need conditional logic. Only used when decision is 'perform'. Has access to lib, object, indirect, player, room, store, command. Must return { output: string, events: WorldEvent[] }.",
     ),
   events: z
     .array(
@@ -57,94 +61,17 @@ const fallbackResponseSchema = z.object({
     .describe(
       "Static property changes. Used for simple perform handlers without code. Properties must exist in the registry.",
     ),
+  verbAliases: z
+    .array(z.string())
+    .describe(
+      "Other verbs that should behave the same way. Only for perform/refuse. E.g. if creating a 'wear' handler, aliases might be ['don', 'put on']. Don't include verbs that already have handlers.",
+    ),
   notes: z
     .string()
     .describe(
       "Your reasoning about this decision. Explain what choices you made and why. Flag if the action felt ambiguous, if you were unsure about the object's capabilities, if the handler might not generalize well, or if you think the world data may be missing something. This is shown to the game designer, not the player.",
     ),
 });
-
-function describeCommand(command: ResolvedCommand): string {
-  if (command.form === "intransitive") return command.verb;
-  if (command.form === "transitive") {
-    return `${command.verb} ${entityName(command.object)}`;
-  }
-  if (command.form === "prepositional") {
-    return `${command.verb} ${command.prep} ${entityName(command.object)}`;
-  }
-  return `${command.verb} ${entityName(command.object)} ${command.prep} ${entityName(command.indirect)}`;
-}
-
-function entityName(entity: Entity): string {
-  return (entity.properties["name"] as string) || entity.id;
-}
-
-const HIDDEN_PROPERTIES = new Set(["description", "shortDescription", "secret", "aiPrompt"]);
-
-function describeEntityForLlm(entity: Entity): string {
-  const tags = Array.from(entity.tags).join(", ");
-  const props: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(entity.properties)) {
-    if (HIDDEN_PROPERTIES.has(key)) continue;
-    props[key] = value;
-  }
-  return `- id: ${entity.id}\n  tags: [${tags}]\n  properties: ${JSON.stringify(props)}`;
-}
-
-function buildPrompt(
-  store: EntityStore,
-  {
-    command,
-    room,
-    aiInstructions,
-  }: { command: ResolvedCommand; room: Entity; aiInstructions?: string },
-): string {
-  const parts: string[] = [];
-
-  parts.push(`<user-action>\nThe player typed: "${describeCommand(command)}"\n</user-action>`);
-
-  const involved: Entity[] = [];
-  if (command.form === "transitive" || command.form === "prepositional") {
-    involved.push(command.object);
-  }
-  if (command.form === "ditransitive") {
-    involved.push(command.object, command.indirect);
-  }
-
-  if (involved.length > 0) {
-    const descs = involved.map((e) => {
-      const desc = (e.properties["description"] as string) || "No description.";
-      return `${describeEntityForLlm(e)}\n  description: "${desc}"`;
-    });
-    parts.push(`<target-objects>\n${descs.join("\n\n")}\n</target-objects>`);
-  }
-
-  // Collect secrets from involved entities and the room
-  const secrets: string[] = [];
-  const roomSecret = room.properties["secret"] as string | undefined;
-  if (roomSecret) secrets.push(`Room: ${roomSecret}`);
-  for (const e of involved) {
-    const s = e.properties["secret"] as string | undefined;
-    if (s) secrets.push(`${e.properties["name"] || e.id}: ${s}`);
-  }
-  if (secrets.length > 0) {
-    parts.push(
-      `<secret>\nHidden information the player doesn't know. Be aware of this when resolving the action, but don't reveal it directly. If the player's action naturally engages with a secret, let it emerge — reward their intuition.\n\n${secrets.join("\n")}\n</secret>`,
-    );
-  }
-
-  parts.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
-
-  parts.push(`<world-tags>\n${collectTags(store).join(", ")}\n</world-tags>`);
-
-  if (aiInstructions) {
-    parts.push(
-      `<designer-instructions>\nThe game designer says: ${aiInstructions}\n</designer-instructions>`,
-    );
-  }
-
-  return parts.join("\n\n");
-}
 
 /**
  * Ask the LLM to handle an unrecognized verb+object combination.
@@ -178,7 +105,9 @@ export async function handleVerbFallback(
   },
 ): Promise<FallbackResult> {
   const systemPrompt = buildSystemPrompt(libClass, { prompts, room, store });
-  const prompt = buildPrompt(store, { command, room, aiInstructions });
+  const context: VerbContext = { store, command, player, room };
+  const alternateVerbs = verbs.findAlternateVerbs(context);
+  const prompt = buildFallbackPrompt(store, { command, room, alternateVerbs, aiInstructions });
 
   console.log("[ai-fallback] Calling LLM for:", describeCommand(command));
   const startTime = Date.now();
@@ -198,6 +127,30 @@ export async function handleVerbFallback(
     `[ai-fallback] Decision: ${response.decision} (${durationMs}ms) — "${response.message}"`,
   );
 
+  const debugInfo: FallbackDebugInfo | undefined = debug
+    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(fallbackResponseSchema), durationMs }
+    : undefined;
+  const notes = response.notes || undefined;
+
+  // Handle alias — add verb as alias to existing handler and re-dispatch
+  if (response.decision === "alias" && response.aliasOf) {
+    console.log(`[ai-fallback] Registering "${command.verb}" as alias for "${response.aliasOf}"`);
+    verbs.addVerbAlias(response.aliasOf, command.verb);
+    // Re-dispatch with the alias now registered
+    const aliasResult = verbs.dispatch(context);
+    if (aliasResult.outcome === "performed") {
+      return {
+        output: aliasResult.output,
+        notes,
+        events: aliasResult.events,
+        handler: null,
+        debug: debugInfo,
+      };
+    }
+    // Alias didn't work — fall through to create a new handler
+    console.log("[ai-fallback] Alias dispatch failed, falling through to create handler");
+  }
+
   const targetEntity =
     command.form === "transitive" || command.form === "prepositional"
       ? command.object
@@ -208,22 +161,26 @@ export async function handleVerbFallback(
   const handlerPrefix = response.decision === "refuse" ? "ai-refuse" : "ai-perform";
   const entitySuffix = targetEntity ? targetEntity.id : "intransitive";
 
+  // Filter aliases to exclude verbs that already have handlers
+  const existingVerbs = new Set(alternateVerbs.map((v) => v.verb));
+  existingVerbs.add(command.verb);
+  const newAliases = (response.verbAliases || []).filter((a) => !existingVerbs.has(a));
+
   const record: AiHandlerRecord = {
     createdAt: new Date().toISOString(),
     gameId,
     name: `${handlerPrefix}:${command.verb}-${entitySuffix}`,
-    pattern: { verb: command.verb, form: command.form },
+    pattern: {
+      verb: command.verb,
+      form: command.form,
+      ...(newAliases.length > 0 ? { verbAliases: newAliases } : {}),
+    },
     priority: -1,
     freeTurn: response.decision === "refuse",
     entityId: targetEntity ? targetEntity.id : undefined,
     perform: buildPerformCode(response),
     authoring,
   };
-
-  const debugInfo: FallbackDebugInfo | undefined = debug
-    ? { systemPrompt, prompt, response, schema: z.toJSONSchema(fallbackResponseSchema), durationMs }
-    : undefined;
-  const notes = response.notes || undefined;
 
   if (response.decision === "refuse") {
     await getStorage().saveHandler(record);

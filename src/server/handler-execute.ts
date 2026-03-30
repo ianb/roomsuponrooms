@@ -13,7 +13,7 @@ export interface ExecuteResult {
 
 /** Convert the LLM response into a perform code string for HandlerData */
 export function buildPerformCode(response: {
-  decision: "perform" | "refuse";
+  decision: string;
   message: string;
   code?: string;
   events: Array<{ type: string; property: string; value: unknown; description: string }>;

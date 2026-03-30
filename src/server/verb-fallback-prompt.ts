@@ -1,7 +1,9 @@
 import type { Entity, EntityStore } from "../core/entity.js";
+import type { ResolvedCommand } from "../core/verb-types.js";
 import type { HandlerLib } from "../core/handler-lib.js";
 import type { GamePrompts } from "../core/game-data.js";
 import { composeVerbPrompt } from "./ai-prompts.js";
+import { describeProperties, collectTags } from "./ai-prompt-helpers.js";
 
 export function buildSystemPrompt(
   libClass: typeof HandlerLib,
@@ -140,4 +142,99 @@ Entity creation: lib.createEvent(entityId, { tags, properties, description }). U
 - For ditransitive handlers, use "indirect" to reference the second object. Check both objects' tags and properties to decide if the combination makes sense.
 - When an action reveals or discovers something (a hidden compartment, a feature, a component), CREATE it as an entity using lib.createEvent so the player can interact with it. Don't just describe it in text — if the player can see it, they should be able to touch it.
 </guidelines>`;
+}
+
+// --- User prompt building ---
+
+const HIDDEN_PROPERTIES = new Set(["description", "shortDescription", "secret", "aiPrompt"]);
+
+function describeEntityForLlm(entity: Entity): string {
+  const tags = Array.from(entity.tags).join(", ");
+  const props: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(entity.properties)) {
+    if (HIDDEN_PROPERTIES.has(key)) continue;
+    props[key] = value;
+  }
+  return `- id: ${entity.id}\n  tags: [${tags}]\n  properties: ${JSON.stringify(props)}`;
+}
+
+export function describeCommand(command: ResolvedCommand): string {
+  if (command.form === "intransitive") return command.verb;
+  if (command.form === "transitive") {
+    return `${command.verb} ${entityName(command.object)}`;
+  }
+  if (command.form === "prepositional") {
+    return `${command.verb} ${command.prep} ${entityName(command.object)}`;
+  }
+  return `${command.verb} ${entityName(command.object)} ${command.prep} ${entityName(command.indirect)}`;
+}
+
+function entityName(entity: Entity): string {
+  return (entity.properties["name"] as string) || entity.id;
+}
+
+export function buildFallbackPrompt(
+  store: EntityStore,
+  {
+    command,
+    room,
+    alternateVerbs,
+    aiInstructions,
+  }: {
+    command: ResolvedCommand;
+    room: Entity;
+    alternateVerbs?: Array<{ verb: string; handler: string }>;
+    aiInstructions?: string;
+  },
+): string {
+  const parts: string[] = [];
+
+  parts.push(`<user-action>\nThe player typed: "${describeCommand(command)}"\n</user-action>`);
+
+  if (alternateVerbs && alternateVerbs.length > 0) {
+    const verbList = alternateVerbs.map((v) => `- "${v.verb}" (${v.handler})`).join("\n");
+    parts.push(
+      `<existing-verbs>\nThese existing verbs match the same object(s). If the player's verb is a synonym for one of these, use decision "alias" instead of creating a new handler.\n\n${verbList}\n</existing-verbs>`,
+    );
+  }
+
+  const involved: Entity[] = [];
+  if (command.form === "transitive" || command.form === "prepositional") {
+    involved.push(command.object);
+  }
+  if (command.form === "ditransitive") {
+    involved.push(command.object, command.indirect);
+  }
+
+  if (involved.length > 0) {
+    const descs = involved.map((e) => {
+      const desc = (e.properties["description"] as string) || "No description.";
+      return `${describeEntityForLlm(e)}\n  description: "${desc}"`;
+    });
+    parts.push(`<target-objects>\n${descs.join("\n\n")}\n</target-objects>`);
+  }
+
+  const secrets: string[] = [];
+  const roomSecret = room.properties["secret"] as string | undefined;
+  if (roomSecret) secrets.push(`Room: ${roomSecret}`);
+  for (const e of involved) {
+    const s = e.properties["secret"] as string | undefined;
+    if (s) secrets.push(`${e.properties["name"] || e.id}: ${s}`);
+  }
+  if (secrets.length > 0) {
+    parts.push(
+      `<secret>\nHidden information the player doesn't know. Be aware of this when resolving the action, but don't reveal it directly. If the player's action naturally engages with a secret, let it emerge — reward their intuition.\n\n${secrets.join("\n")}\n</secret>`,
+    );
+  }
+
+  parts.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
+  parts.push(`<world-tags>\n${collectTags(store).join(", ")}\n</world-tags>`);
+
+  if (aiInstructions) {
+    parts.push(
+      `<designer-instructions>\nThe game designer says: ${aiInstructions}\n</designer-instructions>`,
+    );
+  }
+
+  return parts.join("\n\n");
 }
