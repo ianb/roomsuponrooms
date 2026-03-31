@@ -3,6 +3,7 @@ interface CommandResult {
   debug?: unknown;
   conversationMode?: unknown;
   aiOutput?: string;
+  eventDescriptions?: string[];
 }
 
 interface StreamEvent {

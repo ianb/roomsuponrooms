@@ -8,7 +8,7 @@ import { streamCommand } from "./stream-command.js";
 import { AuthContext } from "./auth.js";
 
 interface LogEntry {
-  type: "input" | "output" | "debug" | "system";
+  type: "input" | "output" | "debug" | "system" | "event";
   text: string;
   debugData?: DebugData;
 }
@@ -17,6 +17,7 @@ function resultToLogEntries(result: {
   output: string;
   debug?: unknown;
   aiOutput?: string;
+  eventDescriptions?: string[];
 }): LogEntry[] {
   const entries: LogEntry[] = [];
   const aiOutput = "aiOutput" in result ? (result.aiOutput as string) : null;
@@ -24,6 +25,11 @@ function resultToLogEntries(result: {
     entries.push({ type: "system", text: aiOutput });
   }
   entries.push({ type: "output", text: result.output as string });
+  if (result.eventDescriptions && result.eventDescriptions.length > 0) {
+    for (const desc of result.eventDescriptions) {
+      entries.push({ type: "event", text: desc });
+    }
+  }
   if ("debug" in result && result.debug) {
     entries.push({ type: "debug", text: "", debugData: result.debug as DebugData });
   }
@@ -203,7 +209,9 @@ function LogEntryView({
             ? "mt-1 border-l-2 border-caution/50 pl-2 text-xs text-caution/70"
             : entry.type === "system"
               ? "text-ai/70"
-              : "text-content/70"
+              : entry.type === "event"
+                ? "text-xs text-highlight-direction/80"
+                : "text-content/70"
       }
     >
       {entry.type === "output" ? (
@@ -215,6 +223,11 @@ function LogEntryView({
         />
       ) : entry.type === "debug" && entry.debugData ? (
         <DebugView debug={entry.debugData} />
+      ) : entry.type === "event" ? (
+        <span>
+          <span className="mr-1">&#x25C6;</span>
+          {entry.text}
+        </span>
       ) : (
         entry.text
       )}

@@ -21,6 +21,8 @@ export interface CommandResult {
   debug?: unknown;
   conversationMode?: unknown;
   aiOutput?: string;
+  /** Human-readable descriptions of world state changes (e.g. "The wildflower was eaten.") */
+  eventDescriptions?: string[];
 }
 
 interface ExecuteOptions {
@@ -62,6 +64,11 @@ async function trySceneryFallback(
     return { output: sceneryResult.output, debug: sceneryResult.debug || existingDebug };
   }
   return null;
+}
+
+function collectEventDescriptions(events: Array<{ description: string }>): string[] | undefined {
+  const descs = events.map((e) => e.description).filter(Boolean);
+  return descs.length > 0 ? descs : undefined;
 }
 
 function recordOutput(
@@ -182,7 +189,12 @@ export async function executeCommand(
         ? result.unhandled.command.object.id
         : undefined;
     recordOutput(game, { command: trimmed, output: fallback.output, entityId: targetId });
-    return { output: fallback.output, aiOutput: fallback.aiOutput, debug: fallback.debug };
+    return {
+      output: fallback.output,
+      aiOutput: fallback.aiOutput,
+      debug: fallback.debug,
+      eventDescriptions: collectEventDescriptions(fallback.events),
+    };
   }
 
   // Don't persist start-conversation events (ephemeral)
@@ -211,5 +223,9 @@ export async function executeCommand(
 
   const primaryEntityId = result.events.length > 0 ? result.events[0]!.entityId : undefined;
   recordOutput(game, { command: trimmed, output: result.output, entityId: primaryEntityId });
-  return { output: result.output, debug: result.debug };
+  return {
+    output: result.output,
+    debug: result.debug,
+    eventDescriptions: collectEventDescriptions(result.events),
+  };
 }
