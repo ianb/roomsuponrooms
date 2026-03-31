@@ -62,6 +62,16 @@ export function parseCommand(input: string): ParsedCommand | null {
     return { form: "intransitive", verb };
   }
 
+  // Check for trailing particle: "turn lamp on" → "turn-on lamp"
+  if (rest.length >= 2) {
+    const lastWord = rest[rest.length - 1];
+    if (lastWord && COMPOUND_VERBS.has(`${words[0]} ${lastWord}`)) {
+      verb = `${words[0]}-${lastWord}`;
+      const object = rest.slice(0, rest.length - 1).join(" ");
+      return { form: "transitive", verb, object };
+    }
+  }
+
   for (let i = 0; i < rest.length; i++) {
     const word = rest[i];
     if (word && PREPOSITIONS.has(word)) {
