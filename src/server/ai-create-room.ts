@@ -20,8 +20,8 @@ import {
   createAndSave,
   ensureGridCoords,
   resolveOrCreateBackExit,
+  persistEntity,
 } from "./ai-room-grid.js";
-import { getStorage } from "./storage-instance.js";
 import type { AuthoringInfo } from "./storage.js";
 
 export interface AiCreateRoomDebugInfo {
@@ -94,10 +94,10 @@ ${styleSection}
 <guidelines>
 - The room must match the exit's destinationIntent — that's the primary constraint.
 - Room description: what the player sees when entering. 2-4 sentences, vivid but concise. Mention details that suggest actions — things that can be opened, examined, operated, or interacted with.
-- A return exit is created automatically — do NOT include it in additionalExits.
+- A return exit is created automatically — do NOT include it in additionalExits. Set returnExitName and returnExitDescription to give it a fitting name (e.g. "Worn Stone Steps" / "The steps lead back down to the hall.").
 - Add 0-2 additional exits and 0-2 contents.
 - Each exit needs either destinationIntent (new unresolved exit) or connectTo (link to existing room).
-- You may connect an exit to an adjacent room listed in <adjacent-rooms> by setting connectTo to its ID. Only connect when narratively natural (corridors circling back, shortcuts, alternate routes). Don't force connections.
+- You may connect an exit to an adjacent room listed in <adjacent-rooms> by setting connectTo to its ID. When connecting, also set backExitName and backExitDescription for the return passage on that room. Only connect when narratively natural (corridors circling back, shortcuts, alternate routes). Don't force connections.
 - You may update the entry exit (exitUpdate) if, now that the destination is known, its name/description should change.
 - Rooms are lit by default — only set "dark" for pitch-black rooms requiring a light source.
 - Set aiPrompt if there's useful context for future AI operations in this room.
@@ -193,7 +193,7 @@ export async function handleAiCreateRoom(
       });
   }
 
-  await persistExit(store, { exit, gameId, authoring });
+  await persistEntity(store, { entity: exit, gameId, authoring });
   const roomSlug = roomId.replace("room:", "");
   await createReturnAndAdditionalExits(store, {
     roomSlug,
@@ -228,20 +228,6 @@ export async function handleAiCreateRoom(
   };
 }
 
-async function persistExit(
-  store: EntityStore,
-  { exit, gameId, authoring }: { exit: Entity; gameId: string; authoring?: AuthoringInfo },
-): Promise<void> {
-  await getStorage().saveAiEntity({
-    createdAt: new Date().toISOString(),
-    gameId,
-    id: exit.id,
-    tags: Array.from(exit.tags),
-    properties: { ...exit.properties },
-    authoring,
-  });
-}
-
 async function createReturnAndAdditionalExits(
   store: EntityStore,
   {
@@ -258,12 +244,16 @@ async function createReturnAndAdditionalExits(
     sourceRoom: Entity;
     direction: string;
     roomData: {
+      returnExitName?: string;
+      returnExitDescription?: string;
       additionalExits: Array<{
         direction: string;
         name: string;
         description: string;
         destinationIntent?: string;
         connectTo?: string;
+        backExitName?: string;
+        backExitDescription?: string;
         aliases: string[];
         properties: Record<string, unknown>;
       }>;
@@ -273,6 +263,7 @@ async function createReturnAndAdditionalExits(
   },
 ): Promise<void> {
   const returnDir = reverseDirection(direction);
+  const srcName = (sourceRoom.properties["name"] as string) || sourceRoom.id;
   await createAndSave(store, {
     id: `exit:${roomSlug}:${returnDir}`,
     tags: ["exit"],
@@ -280,8 +271,8 @@ async function createReturnAndAdditionalExits(
       location: roomId,
       direction: returnDir,
       destination: sourceRoom.id,
-      name: `Exit ${returnDir}`,
-      description: `Leads back to ${sourceRoom.properties["name"] || sourceRoom.id}.`,
+      name: roomData.returnExitName || `Exit ${returnDir}`,
+      description: roomData.returnExitDescription || `Leads back to ${srcName}.`,
     },
     gameId,
     authoring,
@@ -307,6 +298,8 @@ async function createReturnAndAdditionalExits(
         targetRoomId: ed.connectTo!,
         newRoomId: roomId,
         direction: ed.direction,
+        exitName: ed.backExitName,
+        exitDescription: ed.backExitDescription,
         gameId,
         authoring,
       });

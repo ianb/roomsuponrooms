@@ -30,6 +30,14 @@ export function buildRoomSchema(store: EntityStore) {
         .describe(
           "Optional hidden interactive potential (not shown to player). A hidden mechanism, reaction to specific actions, or connection to nearby areas. 1-2 sentences.",
         ),
+      returnExitName: z
+        .string()
+        .optional()
+        .describe("Name for the return exit back to the source room (e.g. 'Narrow Stairway')."),
+      returnExitDescription: z
+        .string()
+        .optional()
+        .describe("Description for the return exit (e.g. 'Stone steps lead back down.')."),
       exitUpdate: z
         .object({
           name: z.string().optional().describe("New name for the exit, if it should change."),
@@ -57,6 +65,16 @@ export function buildRoomSchema(store: EntityStore) {
               .optional()
               .describe(
                 "ID of an existing adjacent room to connect to instead of creating an unresolved exit.",
+              ),
+            backExitName: z
+              .string()
+              .optional()
+              .describe("When using connectTo: name for the return exit on the connected room."),
+            backExitDescription: z
+              .string()
+              .optional()
+              .describe(
+                "When using connectTo: description for the return exit on the connected room.",
               ),
             aliases: z.array(z.string()),
             properties: propsSchema,

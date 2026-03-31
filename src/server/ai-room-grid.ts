@@ -24,6 +24,21 @@ export async function createAndSave(
   await getStorage().saveAiEntity({ createdAt: new Date().toISOString(), ...opts });
 }
 
+/** Persist an existing entity's current state to storage. */
+export async function persistEntity(
+  store: EntityStore,
+  { entity, gameId, authoring }: { entity: Entity; gameId: string; authoring?: AuthoringInfo },
+): Promise<void> {
+  await getStorage().saveAiEntity({
+    createdAt: new Date().toISOString(),
+    gameId,
+    id: entity.id,
+    tags: Array.from(entity.tags),
+    properties: { ...entity.properties },
+    authoring,
+  });
+}
+
 /** Ensure a room has grid coordinates; bootstraps to (0,0,0) if missing. */
 export async function ensureGridCoords(
   store: EntityStore,
@@ -50,12 +65,16 @@ export async function resolveOrCreateBackExit(
     targetRoomId,
     newRoomId,
     direction,
+    exitName,
+    exitDescription,
     gameId,
     authoring,
   }: {
     targetRoomId: string;
     newRoomId: string;
     direction: string;
+    exitName?: string;
+    exitDescription?: string;
     gameId: string;
     authoring?: AuthoringInfo;
   },
@@ -69,6 +88,9 @@ export async function resolveOrCreateBackExit(
   if (existing) {
     store.setProperty(existing.id, { name: "destination", value: newRoomId });
     store.setProperty(existing.id, { name: "destinationIntent", value: undefined });
+    if (exitName) store.setProperty(existing.id, { name: "name", value: exitName });
+    if (exitDescription)
+      store.setProperty(existing.id, { name: "description", value: exitDescription });
     await getStorage().saveAiEntity({
       createdAt: new Date().toISOString(),
       gameId,
@@ -88,8 +110,8 @@ export async function resolveOrCreateBackExit(
         location: targetRoomId,
         direction: backDir,
         destination: newRoomId,
-        name: `Exit ${backDir}`,
-        description: `Leads to ${newRoomName}.`,
+        name: exitName || `Exit ${backDir}`,
+        description: exitDescription || `Leads to ${newRoomName}.`,
       },
       gameId,
       authoring,
