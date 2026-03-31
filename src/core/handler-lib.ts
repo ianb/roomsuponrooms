@@ -173,51 +173,40 @@ export class HandlerLib {
 
   close(obj: Entity): PerformResult {
     const ref = this.ref(obj);
-    return {
-      output: `You close the ${ref}.`,
-      events: [
-        this.setEvent(obj.id, { property: "open", value: false, description: `Closed ${ref}` }),
-      ],
-    };
+    const ev = this.setEvent(obj.id, {
+      property: "open",
+      value: false,
+      description: `Closed ${ref}`,
+    });
+    return { output: `You close the ${ref}.`, events: [ev] };
   }
 
   putIn(obj: Entity, container: Entity): PerformResult {
     const objRef = this.ref(obj);
     const indRef = this.ref(container);
-    return {
-      output: `You put the ${objRef} in the ${indRef}.`,
-      events: [
-        this.moveEvent(obj.id, {
-          to: container.id,
-          from: this.player.id,
-          description: `Put ${objRef} in ${indRef}`,
-        }),
-      ],
-    };
+    const ev = this.moveEvent(obj.id, {
+      to: container.id,
+      from: this.player.id,
+      description: `Put ${objRef} in ${indRef}`,
+    });
+    return { output: `You put the ${objRef} in the ${indRef}.`, events: [ev] };
   }
 
   takeFrom(obj: Entity, container: Entity): PerformResult {
     const objRef = this.ref(obj);
     const indRef = this.ref(container);
-    return {
-      output: `You take the ${objRef} from the ${indRef}.`,
-      events: [
-        this.moveEvent(obj.id, {
-          to: this.player.id,
-          from: container.id,
-          description: `Took ${objRef} from ${indRef}`,
-        }),
-      ],
-    };
+    const ev = this.moveEvent(obj.id, {
+      to: this.player.id,
+      from: container.id,
+      description: `Took ${objRef} from ${indRef}`,
+    });
+    return { output: `You take the ${objRef} from the ${indRef}.`, events: [ev] };
   }
 
   unlockWith(obj: Entity, key: Entity): PerformResult {
+    const ref = this.ref(obj);
     const events: WorldEvent[] = [
-      this.setEvent(obj.id, {
-        property: "locked",
-        value: false,
-        description: `Unlocked ${this.ref(obj)}`,
-      }),
+      this.setEvent(obj.id, { property: "locked", value: false, description: `Unlocked ${ref}` }),
     ];
     const pairedId = obj.properties["pairedDoor"] as string | undefined;
     if (pairedId) {
@@ -229,7 +218,7 @@ export class HandlerLib {
         }),
       );
     }
-    return { output: `You unlock the ${this.ref(obj)} with the ${this.ref(key)}.`, events };
+    return { output: `You unlock the ${ref} with the ${this.ref(key)}.`, events };
   }
 
   unlock(obj: Entity): PerformResult {
@@ -242,16 +231,12 @@ export class HandlerLib {
   lock(obj: Entity): PerformResult {
     const key = this.findKey(obj);
     if (!key) return this.result(`{!You don't have anything to lock the ${this.ref(obj)} with.!}`);
-    return {
-      output: `You lock the ${this.ref(obj)} with the ${this.ref(key)}.`,
-      events: [
-        this.setEvent(obj.id, {
-          property: "locked",
-          value: true,
-          description: `Locked ${this.ref(obj)}`,
-        }),
-      ],
-    };
+    const ev = this.setEvent(obj.id, {
+      property: "locked",
+      value: true,
+      description: `Locked ${this.ref(obj)}`,
+    });
+    return { output: `You lock the ${this.ref(obj)} with the ${this.ref(key)}.`, events: [ev] };
   }
 
   switchOn(obj: Entity): PerformResult {
@@ -292,40 +277,60 @@ export class HandlerLib {
     };
   }
 
-  showHelp(): PerformResult {
+  wear(obj: Entity): PerformResult {
+    const ref = this.ref(obj);
+    const from = (obj.properties["location"] as string) || "void";
+    const events: WorldEvent[] = [
+      this.setEvent(obj.id, { property: "worn", value: true, description: `Now wearing ${ref}` }),
+    ];
+    if (from !== this.player.id) {
+      events.unshift(
+        this.moveEvent(obj.id, { to: this.player.id, from, description: `Picked up ${ref}` }),
+      );
+    }
+    return { output: `You put on the ${ref}.`, events };
+  }
+
+  unwear(obj: Entity): PerformResult {
+    const ref = this.ref(obj);
     return {
-      output: [
-        "Commands:",
-        "  look/l — Look around    examine/x <thing> — Examine",
-        "  go <dir> (or n/s/e/w)   take/get <thing> — Pick up",
-        "  drop <thing>            put <thing> in <container>",
-        "  open/close <thing>      inventory/i — Check carrying",
-        "  talk/use <thing> — Talk to NPC/device    score",
-        "",
-        'Type "help ai" for world-editing commands.',
-      ].join("\n"),
-      events: [],
+      output: `You take off the ${ref}.`,
+      events: [
+        this.setEvent(obj.id, { property: "worn", value: false, description: `Removed ${ref}` }),
+      ],
     };
+  }
+
+  showHelp(): PerformResult {
+    const lines = [
+      "Commands:",
+      "  look/l — Look around    examine/x <thing> — Examine",
+      "  go <dir> (or n/s/e/w)   take/get <thing> — Pick up",
+      "  drop <thing>            put <thing> in <container>",
+      "  open/close <thing>      inventory/i — Check carrying",
+      "  talk/use <thing> — Talk to NPC/device    score",
+      "",
+      'Type "help ai" for world-editing commands.',
+    ];
+    return { output: lines.join("\n"), events: [] };
   }
 
   showScore(): PerformResult {
     const s = (this.player.properties["score"] as number) || 0;
-    const maxScore = (this.player.properties["maxScore"] as number) || 0;
-    if (maxScore > 0) return { output: `Your score is ${s} out of ${maxScore}.`, events: [] };
-    return { output: `Your score is ${s}.`, events: [] };
+    const max = (this.player.properties["maxScore"] as number) || 0;
+    return {
+      output: max > 0 ? `Your score is ${s} out of ${max}.` : `Your score is ${s}.`,
+      events: [],
+    };
   }
 
   incrementVisits(): PerformResult {
     const visits = (this.room.properties["visits"] as number) || 0;
-    return {
-      output: "",
-      events: [
-        this.setEvent(this.room.id, {
-          property: "visits",
-          value: visits + 1,
-          description: `Visited ${this.ref(this.room)}`,
-        }),
-      ],
-    };
+    const ev = this.setEvent(this.room.id, {
+      property: "visits",
+      value: visits + 1,
+      description: `Visited ${this.ref(this.room)}`,
+    });
+    return { output: "", events: [ev] };
   }
 }

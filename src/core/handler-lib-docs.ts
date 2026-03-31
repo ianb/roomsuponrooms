@@ -29,6 +29,8 @@ export const BASE_LIB_DOCS: LibDoc[] = [
   { name: "lock", signature: "lock(object)", description: "auto-find key and lock → PerformResult" },
   { name: "switchOn", signature: "switchOn(object)", description: "turn on device (sets switchedOn + lit)" },
   { name: "switchOff", signature: "switchOff(object)", description: "turn off device (clears switchedOn + lit)" },
+  { name: "wear", signature: "wear(object)", description: "put on wearable (picks up if not carried, sets worn=true)" },
+  { name: "unwear", signature: "unwear(object)", description: "take off wearable (sets worn=false, stays in inventory)" },
   { name: "showHelp", signature: "showHelp()", description: "command help text → PerformResult" },
   { name: "showScore", signature: "showScore()", description: "current score display → PerformResult" },
   { name: "incrementVisits", signature: "incrementVisits()", description: "bump room visit counter → PerformResult" },
