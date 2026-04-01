@@ -21,8 +21,8 @@ export function applyPerformCode(
   const normalized = word.toLowerCase().trim();
   const matchedEntry = data.words.find(
     (w) =>
-      w.word.toLowerCase() === normalized ||
-      (w.aliases && w.aliases.some((a) => a.toLowerCase() === normalized)),
+      (w.word && w.word.toLowerCase() === normalized) ||
+      (w.aliases && w.aliases.some((a) => a && a.toLowerCase() === normalized)),
   );
   if (!matchedEntry || !matchedEntry.perform) return result;
 
@@ -63,10 +63,10 @@ export function applyPerformCode(
   if (performResult.highlights) {
     updated.knownWords = [
       ...updated.knownWords,
-      ...performResult.highlights.map((h) => h.toLowerCase()),
+      ...performResult.highlights.filter(Boolean).map((h) => h.toLowerCase()),
     ];
     for (const h of performResult.highlights) {
-      state.knownWords.add(h.toLowerCase());
+      if (h) state.knownWords.add(h.toLowerCase());
     }
   }
   return updated;

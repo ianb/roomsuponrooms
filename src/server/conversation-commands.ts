@@ -268,7 +268,7 @@ async function handleUnknownWord(
   state.currentWord = word;
   if (aiResult.entry.highlights) {
     for (const h of aiResult.entry.highlights) {
-      state.knownWords.add(h.toLowerCase());
+      if (h) state.knownWords.add(h.toLowerCase());
     }
   }
 

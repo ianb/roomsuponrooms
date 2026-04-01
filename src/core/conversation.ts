@@ -226,7 +226,7 @@ function applyWordEntry(entry: WordEntry, state: ConversationState): Conversatio
   // Add highlights to known words
   const highlights = entry.highlights || [];
   for (const h of highlights) {
-    state.knownWords.add(h.toLowerCase());
+    if (h) state.knownWords.add(h.toLowerCase());
   }
 
   const hasClose = entry.effects && entry.effects.some((e) => e.type === "close-conversation");
