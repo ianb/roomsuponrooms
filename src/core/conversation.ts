@@ -180,6 +180,7 @@ function findMatchingEntry(
 ): WordEntry | null {
   // Find all entries where word matches (by word or alias)
   const candidates = entries.filter((e) => {
+    if (!e.word) return false;
     if (e.word.toLowerCase() === word) return true;
     if (e.aliases && e.aliases.some((a) => a.toLowerCase() === word)) return true;
     return false;
@@ -242,7 +243,7 @@ function applyWordEntry(entry: WordEntry, state: ConversationState): Conversatio
 function collectAllTopics(data: ConversationData): string[] {
   const topics = new Set<string>();
   for (const entry of data.words) {
-    if (!entry.conditions || !entry.conditions.first) {
+    if (entry.word && (!entry.conditions || !entry.conditions.first)) {
       topics.add(entry.word.toLowerCase());
     }
   }
