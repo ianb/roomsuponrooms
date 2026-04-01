@@ -2,6 +2,7 @@ import type { ServerResponse } from "node:http";
 import { getOrCreateGame, reinitGame } from "./router.js";
 import { executeCommand } from "./execute-command.js";
 import type { CommandResult } from "./execute-command.js";
+import { logErrorObj } from "./error-log.js";
 
 interface StreamEvent {
   phase: "ai" | "done" | "error";
@@ -50,7 +51,7 @@ export async function handleCommandStream(
           send({ phase: "done", result });
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error("[command-stream] Error:", err);
+          logErrorObj("command-stream", { error: err, userId: user.userId, gameId });
           send({ phase: "error", error: message });
         } finally {
           controller.close();
@@ -103,7 +104,7 @@ export async function handleCommandStreamNode(
     send({ phase: "done", result });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[command-stream] Error:", err);
+    logErrorObj("command-stream", { error: err, userId: user.userId, gameId: body.gameId });
     send({ phase: "error", error: message });
   } finally {
     res.end();

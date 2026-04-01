@@ -16,6 +16,7 @@ import type { D1Database } from "./server/storage-d1.js";
 import { handleAuthRoute } from "./server/auth/routes.js";
 import type { AuthEnv } from "./server/auth/routes.js";
 import { verifyJwt, parseCookie } from "./server/auth/jwt.js";
+import { logErrorObj } from "./server/error-log.js";
 
 interface Env {
   DB: D1Database;
@@ -90,6 +91,13 @@ export default {
           userName: user ? user.userName : null,
           roles: user ? user.roles : [],
         }),
+        onError: ({ error, path }) => {
+          logErrorObj("trpc", {
+            error,
+            userId: user ? user.userId : undefined,
+            context: path,
+          });
+        },
       });
     }
 

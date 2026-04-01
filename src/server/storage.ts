@@ -99,4 +99,15 @@ export interface RuntimeStorage {
   // --- AI Usage Quota ---
   recordAiUsage(userId: string, callType: string): Promise<void>;
   countAiUsage(userId: string, since: string): Promise<number>;
+
+  // --- Error Log (optional — only D1 persists) ---
+  logError?(entry: {
+    timestamp: string;
+    source: string;
+    message: string;
+    stack?: string;
+    context?: string;
+    userId?: string;
+    gameId?: string;
+  }): Promise<void>;
 }

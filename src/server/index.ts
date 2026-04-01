@@ -8,6 +8,7 @@ import { handleCommandStreamNode } from "./command-stream.js";
 import { handleAuthRoute } from "./auth/routes.js";
 import type { AuthEnv } from "./auth/routes.js";
 import { verifyJwt, parseCookie } from "./auth/jwt.js";
+import { logErrorObj } from "./error-log.js";
 
 // Register games from disk (fs-based)
 import "../games/test-world.js";
@@ -103,7 +104,7 @@ server.register(fastifyTRPCPlugin, {
       };
     },
     onError: ({ error, path }: { error: Error; path?: string }) => {
-      console.error(`[trpc] Error in ${path || "unknown"}:`, error);
+      logErrorObj("trpc", { error, context: path });
     },
   },
 });
