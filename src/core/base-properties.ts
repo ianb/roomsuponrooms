@@ -143,7 +143,19 @@ const BASE_PROPS = [
     name: "scenery",
     description:
       "Interactive scenery entries — each must be an object with word, description, rejection, and optional aliases",
-    schema: { type: "array", items: { type: "object" } },
+    schema: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["word", "description", "rejection"],
+        properties: {
+          word: { type: "string" },
+          aliases: { type: "array", items: { type: "string" } },
+          description: { type: "string" },
+          rejection: { type: "string" },
+        },
+      },
+    },
   },
   {
     name: "destinationIntent",

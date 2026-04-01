@@ -24,7 +24,7 @@ export interface JSONSchema7 {
 
   // objects
   properties?: Record<string, JSONSchema7>;
-  required?: string[];
+  required?: readonly string[];
   additionalProperties?: boolean | JSONSchema7;
 
   // composition

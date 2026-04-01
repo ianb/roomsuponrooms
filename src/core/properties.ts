@@ -1,4 +1,5 @@
-import type { JSONSchema7, JSONSchema7Type } from "./json-schema.js";
+import Ajv from "ajv";
+import type { JSONSchema7 } from "./json-schema.js";
 
 export interface PropertyDefinition {
   name: string;
@@ -29,6 +30,8 @@ export class UndefinedPropertyError extends Error {
   }
 }
 
+const ajv = new Ajv({ allErrors: true, formats: { "entity-ref": true } });
+
 export function createRegistry(definitions?: PropertyDefinition[]): PropertyRegistry {
   const registry: PropertyRegistry = { definitions: {} };
   if (definitions) {
@@ -51,79 +54,11 @@ export function validateValue(
   if (!def) {
     return [`Property "${entry.name}" is not defined in the registry`];
   }
-  return validateAgainstSchema({ value: entry.value, schema: def.schema, path: entry.name });
-}
-
-interface SchemaValidation {
-  value: unknown;
-  schema: JSONSchema7;
-  path: string;
-}
-
-function validateAgainstSchema(sv: SchemaValidation): string[] {
-  const { value, schema, path } = sv;
-  const errors: string[] = [];
-
-  if (schema.type) {
-    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
-    const actualType = getJsonType(value);
-    if (!types.includes(actualType)) {
-      errors.push(`${path}: expected type ${types.join(" | ")}, got ${actualType}`);
-      return errors;
-    }
+  const validate = ajv.compile(def.schema);
+  if (validate(entry.value)) {
+    return [];
   }
-
-  if (typeof value === "number") {
-    if (schema.minimum !== undefined && value < schema.minimum) {
-      errors.push(`${path}: value ${value} is less than minimum ${schema.minimum}`);
-    }
-    if (schema.maximum !== undefined && value > schema.maximum) {
-      errors.push(`${path}: value ${value} is greater than maximum ${schema.maximum}`);
-    }
-  }
-
-  if (typeof value === "string") {
-    if (schema.minLength !== undefined && value.length < schema.minLength) {
-      errors.push(
-        `${path}: string length ${value.length} is less than minLength ${schema.minLength}`,
-      );
-    }
-    if (schema.maxLength !== undefined && value.length > schema.maxLength) {
-      errors.push(
-        `${path}: string length ${value.length} is greater than maxLength ${schema.maxLength}`,
-      );
-    }
-    if (schema.enum && !schema.enum.includes(value)) {
-      errors.push(`${path}: value "${value}" is not one of: ${schema.enum.join(", ")}`);
-    }
-  }
-
-  if (
-    Array.isArray(value) &&
-    schema.items &&
-    typeof schema.items === "object" &&
-    !Array.isArray(schema.items)
-  ) {
-    const itemSchema = schema.items;
-    for (const [i, item] of value.entries()) {
-      errors.push(
-        ...validateAgainstSchema({ value: item, schema: itemSchema, path: `${path}[${i}]` }),
-      );
-    }
-  }
-
-  return errors;
-}
-
-function getJsonType(value: unknown): JSONSchema7Type {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  const jsType = typeof value;
-  if (jsType === "string") return "string";
-  if (jsType === "number") return "number";
-  if (jsType === "boolean") return "boolean";
-  if (jsType === "object") return "object";
-  return "string";
+  return (validate.errors || []).map((e) => `${entry.name}${e.instancePath}: ${e.message}`);
 }
 
 export type PropertyBag = Record<string, unknown>;
