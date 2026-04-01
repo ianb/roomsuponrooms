@@ -19,7 +19,9 @@
     "bundle-games": "tsx scripts/bundle-game-data.ts",
     "pull-data": "tsx scripts/pull-d1-data.ts",
     "deploy": "npm run bundle-games && wrangler deploy",
-    "deploy:preview": "npm run bundle-games && wrangler dev"
+    "deploy:preview": "npm run bundle-games && wrangler dev",
+    "errors": "wrangler d1 execute rooms-upon-rooms --remote --command \"SELECT timestamp, source, message, context, user_id, game_id FROM error_log ORDER BY timestamp DESC LIMIT 20\"",
+    "errors:full": "wrangler d1 execute rooms-upon-rooms --remote --command \"SELECT * FROM error_log ORDER BY timestamp DESC LIMIT 10\""
   },
   "repository": {
     "type": "git",

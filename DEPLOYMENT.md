@@ -99,9 +99,23 @@ wrangler d1 migrations apply rooms-upon-rooms --local   # test locally first
 wrangler d1 migrations apply rooms-upon-rooms --remote  # then apply to production
 ```
 
-## D1 Schema
+## Error Logging
 
-Four tables (defined in `migrations/0001_initial.sql`):
+Production errors (tRPC and command-stream) are logged to the `error_log` table in D1. Entries auto-prune after 2 days.
+
+```bash
+# Recent errors (summary)
+npm run errors
+
+# Recent errors (including stack traces)
+npm run errors:full
+```
+
+Local dev errors log to the server console only (FileStorage doesn't implement `logError`).
+
+The error log captures: timestamp, source (trpc/command-stream), message, stack trace, user ID, game ID, and context (tRPC path or command text).
+
+## D1 Schema
 
 | Table | Primary Key | Purpose |
 |-------|------------|---------|
@@ -109,6 +123,7 @@ Four tables (defined in `migrations/0001_initial.sql`):
 | `ai_handlers` | `(game_id, name)` | AI-generated verb handlers |
 | `events` | `(game_id, seq)` | Event log (game session commands) |
 | `conversation_entries` | `(game_id, npc_id, word)` | NPC conversation history |
+| `error_log` | `id` (autoincrement) | Server errors, pruned after 2 days |
 
 ## Configuration
 
