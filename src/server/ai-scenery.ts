@@ -167,18 +167,19 @@ export function isExamineVerb(verb: string): boolean {
 
 /** Get stored scenery entry for a word, if it exists (checks word and aliases) */
 export function getStoredScenery(room: Entity, word: string): SceneryEntry | null {
-  const scenery = room.properties["scenery"] as SceneryEntry[] | undefined;
+  const scenery = room.properties["scenery"] as Array<SceneryEntry | string> | undefined;
   if (!scenery) return null;
   const lower = word.toLowerCase();
-  return (
-    scenery.find((s) => {
-      if (s.word.toLowerCase() === lower) return true;
-      if (s.aliases) {
-        return s.aliases.some((a) => a.toLowerCase() === lower);
-      }
-      return false;
-    }) || null
-  );
+  const match = scenery.find((s) => {
+    // Skip plain string entries (atmospheric descriptions, not interactive scenery)
+    if (typeof s === "string" || !s.word) return false;
+    if (s.word.toLowerCase() === lower) return true;
+    if (s.aliases) {
+      return s.aliases.some((a) => a.toLowerCase() === lower);
+    }
+    return false;
+  });
+  return (match && typeof match !== "string" ? match : null) as SceneryEntry | null;
 }
 
 /** Remove scenery entries that match a name or aliases (e.g., when an entity is created) */
