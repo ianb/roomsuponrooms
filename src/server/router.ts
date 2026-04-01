@@ -25,12 +25,27 @@ class GameNotFoundError extends Error {
   }
 }
 
+/** Normalize scenery: strip plain strings, keep only structured SceneryEntry objects */
+function normalizeScenery(props: Record<string, unknown>): void {
+  const scenery = props["scenery"];
+  if (!Array.isArray(scenery)) return;
+  const valid = scenery.filter(
+    (s): s is { word: string } => typeof s === "object" && s !== null && typeof s.word === "string",
+  );
+  if (valid.length === 0) {
+    delete props["scenery"];
+  } else if (valid.length < scenery.length) {
+    props["scenery"] = valid;
+  }
+}
+
 /** Apply AI entity records to the store (create or update) */
 function applyAiEntities(
   records: Array<{ id: string; tags: string[]; properties: Record<string, unknown> }>,
   store: EntityStore,
 ): void {
   for (const record of records) {
+    normalizeScenery(record.properties);
     if (store.has(record.id)) {
       for (const [key, value] of Object.entries(record.properties)) {
         if (value === null) {
