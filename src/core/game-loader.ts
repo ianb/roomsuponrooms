@@ -97,6 +97,7 @@ export function loadGameData(data: GameData, options?: LoadGameOptions): LoadedG
       location: entityData.location,
       aliases: entityData.aliases,
       secret: entityData.secret,
+      scenery: entityData.scenery,
       exit: entityData.exit,
       room: entityData.room,
       ai: entityData.ai,

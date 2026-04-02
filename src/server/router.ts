@@ -34,6 +34,7 @@ function applyAiEntities(records: AiEntityRecord[], store: EntityStore): void {
       entity.description = record.description;
       if (record.aliases) entity.aliases = record.aliases;
       if (record.secret !== undefined) entity.secret = record.secret;
+      if (record.scenery) entity.scenery = record.scenery;
       if (record.exit) entity.exit = record.exit;
       if (record.room) entity.room = { ...entity.room, ...record.room } as typeof entity.room;
       if (record.ai) entity.ai = record.ai;
@@ -54,6 +55,7 @@ function applyAiEntities(records: AiEntityRecord[], store: EntityStore): void {
         location: record.location,
         aliases: record.aliases,
         secret: record.secret,
+        scenery: record.scenery,
         exit: record.exit,
         room: record.room,
         ai: record.ai,

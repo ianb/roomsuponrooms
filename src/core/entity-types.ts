@@ -19,6 +19,7 @@ export interface Entity {
   location: EntityId;
   aliases: string[];
   secret?: string;
+  scenery: SceneryEntry[];
 
   exit?: {
     direction: string;
@@ -29,7 +30,6 @@ export interface Entity {
   room?: {
     darkWhenUnlit: boolean;
     visits: number;
-    scenery: SceneryEntry[];
     grid?: { x: number; y: number; z: number };
   };
 
@@ -49,6 +49,7 @@ export interface CreateEntityOptions {
   location?: EntityId;
   aliases?: string[];
   secret?: string;
+  scenery?: SceneryEntry[];
   exit?: {
     direction: string;
     destination?: EntityId;
@@ -57,7 +58,6 @@ export interface CreateEntityOptions {
   room?: {
     darkWhenUnlit?: boolean;
     visits?: number;
-    scenery?: SceneryEntry[];
     grid?: { x: number; y: number; z: number };
   };
   ai?: {
@@ -76,6 +76,7 @@ export interface EntitySnapshot {
   location: EntityId;
   aliases: string[];
   secret?: string;
+  scenery: SceneryEntry[];
   exit?: {
     direction: string;
     destination?: EntityId;
@@ -84,7 +85,6 @@ export interface EntitySnapshot {
   room?: {
     darkWhenUnlit: boolean;
     visits: number;
-    scenery: SceneryEntry[];
     grid?: { x: number; y: number; z: number };
   };
   ai?: {
@@ -103,16 +103,13 @@ export function snapshotEntity(entity: Entity): EntitySnapshot {
     description: entity.description,
     location: entity.location,
     aliases: [...entity.aliases],
+    scenery: entity.scenery.map((s) => ({ ...s })),
     properties: { ...entity.properties },
   };
   if (entity.secret !== undefined) snap.secret = entity.secret;
   if (entity.exit) snap.exit = { ...entity.exit };
   if (entity.room) {
-    snap.room = {
-      darkWhenUnlit: entity.room.darkWhenUnlit,
-      visits: entity.room.visits,
-      scenery: entity.room.scenery.map((s) => ({ ...s })),
-    };
+    snap.room = { darkWhenUnlit: entity.room.darkWhenUnlit, visits: entity.room.visits };
     if (entity.room.grid) snap.room.grid = { ...entity.room.grid };
   }
   if (entity.ai) snap.ai = { ...entity.ai };
@@ -128,16 +125,13 @@ export function entityFromSnapshot(snap: EntitySnapshot): Entity {
     description: snap.description,
     location: snap.location,
     aliases: [...snap.aliases],
+    scenery: snap.scenery.map((s) => ({ ...s })),
     properties: { ...snap.properties },
   };
   if (snap.secret !== undefined) entity.secret = snap.secret;
   if (snap.exit) entity.exit = { ...snap.exit };
   if (snap.room) {
-    entity.room = {
-      darkWhenUnlit: snap.room.darkWhenUnlit,
-      visits: snap.room.visits,
-      scenery: snap.room.scenery.map((s) => ({ ...s })),
-    };
+    entity.room = { darkWhenUnlit: snap.room.darkWhenUnlit, visits: snap.room.visits };
     if (snap.room.grid) entity.room.grid = { ...snap.room.grid };
   }
   if (snap.ai) entity.ai = { ...snap.ai };

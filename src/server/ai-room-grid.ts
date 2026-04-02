@@ -25,11 +25,11 @@ function entityToRecord(
     aliases: entity.aliases.length > 0 ? [...entity.aliases] : undefined,
     secret: entity.secret,
     exit: entity.exit ? { ...entity.exit } : undefined,
+    scenery: entity.scenery.length > 0 ? [...entity.scenery] : undefined,
     room: entity.room
       ? {
           darkWhenUnlit: entity.room.darkWhenUnlit,
           visits: entity.room.visits,
-          scenery: [...entity.room.scenery],
           grid: entity.room.grid ? { ...entity.room.grid } : undefined,
         }
       : undefined,
@@ -66,7 +66,7 @@ export async function ensureGridCoords(
 ): Promise<void> {
   if (room.room && room.room.grid) return;
   if (!room.room) {
-    room.room = { darkWhenUnlit: false, visits: 0, scenery: [], grid: { x: 0, y: 0, z: 0 } };
+    room.room = { darkWhenUnlit: false, visits: 0, grid: { x: 0, y: 0, z: 0 } };
   } else {
     room.room.grid = { x: 0, y: 0, z: 0 };
   }

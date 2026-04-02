@@ -13,6 +13,7 @@ const STRUCTURED_KEYS = new Set([
   "location",
   "aliases",
   "secret",
+  "scenery",
   "exit",
   "room",
   "ai",
@@ -32,6 +33,7 @@ export function deserializeEntityRow(row: EntityRow): AiEntityRecord {
   };
   if (flat["aliases"]) record.aliases = flat["aliases"] as string[];
   if (flat["secret"]) record.secret = flat["secret"] as string;
+  if (flat["scenery"]) record.scenery = flat["scenery"] as AiEntityRecord["scenery"];
   if (flat["exit"]) record.exit = flat["exit"] as AiEntityRecord["exit"];
   if (flat["room"]) record.room = flat["room"] as AiEntityRecord["room"];
   if (flat["ai"]) record.ai = flat["ai"] as AiEntityRecord["ai"];
@@ -51,6 +53,7 @@ export function serializeEntityRecord(record: AiEntityRecord): string {
   };
   if (record.aliases && record.aliases.length > 0) flat["aliases"] = record.aliases;
   if (record.secret) flat["secret"] = record.secret;
+  if (record.scenery && record.scenery.length > 0) flat["scenery"] = record.scenery;
   if (record.exit) flat["exit"] = record.exit;
   if (record.room) flat["room"] = record.room;
   if (record.ai) flat["ai"] = record.ai;

@@ -54,10 +54,18 @@ export function evaluateWordPerform(
       seenWords: Array.from(context.state.seenWords),
       knownWords: Array.from(context.state.knownWords),
     },
-  }) as PerformResult;
+  });
 
   if (!result || typeof result !== "object") return null;
-  return result;
+  const obj = result as Record<string, unknown>;
+  if (typeof obj.allowed !== "boolean") return null;
+  return {
+    allowed: obj.allowed,
+    narration: typeof obj.narration === "string" ? obj.narration : undefined,
+    response: typeof obj.response === "string" ? obj.response : undefined,
+    effects: Array.isArray(obj.effects) ? (obj.effects as WordEffect[]) : undefined,
+    highlights: Array.isArray(obj.highlights) ? (obj.highlights as string[]) : undefined,
+  };
 }
 
 /** Convert WordEffects into WorldEvents, applying them to the store */

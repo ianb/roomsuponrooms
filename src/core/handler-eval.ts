@@ -5,6 +5,7 @@ import type {
   CheckResult,
   VetoResult,
   PerformResult,
+  WorldEvent,
 } from "./verb-types.js";
 import type { HandlerData } from "./game-data.js";
 import { HandlerLib } from "./handler-lib.js";
@@ -72,20 +73,34 @@ function buildVeto(code: string, createLib: LibFactory): (context: VerbContext) 
   };
 }
 
+function validateEvent(e: unknown): WorldEvent | null {
+  if (typeof e !== "object" || e === null) return null;
+  const obj = e as Record<string, unknown>;
+  if (typeof obj.type !== "string" || typeof obj.entityId !== "string") return null;
+  if (typeof obj.description !== "string") obj.description = "";
+  return obj as unknown as WorldEvent;
+}
+
 function buildPerform(
   code: string,
   createLib: LibFactory,
 ): (context: VerbContext) => PerformResult {
   const fn = buildSandboxedFunction(code);
   return (context: VerbContext): PerformResult => {
-    const result = fn(handlerVars(context, createLib)) as PerformResult;
-    if (!result || typeof result.output !== "string") {
+    const raw = fn(handlerVars(context, createLib));
+    if (!raw || typeof raw !== "object") {
       return { output: "Something strange happens, but nothing changes.", events: [] };
     }
-    if (!Array.isArray(result.events)) {
-      return { output: result.output, events: [] };
+    const result = raw as Record<string, unknown>;
+    const output = typeof result.output === "string" ? result.output : "";
+    const events: WorldEvent[] = [];
+    if (Array.isArray(result.events)) {
+      for (const e of result.events) {
+        const valid = validateEvent(e);
+        if (valid) events.push(valid);
+      }
     }
-    return result;
+    return { output, events };
   };
 }
 

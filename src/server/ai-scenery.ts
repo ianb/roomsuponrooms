@@ -165,17 +165,10 @@ export function isExamineVerb(verb: string): boolean {
   return EXAMINE_VERBS.has(verb);
 }
 
-/** Get the scenery array from an entity — rooms use .room.scenery, items use properties */
-function getSceneryArray(entity: Entity): SceneryEntry[] {
-  if (entity.room) return entity.room.scenery;
-  const raw = entity.properties["scenery"] as SceneryEntry[] | undefined;
-  return raw || [];
-}
-
 /** Get stored scenery entry for a word, if it exists (checks word and aliases) */
 export function getStoredScenery(entity: Entity, word: string): SceneryEntry | null {
-  const scenery = getSceneryArray(entity);
-  if (scenery.length === 0) return null;
+  if (entity.scenery.length === 0) return null;
+  const scenery = entity.scenery;
   const lower = word.toLowerCase();
   return (
     scenery.find((s) => {
@@ -193,13 +186,11 @@ export function removeMatchingScenery(
   store: EntityStore,
   { room, name, aliases }: { room: Entity; name: string; aliases: string[] },
 ): void {
-  if (!room.room) return;
-  const scenery = room.room.scenery;
-  if (scenery.length === 0) return;
+  if (room.scenery.length === 0) return;
   const words = new Set([name.toLowerCase(), ...aliases.map((a) => a.toLowerCase())]);
-  const filtered = scenery.filter((s) => !words.has(s.word.toLowerCase()));
-  if (filtered.length < scenery.length) {
-    room.room.scenery = filtered;
+  const filtered = room.scenery.filter((s) => !words.has(s.word.toLowerCase()));
+  if (filtered.length < room.scenery.length) {
+    room.scenery = filtered;
   }
 }
 
@@ -229,9 +220,8 @@ export async function generateSceneryDescription(
     durationMs: number;
   };
 }> {
-  // Check for existing entry on the target entity (source or room)
-  const storeOn = sourceEntity || room;
-  const existing = getStoredScenery(storeOn, word);
+  // Always check/store scenery on the room
+  const existing = getStoredScenery(room, word);
   if (existing) return { entry: existing };
 
   const systemPrompt = buildSystemPrompt({ room, store, sourceEntity, prompts });
@@ -260,13 +250,9 @@ export async function generateSceneryDescription(
     rejection: result.object.rejection,
   };
 
-  // Store scenery on the source entity (or room if no specific source)
-  if (storeOn.room) {
-    storeOn.room.scenery = [...storeOn.room.scenery, entry];
-  } else {
-    const prior = (storeOn.properties["scenery"] as SceneryEntry[]) || [];
-    store.setProperty(storeOn.id, { name: "scenery", value: [...prior, entry] });
-  }
+  // Store scenery on the source entity (or room if no source)
+  const storeOn = sourceEntity || room;
+  storeOn.scenery = [...storeOn.scenery, entry];
 
   return {
     entry,

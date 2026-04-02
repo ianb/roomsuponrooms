@@ -83,17 +83,17 @@ export async function handleSceneryCheck(
 
   // Non-examine verbs: return stored rejection or generic one
   if (!isExamineVerb(verb)) {
-    // Check room scenery first, then source entity scenery
+    // Check room scenery, then source entity scenery
     const stored = getStoredScenery(room, objectName);
     if (stored) {
       return { output: `{!${stored.rejection}!}` };
     }
-    const sceneryEntityId =
+    const sceneryEntityId2 =
       scenerySource.source === "item" || scenerySource.source === "output"
         ? scenerySource.entityId
         : undefined;
-    if (sceneryEntityId && game.store.has(sceneryEntityId)) {
-      const entityStored = getStoredScenery(game.store.get(sceneryEntityId), objectName);
+    if (sceneryEntityId2 && game.store.has(sceneryEntityId2)) {
+      const entityStored = getStoredScenery(game.store.get(sceneryEntityId2), objectName);
       if (entityStored) {
         return { output: `{!${entityStored.rejection}!}` };
       }
@@ -137,6 +137,7 @@ export async function handleSceneryCheck(
     location: storeOnEntity.location,
     aliases: storeOnEntity.aliases.length > 0 ? [...storeOnEntity.aliases] : undefined,
     secret: storeOnEntity.secret,
+    scenery: storeOnEntity.scenery.length > 0 ? [...storeOnEntity.scenery] : undefined,
     exit: storeOnEntity.exit,
     room: storeOnEntity.room,
     ai: storeOnEntity.ai,

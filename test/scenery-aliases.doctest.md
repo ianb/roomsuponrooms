@@ -28,16 +28,14 @@ store.create("room:test", {
   tags: ["room"],
   name: "Test Room",
   description: "A test room.",
-  room: {
-    scenery: [
-      {
-        word: "c-4",
-        aliases: ["bay c-4", "bay 4", "manual revival"],
-        description: "Bay C-4 shows a manual revival event dated 242 years ago.",
-        rejection: "The display is behind glass.",
-      },
-    ],
-  },
+  scenery: [
+    {
+      word: "c-4",
+      aliases: ["bay c-4", "bay 4", "manual revival"],
+      description: "Bay C-4 shows a manual revival event dated 242 years ago.",
+      rejection: "The display is behind glass.",
+    },
+  ],
 });
 const room = store.get("room:test");
 ```

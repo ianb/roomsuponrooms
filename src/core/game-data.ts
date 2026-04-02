@@ -82,6 +82,7 @@ export interface EntityData {
   location: string;
   aliases?: string[];
   secret?: string;
+  scenery?: Array<{ word: string; aliases?: string[]; description: string; rejection: string }>;
   exit?: {
     direction: string;
     destination?: string;
@@ -90,7 +91,6 @@ export interface EntityData {
   room?: {
     darkWhenUnlit?: boolean;
     visits?: number;
-    scenery?: Array<{ word: string; aliases?: string[]; description: string; rejection: string }>;
     grid?: { x: number; y: number; z: number };
   };
   ai?: {

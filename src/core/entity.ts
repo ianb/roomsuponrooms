@@ -87,6 +87,7 @@ export class EntityStore {
       description: options.description || "",
       location: options.location || VOID_LOCATION,
       aliases: options.aliases ? [...options.aliases] : [],
+      scenery: options.scenery ? [...options.scenery] : [],
       properties: { ...props },
     };
     if (options.secret !== undefined) entity.secret = options.secret;
@@ -101,14 +102,13 @@ export class EntityStore {
       entity.room = {
         darkWhenUnlit: options.room.darkWhenUnlit || false,
         visits: options.room.visits || 0,
-        scenery: options.room.scenery ? [...options.room.scenery] : [],
       };
       if (options.room.grid) entity.room.grid = { ...options.room.grid };
     }
     if (options.ai) entity.ai = { ...options.ai };
     // Ensure room facet exists for room-tagged entities
     if (!entity.room && entity.tags.includes("room")) {
-      entity.room = { darkWhenUnlit: false, visits: 0, scenery: [] };
+      entity.room = { darkWhenUnlit: false, visits: 0 };
     }
 
     this.entities.set(id, entity);
