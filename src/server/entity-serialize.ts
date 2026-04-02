@@ -7,6 +7,7 @@ import { rowToAuthoring } from "./d1-types.js";
  * These helpers convert between the flat DB format and the structured EntityData shape.
  */
 
+/** Keys that map to typed Entity fields — excluded from the properties bag */
 const STRUCTURED_KEYS = new Set([
   "name",
   "description",
@@ -17,6 +18,17 @@ const STRUCTURED_KEYS = new Set([
   "exit",
   "room",
   "ai",
+  // Legacy flat keys (pre-restructuring data in D1)
+  "direction",
+  "destination",
+  "destinationIntent",
+  "aiPrompt",
+  "aiConversationPrompt",
+  "dark",
+  "visits",
+  "gridX",
+  "gridY",
+  "gridZ",
 ]);
 
 export function deserializeEntityRow(row: EntityRow): AiEntityRecord {
@@ -34,9 +46,31 @@ export function deserializeEntityRow(row: EntityRow): AiEntityRecord {
   if (flat["aliases"]) record.aliases = flat["aliases"] as string[];
   if (flat["secret"]) record.secret = flat["secret"] as string;
   if (flat["scenery"]) record.scenery = flat["scenery"] as AiEntityRecord["scenery"];
-  if (flat["exit"]) record.exit = flat["exit"] as AiEntityRecord["exit"];
-  if (flat["room"]) record.room = flat["room"] as AiEntityRecord["room"];
-  if (flat["ai"]) record.ai = flat["ai"] as AiEntityRecord["ai"];
+  // Exit facet: new format or legacy flat keys
+  if (flat["exit"]) {
+    record.exit = flat["exit"] as AiEntityRecord["exit"];
+  } else if (flat["direction"]) {
+    record.exit = {
+      direction: flat["direction"] as string,
+      destination: flat["destination"] as string | undefined,
+      destinationIntent: flat["destinationIntent"] as string | undefined,
+    };
+  }
+  // Room facet: new format or legacy flat keys
+  if (flat["room"]) {
+    record.room = flat["room"] as AiEntityRecord["room"];
+  } else if (flat["dark"] || flat["visits"] || flat["gridX"]) {
+    record.room = { darkWhenUnlit: flat["dark"] === true };
+  }
+  // AI facet: new format or legacy flat keys
+  if (flat["ai"]) {
+    record.ai = flat["ai"] as AiEntityRecord["ai"];
+  } else if (flat["aiPrompt"] || flat["aiConversationPrompt"]) {
+    record.ai = {
+      prompt: flat["aiPrompt"] as string | undefined,
+      conversationPrompt: flat["aiConversationPrompt"] as string | undefined,
+    };
+  }
   const props: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(flat)) {
     if (!STRUCTURED_KEYS.has(k)) props[k] = v;
