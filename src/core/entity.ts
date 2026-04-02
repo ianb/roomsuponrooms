@@ -24,6 +24,10 @@ export { snapshotEntity, entityFromSnapshot } from "./entity-types.js";
 export const VOID_LOCATION = "void";
 export const WORLD_LOCATION = "world";
 
+function isRootLocation(loc: string): boolean {
+  return !loc || loc === VOID_LOCATION || loc === WORLD_LOCATION;
+}
+
 export class EntityStore {
   private entities: Map<string, Entity> = new Map();
   private locationIndex: Map<string, Set<string>> = new Map();
@@ -69,48 +73,30 @@ export class EntityStore {
     if (this.entities.has(id)) {
       throw new DuplicateEntityError(id);
     }
-    const rawProps = options.properties || {};
-    const props: Record<string, unknown> = {};
-    for (const [propName, propValue] of Object.entries(rawProps)) {
-      if (propValue === null || propValue === undefined) continue;
-      const def = this.registry.definitions[propName];
-      if (!def) throw new UndefinedPropertyError(propName);
-      const errors = validateValue(this.registry, { name: propName, value: propValue });
-      if (errors.length > 0) throw new PropertyValueError(propName, errors);
-      props[propName] = propValue;
-    }
+    const { typed, props } = this.splitProperties(options);
 
     const entity: Entity = {
       id,
       tags: options.tags ? [...options.tags] : [],
-      name: options.name || id,
-      description: options.description || "",
-      location: options.location || VOID_LOCATION,
-      aliases: options.aliases ? [...options.aliases] : [],
+      name: typed.name || id,
+      description: typed.description || "",
+      location: typed.location || VOID_LOCATION,
+      aliases: typed.aliases ? [...typed.aliases] : [],
       scenery: options.scenery ? [...options.scenery] : [],
-      properties: { ...props },
+      properties: props,
     };
-    if (options.secret !== undefined) entity.secret = options.secret;
-    if (options.exit) {
-      entity.exit = {
-        direction: options.exit.direction,
-        destination: options.exit.destination,
-        destinationIntent: options.exit.destinationIntent,
-      };
-    }
+    if (typed.secret !== undefined) entity.secret = typed.secret;
+    if (options.exit) entity.exit = { ...options.exit };
     if (options.room) {
       entity.room = {
         darkWhenUnlit: options.room.darkWhenUnlit || false,
         visits: options.room.visits || 0,
       };
       if (options.room.grid) entity.room.grid = { ...options.room.grid };
-    }
-    if (options.ai) entity.ai = { ...options.ai };
-    // Ensure room facet exists for room-tagged entities
-    if (!entity.room && entity.tags.includes("room")) {
+    } else if (entity.tags.includes("room")) {
       entity.room = { darkWhenUnlit: false, visits: 0 };
     }
-
+    if (options.ai) entity.ai = { ...options.ai };
     this.entities.set(id, entity);
     this.addToLocationIndex(entity.location, id);
     return entity;
@@ -131,21 +117,16 @@ export class EntityStore {
   delete(id: string): void {
     const entity = this.tryGet(id);
     if (!entity) return;
-    for (const child of this.getContents(id)) {
-      this.delete(child.id);
-    }
+    for (const child of this.getContents(id)) this.delete(child.id);
     this.removeFromLocationIndex(entity.location, id);
     this.entities.delete(id);
   }
-
   setLocation(id: string, newLocation: string): void {
     const entity = this.get(id);
-    const oldLocation = entity.location;
+    this.removeFromLocationIndex(entity.location, id);
     entity.location = newLocation;
-    this.removeFromLocationIndex(oldLocation, id);
     this.addToLocationIndex(newLocation, id);
   }
-
   setProperty(id: string, assignment: { name: string; value: unknown }): void {
     const entity = this.get(id);
     const { name, value } = assignment;
@@ -188,7 +169,6 @@ export class EntityStore {
     const tags = this.get(id).tags;
     if (!tags.includes(tag)) tags.push(tag);
   }
-
   removeTag(id: string, tag: string): void {
     const entity = this.get(id);
     const idx = entity.tags.indexOf(tag);
@@ -198,7 +178,6 @@ export class EntityStore {
   hasTag(id: string, tag: string): boolean {
     return this.get(id).tags.includes(tag);
   }
-
   getContents(locationId: string): Entity[] {
     const ids = this.locationIndex.get(locationId);
     if (!ids) return [];
@@ -225,7 +204,6 @@ export class EntityStore {
     }
     return result;
   }
-
   findContaining(entityId: string, tag: string): Entity | null {
     let currentId = entityId;
     const visited = new Set<string>();
@@ -235,17 +213,11 @@ export class EntityStore {
       const entity = this.tryGet(currentId);
       if (!entity) return null;
       if (entity.tags.includes(tag) && entity.id !== entityId) return entity;
-      if (
-        !entity.location ||
-        entity.location === VOID_LOCATION ||
-        entity.location === WORLD_LOCATION
-      )
-        return null;
+      if (isRootLocation(entity.location)) return null;
       currentId = entity.location;
     }
     return null;
   }
-
   getLocationChain(entityId: string): Entity[] {
     const chain: Entity[] = [];
     let currentId = entityId;
@@ -256,12 +228,7 @@ export class EntityStore {
       const entity = this.tryGet(currentId);
       if (!entity) break;
       chain.push(entity);
-      if (
-        !entity.location ||
-        entity.location === VOID_LOCATION ||
-        entity.location === WORLD_LOCATION
-      )
-        break;
+      if (isRootLocation(entity.location)) break;
       currentId = entity.location;
     }
     return chain;
@@ -274,23 +241,38 @@ export class EntityStore {
     }
     return result;
   }
-
   findByTagAt(tag: string, locationId: string): Entity[] {
     return this.getContents(locationId).filter((e) => e.tags.includes(tag));
   }
-
   getExits(roomId: string): Entity[] {
     return this.findByTagAt("exit", roomId);
   }
 
-  saveState(): EntitySnapshot[] {
-    const snapshots: EntitySnapshot[] = [];
-    for (const entity of this.entities.values()) {
-      snapshots.push(snapshotEntity(entity));
+  private splitProperties(opts: CreateEntityOptions) {
+    const raw = opts.properties || {};
+    const typed = {
+      name: (raw["name"] as string) || opts.name,
+      description: (raw["description"] as string) || opts.description,
+      location: (raw["location"] as string) || opts.location,
+      aliases: (raw["aliases"] as string[]) || opts.aliases,
+      secret: (raw["secret"] as string) || opts.secret,
+    };
+    const skip = new Set(["name", "description", "location", "aliases", "secret"]);
+    const props: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || skip.has(k)) continue;
+      const def = this.registry.definitions[k];
+      if (!def) throw new UndefinedPropertyError(k);
+      const errors = validateValue(this.registry, { name: k, value: v });
+      if (errors.length > 0) throw new PropertyValueError(k, errors);
+      props[k] = v;
     }
-    return snapshots;
+    return { typed, props };
   }
 
+  saveState(): EntitySnapshot[] {
+    return Array.from(this.entities.values(), (e) => snapshotEntity(e));
+  }
   restoreState(snapshots: EntitySnapshot[]): void {
     this.entities.clear();
     this.locationIndex.clear();
