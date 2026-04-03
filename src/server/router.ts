@@ -11,6 +11,7 @@ import { getGame, listGames, isValidGameId } from "../games/registry.js";
 import { executeCommand } from "./execute-command.js";
 import type { SessionKey, AiEntityRecord } from "./storage.js";
 import { logErrorObj } from "./error-log.js";
+import { bugRouter } from "./router-bugs.js";
 
 // Game registrations are imported by the entry point (server/index.ts or worker.ts)
 // NOT here, so the router can be used with either fs-based or bundled game data.
@@ -128,7 +129,7 @@ function describeCurrentRoom(s: EntityStore): string {
 const validGameId = z.string().refine(isValidGameId, { message: "Unknown game" });
 const gameInput = z.object({ gameId: validGameId });
 
-export const appRouter = router({
+const gameRouter = router({
   games: publicProcedure.query(() => {
     return listGames().map((g) => ({
       slug: g.slug,
@@ -281,6 +282,11 @@ export const appRouter = router({
       room: roomPrompt,
     };
   }),
+});
+
+export const appRouter = router({
+  ...gameRouter._def.procedures,
+  ...bugRouter._def.procedures,
 });
 
 export type AppRouter = typeof appRouter;

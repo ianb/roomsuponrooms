@@ -8,6 +8,8 @@ import type {
   WordEntryRecord,
   UserRecord,
   SessionKey,
+  BugReport,
+  BugReportUpdate,
 } from "./storage.js";
 
 function ensureDir(filePath: string): void {
@@ -185,6 +187,17 @@ export class FileStorage implements RuntimeStorage {
     });
     writeFileSync(filePath, updated.join("\n") + "\n");
   }
+
+  // --- Bug Reports (no-op for local dev) ---
+
+  async saveBugReport(_report: BugReport): Promise<void> {}
+  async listBugReports(_opts?: { status?: string; gameId?: string }): Promise<BugReport[]> {
+    return [];
+  }
+  async getBugReport(_id: string): Promise<BugReport | null> {
+    return null;
+  }
+  async updateBugReport(_id: string, _update: BugReportUpdate): Promise<void> {}
 
   // --- AI Usage Quota (no-op for local dev) ---
 

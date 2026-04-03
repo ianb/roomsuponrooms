@@ -8,6 +8,8 @@ import { handleSceneryCheck } from "./scenery-commands.js";
 import { handleSpecialCommand } from "./special-commands.js";
 import { RecentOutputBuffer } from "./recent-output.js";
 import { checkAiQuota } from "./ai-quota.js";
+import type { BugPreview } from "./bug-commands.js";
+import { collectBugContext } from "./bug-commands.js";
 
 export interface CommandInput {
   gameId: string;
@@ -24,6 +26,8 @@ export interface CommandResult {
   aiOutput?: string;
   /** Human-readable descriptions of world state changes (e.g. "The wildflower was eaten.") */
   eventDescriptions?: string[];
+  /** Bug report preview — shown to user for confirmation before submitting */
+  bugPreview?: BugPreview;
 }
 
 interface ExecuteOptions {
@@ -81,6 +85,11 @@ function recordOutput(
   }
 }
 
+function parseBugCommand(text: string): string | null {
+  const match = /^bug\s+(.+)/i.exec(text);
+  return match ? match[1]! : null;
+}
+
 export async function executeCommand(
   input: CommandInput,
   { game, reinitGame, onAiStart }: ExecuteOptions,
@@ -127,6 +136,17 @@ export async function executeCommand(
       conversationMode: convResult.conversationMode,
       debug: undefined,
     };
+  }
+
+  // Bug reporting: "bug <description>"
+  const bugDescription = parseBugCommand(trimmed);
+  if (bugDescription) {
+    const preview = await collectBugContext(game, {
+      session,
+      userName: null,
+      description: bugDescription,
+    });
+    return { output: "", bugPreview: preview };
   }
 
   const special = handleSpecialCommand(trimmed, { game, session, opts, reinitGame });

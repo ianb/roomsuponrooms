@@ -7,6 +7,8 @@ import type {
   UserRecord,
   SessionKey,
   ErrorLogRecord,
+  BugReport,
+  BugReportUpdate,
 } from "./storage.js";
 import type {
   D1Database,
@@ -16,6 +18,7 @@ import type {
   ConversationRow,
   UserRow,
 } from "./d1-types.js";
+import * as bugDb from "./storage-d1-bugs.js";
 import { userRowToRecord, rowToAuthoring, authoringBindValues } from "./d1-types.js";
 import { deserializeEntityRow, serializeEntityRecord } from "./entity-serialize.js";
 
@@ -282,6 +285,21 @@ export class D1Storage implements RuntimeStorage {
       .bind(userId, since)
       .first<number>("cnt");
     return result || 0;
+  }
+
+  // --- Bug Reports ---
+
+  async saveBugReport(report: BugReport): Promise<void> {
+    return bugDb.saveBugReport(this.db, report);
+  }
+  async listBugReports(opts?: { status?: string; gameId?: string }): Promise<BugReport[]> {
+    return bugDb.listBugReports(this.db, opts);
+  }
+  async getBugReport(id: string): Promise<BugReport | null> {
+    return bugDb.getBugReport(this.db, id);
+  }
+  async updateBugReport(id: string, update: BugReportUpdate): Promise<void> {
+    return bugDb.updateBugReport(this.db, { id, update });
   }
 
   async logError(entry: ErrorLogRecord): Promise<void> {

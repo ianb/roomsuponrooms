@@ -1,9 +1,25 @@
+interface BugPreviewData {
+  description: string;
+  gameId: string;
+  userId: string;
+  userName: string | null;
+  roomId: string | null;
+  roomName: string | null;
+  recentCommands: Array<{ command: string; events: unknown[]; timestamp: string }>;
+  entityChanges: Array<{
+    id: string;
+    name: string;
+    changes: Array<{ field: string; from: unknown; to: unknown }>;
+  }>;
+}
+
 interface CommandResult {
   output: string;
   debug?: unknown;
   conversationMode?: unknown;
   aiOutput?: string;
   eventDescriptions?: string[];
+  bugPreview?: BugPreviewData;
 }
 
 interface StreamEvent {

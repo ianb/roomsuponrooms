@@ -67,6 +67,23 @@ export interface ConversationRow extends AuthoringColumns {
   created_at: string;
 }
 
+export interface BugReportRow {
+  id: string;
+  game_id: string;
+  user_id: string;
+  user_name: string | null;
+  description: string;
+  room_id: string | null;
+  room_name: string | null;
+  recent_commands: string;
+  entity_changes: string | null;
+  status: string;
+  fix_commit: string | null;
+  duplicate_of: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export interface UserRow {
   id: string;
   display_name: string;

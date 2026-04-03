@@ -100,8 +100,47 @@ export interface RuntimeStorage {
   recordAiUsage(userId: string, callType: string): Promise<void>;
   countAiUsage(userId: string, since: string): Promise<number>;
 
+  // --- Bug Reports ---
+  saveBugReport(report: BugReport): Promise<void>;
+  listBugReports(opts?: { status?: string; gameId?: string }): Promise<BugReport[]>;
+  getBugReport(id: string): Promise<BugReport | null>;
+  updateBugReport(id: string, update: BugReportUpdate): Promise<void>;
+
   // --- Error Log (optional — only D1 persists) ---
   logError?(entry: ErrorLogRecord): Promise<void>;
+}
+
+// --- Bug Reports ---
+
+export type BugReportStatus = "new" | "seen" | "fixed" | "invalid" | "duplicate";
+
+export interface EntityChangeRecord {
+  id: string;
+  name: string;
+  changes: Array<{ field: string; from: unknown; to: unknown }>;
+}
+
+export interface BugReport {
+  id: string;
+  gameId: string;
+  userId: string;
+  userName: string | null;
+  description: string;
+  roomId: string | null;
+  roomName: string | null;
+  recentCommands: EventLogEntry[];
+  entityChanges: EntityChangeRecord[];
+  status: BugReportStatus;
+  fixCommit: string | null;
+  duplicateOf: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface BugReportUpdate {
+  status?: BugReportStatus;
+  fixCommit?: string;
+  duplicateOf?: string;
 }
 
 export interface ErrorLogRecord {

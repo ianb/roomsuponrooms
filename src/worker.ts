@@ -27,6 +27,7 @@ interface Env {
   LLM_PROVIDER: string;
   LLM_MODEL: string;
   GOOGLE_GENERATIVE_AI_API_KEY: string;
+  API_KEY?: string;
 }
 
 function getAuthEnv(env: Env, request: Request): AuthEnv {
@@ -42,8 +43,16 @@ function getAuthEnv(env: Env, request: Request): AuthEnv {
 
 async function extractUser(
   request: Request,
-  jwtSecret: string,
+  { jwtSecret, apiKey }: { jwtSecret: string; apiKey?: string },
 ): Promise<{ userId: string; userName: string; roles: string[] } | null> {
+  // API key auth: treat as admin
+  if (apiKey) {
+    const authHeader = request.headers.get("Authorization");
+    if (authHeader && authHeader === `Bearer ${apiKey}`) {
+      return { userId: "api", userName: "API", roles: ["admin", "ai", "debug"] };
+    }
+  }
+  // JWT cookie auth
   const cookie = request.headers.get("Cookie");
   if (!cookie) return null;
   const token = parseCookie(cookie, "session");
@@ -72,7 +81,7 @@ export default {
     }
 
     // Extract user for API routes
-    const user = await extractUser(request, env.JWT_SECRET);
+    const user = await extractUser(request, { jwtSecret: env.JWT_SECRET, apiKey: env.API_KEY });
 
     // Streaming command endpoint (authed)
     if (url.pathname === "/api/command" && request.method === "POST") {

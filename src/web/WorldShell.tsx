@@ -6,11 +6,15 @@ import { DebugView } from "./DebugView.js";
 import type { DebugData } from "./DebugView.js";
 import { streamCommand } from "./stream-command.js";
 import { AuthContext } from "./auth.js";
+import { BugPreviewEntry } from "./BugReportView.js";
+import type { BugPreviewData } from "./BugReportView.js";
+import { ThinkingIndicator } from "./ThinkingIndicator.js";
 
 interface LogEntry {
-  type: "input" | "output" | "debug" | "system" | "event";
+  type: "input" | "output" | "debug" | "system" | "event" | "bug-preview";
   text: string;
   debugData?: DebugData;
+  bugPreview?: BugPreviewData;
 }
 
 function resultToLogEntries(result: {
@@ -18,7 +22,11 @@ function resultToLogEntries(result: {
   debug?: unknown;
   aiOutput?: string;
   eventDescriptions?: string[];
+  bugPreview?: BugPreviewData;
 }): LogEntry[] {
+  if (result.bugPreview) {
+    return [{ type: "bug-preview", text: "", bugPreview: result.bugPreview }];
+  }
   const entries: LogEntry[] = [];
   const aiOutput = "aiOutput" in result ? (result.aiOutput as string) : null;
   if (aiOutput) {
@@ -155,6 +163,7 @@ export function WorldShell({
                 if (inputRef.current) inputRef.current.focus();
               });
             }}
+            onLogAppend={(entries) => setLog((prev) => [...prev, ...entries])}
           />
         ))}
         {loading ? (
@@ -195,11 +204,24 @@ function LogEntryView({
   entry,
   onEntityClick,
   onFillInput,
+  onLogAppend,
 }: {
   entry: LogEntry;
   onEntityClick?: (id: string) => void;
   onFillInput: (text: string) => void;
+  onLogAppend: (entries: LogEntry[]) => void;
 }) {
+  if (entry.type === "bug-preview" && entry.bugPreview) {
+    return (
+      <BugPreviewEntry
+        preview={entry.bugPreview}
+        onResolved={(msg, isError) => {
+          const type = isError ? "output" : "system";
+          onLogAppend([{ type, text: msg }]);
+        }}
+      />
+    );
+  }
   return (
     <div
       className={
@@ -233,43 +255,4 @@ function LogEntryView({
       )}
     </div>
   );
-}
-
-const DEFAULT_AI_MESSAGES = [
-  "The world shifts and reshapes...",
-  "Something stirs in the unseen...",
-  "Reality bends to accommodate...",
-  "The story unfolds...",
-];
-
-let aiMessageCounter = 0;
-function pickFromMessages(messages: string[]): string {
-  const msg = messages[aiMessageCounter % messages.length]!;
-  aiMessageCounter++;
-  return msg;
-}
-
-function ThinkingIndicator({
-  phase,
-  customMessages,
-}: {
-  phase: "thinking" | "ai" | null;
-  customMessages?: string[] | null;
-}) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), 400);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!visible && phase !== "ai") return null;
-
-  if (phase !== "ai") {
-    return <div className="animate-pulse text-content/50">...</div>;
-  }
-
-  const messages = customMessages || DEFAULT_AI_MESSAGES;
-  const text = pickFromMessages(messages);
-  return <div className="animate-pulse text-ai italic">{text}</div>;
 }
