@@ -12,6 +12,7 @@ import { executeCommand } from "./execute-command.js";
 import type { SessionKey, AiEntityRecord } from "./storage.js";
 import { logErrorObj } from "./error-log.js";
 import { bugRouter } from "./router-bugs.js";
+import { adminRouter } from "./router-admin.js";
 
 // Game registrations are imported by the entry point (server/index.ts or worker.ts)
 // NOT here, so the router can be used with either fs-based or bundled game data.
@@ -287,6 +288,7 @@ const gameRouter = router({
 export const appRouter = router({
   ...gameRouter._def.procedures,
   ...bugRouter._def.procedures,
+  ...adminRouter._def.procedures,
 });
 
 export type AppRouter = typeof appRouter;

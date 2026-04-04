@@ -9,6 +9,7 @@ import type {
   ErrorLogRecord,
   BugReport,
   BugReportUpdate,
+  UserSessionSummary,
 } from "./storage.js";
 import type {
   D1Database,
@@ -19,6 +20,7 @@ import type {
   UserRow,
 } from "./d1-types.js";
 import * as bugDb from "./storage-d1-bugs.js";
+import * as adminDb from "./storage-d1-admin.js";
 import { userRowToRecord, rowToAuthoring, authoringBindValues } from "./d1-types.js";
 import { deserializeEntityRow, serializeEntityRecord } from "./entity-serialize.js";
 
@@ -285,6 +287,18 @@ export class D1Storage implements RuntimeStorage {
       .bind(userId, since)
       .first<number>("cnt");
     return result || 0;
+  }
+
+  // --- Admin ---
+
+  async listUsers(): Promise<UserRecord[]> {
+    return adminDb.listUsers(this.db);
+  }
+  async listUserSessions(): Promise<UserSessionSummary[]> {
+    return adminDb.listUserSessions(this.db);
+  }
+  async listAiUsageByUser(): Promise<Array<{ userId: string; total: number }>> {
+    return adminDb.listAiUsageByUser(this.db);
   }
 
   // --- Bug Reports ---

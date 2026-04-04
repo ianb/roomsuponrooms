@@ -6,6 +6,7 @@ import { aboutRoute } from "./routes/about.js";
 import { tosRoute } from "./routes/tos.js";
 import { privacyRoute } from "./routes/privacy.js";
 import { bugsRoute, bugDetailRoute } from "./routes/bugs.js";
+import { adminRoute } from "./routes/admin.js";
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -15,6 +16,7 @@ const routeTree = rootRoute.addChildren([
   privacyRoute,
   bugsRoute,
   bugDetailRoute,
+  adminRoute,
 ]);
 
 export const appRouter = createRouter({ routeTree });

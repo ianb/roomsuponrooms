@@ -100,6 +100,11 @@ export interface RuntimeStorage {
   recordAiUsage(userId: string, callType: string): Promise<void>;
   countAiUsage(userId: string, since: string): Promise<number>;
 
+  // --- Admin (aggregate queries, optional — only D1 implements) ---
+  listUsers?(): Promise<UserRecord[]>;
+  listUserSessions?(): Promise<UserSessionSummary[]>;
+  listAiUsageByUser?(): Promise<Array<{ userId: string; total: number }>>;
+
   // --- Bug Reports ---
   saveBugReport(report: BugReport): Promise<void>;
   listBugReports(opts?: { status?: string; gameId?: string }): Promise<BugReport[]>;
@@ -141,6 +146,13 @@ export interface BugReportUpdate {
   status?: BugReportStatus;
   fixCommit?: string;
   duplicateOf?: string;
+}
+
+export interface UserSessionSummary {
+  userId: string;
+  gameId: string;
+  eventCount: number;
+  lastActivity: string;
 }
 
 export interface ErrorLogRecord {
