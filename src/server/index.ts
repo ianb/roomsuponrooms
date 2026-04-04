@@ -38,7 +38,13 @@ function getAuthEnv(): AuthEnv {
 
 async function extractUser(
   cookieHeader: string | undefined,
+  authHeader?: string,
 ): Promise<{ userId: string; userName: string; roles: string[] } | null> {
+  // API key auth
+  const apiKey = process.env["API_KEY"];
+  if (apiKey && authHeader && authHeader === `Bearer ${apiKey}`) {
+    return { userId: "api", userName: "API", roles: ["admin", "ai", "debug"] };
+  }
   if (!cookieHeader) return null;
   const token = parseCookie(cookieHeader, "session");
   if (!token) return null;
@@ -76,7 +82,7 @@ server.all("/auth/*", async (req, reply) => {
 
 // Streaming command endpoint
 server.post("/api/command", async (req, reply) => {
-  const user = await extractUser(req.headers.cookie);
+  const user = await extractUser(req.headers.cookie, req.headers.authorization);
   if (!user) {
     reply.status(401).send({ error: "Unauthorized" });
     return;
@@ -95,8 +101,12 @@ server.register(fastifyTRPCPlugin, {
   prefix: "/trpc",
   trpcOptions: {
     router: appRouter,
-    createContext: async ({ req }: { req: { headers: { cookie?: string } } }) => {
-      const user = await extractUser(req.headers.cookie);
+    createContext: async ({
+      req,
+    }: {
+      req: { headers: { cookie?: string; authorization?: string } };
+    }) => {
+      const user = await extractUser(req.headers.cookie, req.headers.authorization);
       return {
         userId: user ? user.userId : null,
         userName: user ? user.userName : null,
