@@ -13,6 +13,7 @@ interface ImageCardProps {
   stylePrompt: string;
   existing: WorldImageRecord | undefined;
   onGenerated: (record: WorldImageRecord) => void;
+  onDeleted?: (imageType: string) => void;
 }
 
 export function ImageCard({
@@ -23,11 +24,23 @@ export function ImageCard({
   stylePrompt,
   existing,
   onGenerated,
+  onDeleted,
 }: ImageCardProps) {
   const [prompt, setPrompt] = useState(existing ? existing.promptUsed : defaultPrompt);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [imageVersion, setImageVersion] = useState(() => Date.now());
+
+  async function handleDelete() {
+    if (!onDeleted) return;
+    try {
+      await trpc.adminDeleteImage.mutate({ gameId, imageType });
+      onDeleted(imageType);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setGenError(msg);
+    }
+  }
 
   async function handleGenerate() {
     setGenerating(true);
@@ -89,16 +102,26 @@ export function ImageCard({
             </div>
           ) : null}
           {genError ? <div className="mb-2 text-sm text-red-400">{genError}</div> : null}
-          <button
-            className="rounded bg-content/20 px-4 py-2 text-sm hover:bg-content/30 disabled:opacity-50"
-            onClick={handleGenerate}
-            disabled={generating || !stylePrompt}
-          >
-            {generating ? "Generating..." : existing ? "Regenerate" : "Generate"}
-          </button>
-          {!stylePrompt ? (
-            <span className="ml-2 text-xs text-content/40">Save a style prompt first</span>
-          ) : null}
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded bg-content/20 px-4 py-2 text-sm hover:bg-content/30 disabled:opacity-50"
+              onClick={handleGenerate}
+              disabled={generating || !stylePrompt}
+            >
+              {generating ? "Generating..." : existing ? "Regenerate" : "Generate"}
+            </button>
+            {existing && onDeleted ? (
+              <button
+                className="rounded border border-content/20 px-4 py-2 text-sm text-content/50 hover:bg-red-900/20 hover:text-red-400"
+                onClick={() => handleDelete()}
+              >
+                Delete
+              </button>
+            ) : null}
+            {!stylePrompt ? (
+              <span className="text-xs text-content/40">Save a style prompt first</span>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

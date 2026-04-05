@@ -132,4 +132,18 @@ export const adminRouter = router({
 
       return record;
     }),
+
+  adminDeleteImage: adminProcedure
+    .input(z.object({ gameId: z.string(), imageType: z.string() }))
+    .mutation(async ({ input }) => {
+      const storage = getStorage();
+      const query = { gameId: input.gameId, imageType: input.imageType };
+      const image = storage.getWorldImage ? await storage.getWorldImage(query) : null;
+      if (image) {
+        await getImageStorage().deleteImage(image.r2Key);
+      }
+      if (storage.deleteWorldImage) {
+        await storage.deleteWorldImage(query);
+      }
+    }),
 });

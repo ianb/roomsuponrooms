@@ -30,3 +30,24 @@ export async function listAiUsageByUser(
     .all<{ user_id: string; total: number }>();
   return result.results.map((row) => ({ userId: row.user_id, total: row.total }));
 }
+
+export async function recordAiUsage(
+  db: D1Database,
+  usage: { userId: string; callType: string },
+): Promise<void> {
+  await db
+    .prepare("INSERT INTO ai_usage (user_id, call_type, created_at) VALUES (?, ?, ?)")
+    .bind(usage.userId, usage.callType, new Date().toISOString())
+    .run();
+}
+
+export async function countAiUsage(
+  db: D1Database,
+  query: { userId: string; since: string },
+): Promise<number> {
+  const result = await db
+    .prepare("SELECT COUNT(*) as cnt FROM ai_usage WHERE user_id = ? AND created_at > ?")
+    .bind(query.userId, query.since)
+    .first<number>("cnt");
+  return result || 0;
+}

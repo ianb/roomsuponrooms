@@ -91,6 +91,10 @@ function AdminImagesPage() {
     });
   }
 
+  function handleImageDeleted(imageType: string) {
+    setImages((prev) => prev.filter((i) => i.imageType !== imageType));
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -126,6 +130,7 @@ function AdminImagesPage() {
           stylePrompt={roomStyle}
           existing={roomImage}
           onGenerated={handleImageGenerated}
+          onDeleted={handleImageDeleted}
         />
         <ImageCard
           gameId={gameId}
@@ -135,6 +140,7 @@ function AdminImagesPage() {
           stylePrompt={npcStyle}
           existing={npcImage}
           onGenerated={handleImageGenerated}
+          onDeleted={handleImageDeleted}
         />
       </section>
     </div>

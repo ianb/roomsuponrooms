@@ -278,21 +278,11 @@ export class D1Storage implements RuntimeStorage {
       .run();
   }
 
-  // --- AI Usage Quota ---
-
   async recordAiUsage(userId: string, callType: string): Promise<void> {
-    await this.db
-      .prepare("INSERT INTO ai_usage (user_id, call_type, created_at) VALUES (?, ?, ?)")
-      .bind(userId, callType, new Date().toISOString())
-      .run();
+    return adminDb.recordAiUsage(this.db, { userId, callType });
   }
-
   async countAiUsage(userId: string, since: string): Promise<number> {
-    const result = await this.db
-      .prepare("SELECT COUNT(*) as cnt FROM ai_usage WHERE user_id = ? AND created_at > ?")
-      .bind(userId, since)
-      .first<number>("cnt");
-    return result || 0;
+    return adminDb.countAiUsage(this.db, { userId, since });
   }
   async listUsers(): Promise<UserRecord[]> {
     return adminDb.listUsers(this.db);
@@ -315,7 +305,6 @@ export class D1Storage implements RuntimeStorage {
   async updateBugReport(id: string, update: BugReportUpdate): Promise<void> {
     return bugDb.updateBugReport(this.db, { id, update });
   }
-
   async logError(entry: ErrorLogRecord): Promise<void> {
     return errorDb.logError(this.db, entry);
   }
@@ -330,6 +319,9 @@ export class D1Storage implements RuntimeStorage {
   }
   async saveWorldImage(record: WorldImageRecord): Promise<void> {
     return imageDb.saveWorldImage(this.db, record);
+  }
+  async deleteWorldImage(query: WorldImageQuery): Promise<void> {
+    return imageDb.deleteWorldImage(this.db, query);
   }
   async listWorldImages(gameId: string): Promise<WorldImageRecord[]> {
     return imageDb.listWorldImages(this.db, gameId);

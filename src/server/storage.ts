@@ -119,6 +119,7 @@ export interface RuntimeStorage {
   saveImageSettings?(settings: ImageSettingsInput): Promise<void>;
   getWorldImage?(query: WorldImageQuery): Promise<WorldImageRecord | null>;
   saveWorldImage?(record: WorldImageRecord): Promise<void>;
+  deleteWorldImage?(query: WorldImageQuery): Promise<void>;
   listWorldImages?(gameId: string): Promise<WorldImageRecord[]>;
 }
 

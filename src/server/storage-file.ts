@@ -251,6 +251,14 @@ export class FileStorage implements RuntimeStorage {
     writeFileSync(path, JSON.stringify(filtered, null, 2));
   }
 
+  async deleteWorldImage(query: { gameId: string; imageType: string }): Promise<void> {
+    const images = await this.listWorldImages(query.gameId);
+    const filtered = images.filter((i) => i.imageType !== query.imageType);
+    const path = this.worldImagesPath(query.gameId);
+    ensureDir(path);
+    writeFileSync(path, JSON.stringify(filtered, null, 2));
+  }
+
   async listWorldImages(gameId: string): Promise<WorldImageRecord[]> {
     const path = this.worldImagesPath(gameId);
     if (!existsSync(path)) return [];

@@ -124,6 +124,16 @@ export async function saveWorldImage(db: D1Database, record: WorldImageRecord): 
     .run();
 }
 
+export async function deleteWorldImage(
+  db: D1Database,
+  query: { gameId: string; imageType: string },
+): Promise<void> {
+  await db
+    .prepare("DELETE FROM world_images WHERE game_id = ? AND image_type = ?")
+    .bind(query.gameId, query.imageType)
+    .run();
+}
+
 export async function listWorldImages(db: D1Database, gameId: string): Promise<WorldImageRecord[]> {
   const result = await db
     .prepare("SELECT * FROM world_images WHERE game_id = ? ORDER BY image_type")
