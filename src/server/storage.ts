@@ -113,6 +113,13 @@ export interface RuntimeStorage {
 
   // --- Error Log (optional — only D1 persists) ---
   logError?(entry: ErrorLogRecord): Promise<void>;
+
+  // --- Image Settings (optional — admin only) ---
+  getImageSettings?(gameId: string): Promise<ImageSettings | null>;
+  saveImageSettings?(settings: ImageSettingsInput): Promise<void>;
+  getWorldImage?(query: WorldImageQuery): Promise<WorldImageRecord | null>;
+  saveWorldImage?(record: WorldImageRecord): Promise<void>;
+  listWorldImages?(gameId: string): Promise<WorldImageRecord[]>;
 }
 
 // --- Bug Reports ---
@@ -153,6 +160,40 @@ export interface UserSessionSummary {
   gameId: string;
   eventCount: number;
   lastActivity: string;
+}
+
+// --- Image Settings ---
+
+export interface ImageSettings {
+  gameId: string;
+  imagesEnabled: boolean;
+  imageStyleRoom: string | null;
+  imageStyleNpc: string | null;
+  updatedAt: string;
+}
+
+export interface ImageSettingsInput {
+  gameId: string;
+  imagesEnabled: boolean;
+  imageStyleRoom: string | null;
+  imageStyleNpc: string | null;
+}
+
+export interface WorldImageQuery {
+  gameId: string;
+  imageType: string;
+}
+
+export interface WorldImageRecord {
+  gameId: string;
+  imageType: string;
+  r2Key: string;
+  promptUsed: string;
+  stylePrompt: string;
+  mimeType: string;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
 }
 
 export interface ErrorLogRecord {

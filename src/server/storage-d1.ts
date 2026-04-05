@@ -10,6 +10,10 @@ import type {
   BugReport,
   BugReportUpdate,
   UserSessionSummary,
+  ImageSettings,
+  ImageSettingsInput,
+  WorldImageRecord,
+  WorldImageQuery,
 } from "./storage.js";
 import type {
   D1Database,
@@ -21,6 +25,8 @@ import type {
 } from "./d1-types.js";
 import * as bugDb from "./storage-d1-bugs.js";
 import * as adminDb from "./storage-d1-admin.js";
+import * as imageDb from "./storage-d1-images.js";
+import * as errorDb from "./storage-d1-errors.js";
 import { userRowToRecord, rowToAuthoring, authoringBindValues } from "./d1-types.js";
 import { deserializeEntityRow, serializeEntityRecord } from "./entity-serialize.js";
 
@@ -288,9 +294,6 @@ export class D1Storage implements RuntimeStorage {
       .first<number>("cnt");
     return result || 0;
   }
-
-  // --- Admin ---
-
   async listUsers(): Promise<UserRecord[]> {
     return adminDb.listUsers(this.db);
   }
@@ -300,9 +303,6 @@ export class D1Storage implements RuntimeStorage {
   async listAiUsageByUser(): Promise<Array<{ userId: string; total: number }>> {
     return adminDb.listAiUsageByUser(this.db);
   }
-
-  // --- Bug Reports ---
-
   async saveBugReport(report: BugReport): Promise<void> {
     return bugDb.saveBugReport(this.db, report);
   }
@@ -317,25 +317,21 @@ export class D1Storage implements RuntimeStorage {
   }
 
   async logError(entry: ErrorLogRecord): Promise<void> {
-    await this.db
-      .prepare(
-        `INSERT INTO error_log (timestamp, source, message, stack, context, user_id, game_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        entry.timestamp,
-        entry.source,
-        entry.message,
-        entry.stack || null,
-        entry.context || null,
-        entry.userId || null,
-        entry.gameId || null,
-      )
-      .run();
-    // Prune entries older than 2 days (~10% of writes)
-    if (Math.random() < 0.1) {
-      const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-      await this.db.prepare("DELETE FROM error_log WHERE timestamp < ?").bind(cutoff).run();
-    }
+    return errorDb.logError(this.db, entry);
+  }
+  async getImageSettings(gameId: string): Promise<ImageSettings | null> {
+    return imageDb.getImageSettings(this.db, gameId);
+  }
+  async saveImageSettings(settings: ImageSettingsInput): Promise<void> {
+    return imageDb.saveImageSettings(this.db, settings);
+  }
+  async getWorldImage(query: WorldImageQuery): Promise<WorldImageRecord | null> {
+    return imageDb.getWorldImage(this.db, query);
+  }
+  async saveWorldImage(record: WorldImageRecord): Promise<void> {
+    return imageDb.saveWorldImage(this.db, record);
+  }
+  async listWorldImages(gameId: string): Promise<WorldImageRecord[]> {
+    return imageDb.listWorldImages(this.db, gameId);
   }
 }

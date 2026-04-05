@@ -63,6 +63,7 @@
     "@ai-sdk/anthropic": "^3.0.64",
     "@ai-sdk/google": "^3.0.53",
     "@cfworker/json-schema": "^4.1.1",
+    "@google/generative-ai": "^0.24.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "^1.168.3",
     "@trpc/client": "^11.15.0",

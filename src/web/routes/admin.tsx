@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { createRoute } from "@tanstack/react-router";
+import { createRoute, Link } from "@tanstack/react-router";
 import { rootRoute } from "./__root.js";
 import { trpc } from "../trpc.js";
 import { AuthContext } from "../auth.js";
@@ -107,6 +107,15 @@ function AdminPage() {
   return (
     <div className="mx-auto max-w-5xl p-8">
       <h1 className="mb-6 text-2xl font-bold">Admin Dashboard</h1>
+      <div className="mb-6">
+        <Link
+          to="/admin/images/$gameId"
+          params={{ gameId: rows[0] ? "tinkermarket" : "test" }}
+          className="text-sm text-content/50 hover:text-content/80"
+        >
+          Manage Images &rarr;
+        </Link>
+      </div>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-content/20 text-left text-content/50">

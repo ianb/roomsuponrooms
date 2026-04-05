@@ -16,3 +16,7 @@ binding = "DB"
 database_name = "rooms-upon-rooms"
 database_id = "b06e1aff-a6db-4e34-9391-ac4b129f7959"
 migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "rooms-upon-rooms-images"

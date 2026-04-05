@@ -3,6 +3,9 @@ import Fastify from "fastify";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { setStorage } from "./storage-instance.js";
 import { FileStorage } from "./storage-file.js";
+import { setImageStorage } from "./image-storage-instance.js";
+import { FileImageStorage } from "./image-storage.js";
+import { handleImageRequest } from "./image-routes.js";
 import { appRouter } from "./router.js";
 import { handleCommandStreamNode } from "./command-stream.js";
 import { handleAuthRoute } from "./auth/routes.js";
@@ -23,6 +26,7 @@ setStorage(
     userDataDir: resolve(process.cwd(), "userdata"),
   }),
 );
+setImageStorage(new FileImageStorage(resolve(process.cwd(), "data", "images")));
 
 const DEV_JWT_SECRET = "dev-secret-not-for-production";
 
@@ -55,6 +59,18 @@ async function extractUser(
 }
 
 const server = Fastify();
+
+// Image serving
+server.get("/api/images/*", async (req, reply) => {
+  const url = new URL(`http://localhost${req.url}`);
+  const response = await handleImageRequest(url);
+  reply.status(response.status);
+  for (const [key, value] of response.headers.entries()) {
+    reply.header(key, value);
+  }
+  const body = await response.arrayBuffer();
+  reply.send(Buffer.from(body));
+});
 
 // Auth routes
 server.all("/auth/*", async (req, reply) => {

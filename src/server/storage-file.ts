@@ -10,6 +10,9 @@ import type {
   SessionKey,
   BugReport,
   BugReportUpdate,
+  ImageSettings,
+  ImageSettingsInput,
+  WorldImageRecord,
 } from "./storage.js";
 
 function ensureDir(filePath: string): void {
@@ -207,5 +210,50 @@ export class FileStorage implements RuntimeStorage {
 
   async countAiUsage(_userId: string, _since: string): Promise<number> {
     return 0;
+  }
+
+  // --- Image Settings (JSON file-based for local dev) ---
+
+  private imageSettingsPath(gameId: string): string {
+    return resolve(this.dataDir, gameId, "image-settings.json");
+  }
+  private worldImagesPath(gameId: string): string {
+    return resolve(this.dataDir, gameId, "world-images.json");
+  }
+
+  async getImageSettings(gameId: string): Promise<ImageSettings | null> {
+    const path = this.imageSettingsPath(gameId);
+    if (!existsSync(path)) return null;
+    return JSON.parse(readFileSync(path, "utf-8")) as ImageSettings;
+  }
+
+  async saveImageSettings(settings: ImageSettingsInput): Promise<void> {
+    const path = this.imageSettingsPath(settings.gameId);
+    ensureDir(path);
+    const record: ImageSettings = { ...settings, updatedAt: new Date().toISOString() };
+    writeFileSync(path, JSON.stringify(record, null, 2));
+  }
+
+  async getWorldImage(query: {
+    gameId: string;
+    imageType: string;
+  }): Promise<WorldImageRecord | null> {
+    const images = await this.listWorldImages(query.gameId);
+    return images.find((i) => i.imageType === query.imageType) || null;
+  }
+
+  async saveWorldImage(record: WorldImageRecord): Promise<void> {
+    const images = await this.listWorldImages(record.gameId);
+    const filtered = images.filter((i) => i.imageType !== record.imageType);
+    filtered.push(record);
+    const path = this.worldImagesPath(record.gameId);
+    ensureDir(path);
+    writeFileSync(path, JSON.stringify(filtered, null, 2));
+  }
+
+  async listWorldImages(gameId: string): Promise<WorldImageRecord[]> {
+    const path = this.worldImagesPath(gameId);
+    if (!existsSync(path)) return [];
+    return JSON.parse(readFileSync(path, "utf-8")) as WorldImageRecord[];
   }
 }

@@ -13,6 +13,10 @@ import { handleCommandStream } from "./server/command-stream.js";
 import { setStorage } from "./server/storage-instance.js";
 import { D1Storage } from "./server/storage-d1.js";
 import type { D1Database } from "./server/storage-d1.js";
+import { setImageStorage } from "./server/image-storage-instance.js";
+import { R2ImageStorage } from "./server/image-storage.js";
+import { handleImageRequest } from "./server/image-routes.js";
+import type { R2Bucket } from "./server/r2-types.js";
 import { handleAuthRoute } from "./server/auth/routes.js";
 import type { AuthEnv } from "./server/auth/routes.js";
 import { verifyJwt, parseCookie } from "./server/auth/jwt.js";
@@ -20,6 +24,7 @@ import { logErrorObj } from "./server/error-log.js";
 
 interface Env {
   DB: D1Database;
+  IMAGES: R2Bucket;
   ASSETS: { fetch: (req: Request) => Promise<Response> };
   JWT_SECRET: string;
   GOOGLE_CLIENT_ID: string;
@@ -66,6 +71,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     // Set D1 storage for this request
     setStorage(new D1Storage(env.DB));
+    setImageStorage(new R2ImageStorage(env.IMAGES));
 
     // Expose secrets as process.env for modules that read from it (e.g. llm.ts)
     process.env["LLM_PROVIDER"] = env.LLM_PROVIDER;
@@ -78,6 +84,11 @@ export default {
     if (url.pathname.startsWith("/auth/")) {
       const authResponse = await handleAuthRoute(request, getAuthEnv(env, request));
       if (authResponse) return authResponse;
+    }
+
+    // Serve images (public, no auth needed)
+    if (url.pathname.startsWith("/api/images/")) {
+      return handleImageRequest(url);
     }
 
     // Extract user for API routes
