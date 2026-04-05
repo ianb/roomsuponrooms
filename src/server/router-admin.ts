@@ -33,12 +33,16 @@ export const adminRouter = router({
   adminImageDefaults: adminProcedure.input(z.object({ gameId: z.string() })).query(({ input }) => {
     const def = getGame(input.gameId);
     if (!def) return { imageStyleRoom: null, imageStyleNpc: null };
-    const instance = def.create();
-    const prompts = instance.prompts;
-    return {
-      imageStyleRoom: (prompts && prompts.imageStyleRoom) || null,
-      imageStyleNpc: (prompts && prompts.imageStyleNpc) || null,
-    };
+    try {
+      const instance = def.create();
+      const prompts = instance.prompts;
+      return {
+        imageStyleRoom: (prompts && prompts.imageStyleRoom) || null,
+        imageStyleNpc: (prompts && prompts.imageStyleNpc) || null,
+      };
+    } catch (_e) {
+      return { imageStyleRoom: null, imageStyleNpc: null };
+    }
   }),
 
   adminRevertImageSettings: adminProcedure

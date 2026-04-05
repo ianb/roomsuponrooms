@@ -19,9 +19,13 @@ async function resolveStylePrompt(gameId: string, entityType: "room" | "npc"): P
   if (fromSettings) return fromSettings;
   const def = getGame(gameId);
   if (!def) return "";
-  const prompts = def.create().prompts;
-  if (!prompts) return "";
-  return (entityType === "room" ? prompts.imageStyleRoom : prompts.imageStyleNpc) || "";
+  try {
+    const prompts = def.create().prompts;
+    if (!prompts) return "";
+    return (entityType === "room" ? prompts.imageStyleRoom : prompts.imageStyleNpc) || "";
+  } catch (_e) {
+    return "";
+  }
 }
 
 /** Resolve image prompt from input, entity ai field, or LLM generation from description */
