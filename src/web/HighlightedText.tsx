@@ -197,6 +197,10 @@ function EntityImage({
             alt={imageAlt ? `[image: ${imageAlt}]` : entityName}
             className="w-full cursor-zoom-in rounded border border-content/10"
             onError={() => setImgError(true)}
+            onLoad={(e) => {
+              const el = e.currentTarget.closest("[data-scroll-container]");
+              if (el) el.scrollTop = el.scrollHeight;
+            }}
             onClick={() => setLightbox(true)}
           />
           {isAdmin && onGenerate ? (

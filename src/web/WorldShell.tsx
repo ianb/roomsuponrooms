@@ -198,6 +198,7 @@ export function WorldShell({
       />
       {conversationMode ? <ConversationHeader npcName={conversationMode.npcName} /> : null}
       <div
+        data-scroll-container
         className={`flex-1 overflow-y-auto p-4 font-mono text-sm whitespace-pre-wrap ${
           conversationMode ? "border-x border-convo/50 bg-page" : "rounded-t-lg bg-surface"
         }`}
