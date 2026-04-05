@@ -1,4 +1,4 @@
-import type { PropertyRegistry, PropertyDefinition } from "./properties.js";
+import type { PropertyRegistry } from "./properties.js";
 import { validateValue } from "./properties.js";
 import type { CreateEntityOptions } from "./entity-types.js";
 import { UndefinedPropertyError, PropertyValueError } from "./entity-errors.js";
@@ -30,13 +30,10 @@ const SKIP_KEYS = new Set([
   "gridZ",
 ]);
 
-interface SplitContext {
-  registry: PropertyRegistry;
-  validateRef: (def: PropertyDefinition, value: unknown) => void;
-}
-
-export function splitProperties(opts: CreateEntityOptions, ctx: SplitContext): SplitResult {
-  const { registry, validateRef } = ctx;
+export function splitProperties(
+  opts: CreateEntityOptions,
+  registry: PropertyRegistry,
+): SplitResult {
   const raw = opts.properties || {};
   const typed = {
     name: (raw["name"] as string) || opts.name,
@@ -52,7 +49,6 @@ export function splitProperties(opts: CreateEntityOptions, ctx: SplitContext): S
     if (!def) throw new UndefinedPropertyError(k);
     const errors = validateValue(registry, { name: k, value: v });
     if (errors.length > 0) throw new PropertyValueError(k, errors);
-    validateRef(def, v);
     props[k] = v;
   }
   let exit = opts.exit;

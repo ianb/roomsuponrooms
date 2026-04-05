@@ -257,10 +257,7 @@ export class EntityStore {
   }
 
   private splitProps(opts: CreateEntityOptions) {
-    return splitProperties(opts, {
-      registry: this.registry,
-      validateRef: (def, value) => this.validateEntityRef(def, value),
-    });
+    return splitProperties(opts, this.registry);
   }
 
   saveState(): EntitySnapshot[] {
