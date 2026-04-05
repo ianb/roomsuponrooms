@@ -38,21 +38,33 @@ function AdminImagesPage() {
   const [roomStyle, setRoomStyle] = useState("");
   const [npcStyle, setNpcStyle] = useState("");
 
+  const [defaults, setDefaults] = useState<{
+    imageStyleRoom: string | null;
+    imageStyleNpc: string | null;
+  }>({
+    imageStyleRoom: null,
+    imageStyleNpc: null,
+  });
+
   useEffect(() => {
     if (!isAdmin) return;
     Promise.all([
       trpc.games.query(),
       trpc.adminImageSettings.query({ gameId }),
+      trpc.adminImageDefaults.query({ gameId }),
       trpc.adminListWorldImages.query({ gameId }),
     ])
-      .then(([gameList, settingsData, imageList]) => {
+      .then(([gameList, settingsData, defaultsData, imageList]) => {
         setGames(gameList as GameSummary[]);
         setSettings(settingsData as ImageSettings | null);
+        setDefaults(
+          defaultsData as { imageStyleRoom: string | null; imageStyleNpc: string | null },
+        );
         setImages(imageList as WorldImageRecord[]);
-        if (settingsData) {
-          setRoomStyle((settingsData as ImageSettings).imageStyleRoom || "");
-          setNpcStyle((settingsData as ImageSettings).imageStyleNpc || "");
-        }
+        const s = settingsData as ImageSettings | null;
+        const d = defaultsData as { imageStyleRoom: string | null; imageStyleNpc: string | null };
+        setRoomStyle((s && s.imageStyleRoom) || d.imageStyleRoom || "");
+        setNpcStyle((s && s.imageStyleNpc) || d.imageStyleNpc || "");
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -93,11 +105,16 @@ function AdminImagesPage() {
       <SettingsSection
         gameId={gameId}
         settings={settings}
+        defaults={defaults}
         roomStyle={roomStyle}
         npcStyle={npcStyle}
         onRoomStyleChange={setRoomStyle}
         onNpcStyleChange={setNpcStyle}
-        onSettingsUpdated={setSettings}
+        onSettingsUpdated={(s) => {
+          setSettings(s);
+          if (!s || !s.imageStyleRoom) setRoomStyle(defaults.imageStyleRoom || "");
+          if (!s || !s.imageStyleNpc) setNpcStyle(defaults.imageStyleNpc || "");
+        }}
       />
       <section className="space-y-6">
         <h2 className="text-lg font-bold">Reference Images</h2>
@@ -141,9 +158,15 @@ function GameNav({ games, currentGameId }: { games: GameSummary[]; currentGameId
   );
 }
 
+interface ImageDefaults {
+  imageStyleRoom: string | null;
+  imageStyleNpc: string | null;
+}
+
 function SettingsSection({
   gameId,
   settings,
+  defaults,
   roomStyle,
   npcStyle,
   onRoomStyleChange,
@@ -152,6 +175,7 @@ function SettingsSection({
 }: {
   gameId: string;
   settings: ImageSettings | null;
+  defaults: ImageDefaults;
   roomStyle: string;
   npcStyle: string;
   onRoomStyleChange: (v: string) => void;
@@ -161,6 +185,10 @@ function SettingsSection({
   const [saving, setSaving] = useState(false);
   const [enabled, setEnabled] = useState(settings ? settings.imagesEnabled : false);
   const [error, setError] = useState<string | null>(null);
+
+  const hasRoomOverride = settings && settings.imageStyleRoom !== null;
+  const hasNpcOverride = settings && settings.imageStyleNpc !== null;
+  const hasAnyOverride = hasRoomOverride || hasNpcOverride;
 
   async function handleSave() {
     setSaving(true);
@@ -182,6 +210,20 @@ function SettingsSection({
     }
   }
 
+  async function handleRevert() {
+    setSaving(true);
+    setError(null);
+    try {
+      await trpc.adminRevertImageSettings.mutate({ gameId });
+      onSettingsUpdated(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section className="mb-8 rounded border border-content/20 p-4">
       <h2 className="mb-4 text-lg font-bold">Settings</h2>
@@ -190,38 +232,59 @@ function SettingsSection({
         <span>Images enabled</span>
       </label>
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-bold">Room Style Prompt</label>
+        <label className="mb-1 block text-sm font-bold">
+          Room Style Prompt
+          {hasRoomOverride ? (
+            <span className="ml-2 text-xs text-content/40">(overridden)</span>
+          ) : null}
+        </label>
         <textarea
           className="w-full rounded border border-content/20 bg-surface p-2 text-sm text-content"
           rows={3}
           value={roomStyle}
           onChange={(e) => onRoomStyleChange(e.target.value)}
-          placeholder="Describe the visual style for room images..."
+          placeholder={defaults.imageStyleRoom || "Describe the visual style for room images..."}
         />
       </div>
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-bold">NPC Style Prompt</label>
+        <label className="mb-1 block text-sm font-bold">
+          NPC Style Prompt
+          {hasNpcOverride ? (
+            <span className="ml-2 text-xs text-content/40">(overridden)</span>
+          ) : null}
+        </label>
         <textarea
           className="w-full rounded border border-content/20 bg-surface p-2 text-sm text-content"
           rows={3}
           value={npcStyle}
           onChange={(e) => onNpcStyleChange(e.target.value)}
-          placeholder="Describe the visual style for NPC images..."
+          placeholder={defaults.imageStyleNpc || "Describe the visual style for NPC images..."}
         />
       </div>
       {error ? <div className="mb-2 text-sm text-red-400">{error}</div> : null}
-      <button
-        className="rounded bg-content/20 px-4 py-2 text-sm hover:bg-content/30 disabled:opacity-50"
-        onClick={handleSave}
-        disabled={saving}
-      >
-        {saving ? "Saving..." : "Save Settings"}
-      </button>
-      {settings ? (
-        <span className="ml-3 text-xs text-content/40">
-          Last updated: {new Date(settings.updatedAt).toLocaleString()}
-        </span>
-      ) : null}
+      <div className="flex items-center gap-3">
+        <button
+          className="rounded bg-content/20 px-4 py-2 text-sm hover:bg-content/30 disabled:opacity-50"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : "Save Settings"}
+        </button>
+        {hasAnyOverride ? (
+          <button
+            className="rounded border border-content/20 px-4 py-2 text-sm text-content/50 hover:bg-content/10 hover:text-content/70 disabled:opacity-50"
+            onClick={handleRevert}
+            disabled={saving}
+          >
+            Revert to defaults
+          </button>
+        ) : null}
+        {settings ? (
+          <span className="text-xs text-content/40">
+            Last updated: {new Date(settings.updatedAt).toLocaleString()}
+          </span>
+        ) : null}
+      </div>
     </section>
   );
 }

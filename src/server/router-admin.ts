@@ -4,6 +4,7 @@ import { router, authedProcedure } from "./trpc.js";
 import { getStorage } from "./storage-instance.js";
 import { getImageStorage } from "./image-storage-instance.js";
 import { generateImage } from "./image-gen.js";
+import { getGame } from "../games/registry.js";
 
 const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
   if (!ctx.roles.includes("admin")) {
@@ -27,6 +28,30 @@ export const adminRouter = router({
       const storage = getStorage();
       if (!storage.getImageSettings) return null;
       return storage.getImageSettings(input.gameId);
+    }),
+
+  adminImageDefaults: adminProcedure.input(z.object({ gameId: z.string() })).query(({ input }) => {
+    const def = getGame(input.gameId);
+    if (!def) return { imageStyleRoom: null, imageStyleNpc: null };
+    const instance = def.create();
+    const prompts = instance.prompts;
+    return {
+      imageStyleRoom: (prompts && prompts.imageStyleRoom) || null,
+      imageStyleNpc: (prompts && prompts.imageStyleNpc) || null,
+    };
+  }),
+
+  adminRevertImageSettings: adminProcedure
+    .input(z.object({ gameId: z.string() }))
+    .mutation(async ({ input }) => {
+      const storage = getStorage();
+      if (!storage.saveImageSettings) return;
+      await storage.saveImageSettings({
+        gameId: input.gameId,
+        imagesEnabled: true,
+        imageStyleRoom: null,
+        imageStyleNpc: null,
+      });
     }),
 
   adminUpdateImageSettings: adminProcedure
