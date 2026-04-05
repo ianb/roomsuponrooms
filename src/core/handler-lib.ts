@@ -327,7 +327,7 @@ export class HandlerLib {
     const ev = this.setEvent(this.room.id, {
       property: "visits",
       value: visits + 1,
-      description: `Visited ${this.ref(this.room)}`,
+      description: "",
     });
     return { output: "", events: [ev] };
   }

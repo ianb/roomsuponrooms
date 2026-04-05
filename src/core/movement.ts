@@ -106,7 +106,7 @@ export function tryMovement(store: EntityStore, input: string): MovementResult |
       property: "location",
       value: destination,
       oldValue: player.location,
-      description: `Moved ${direction}`,
+      description: "",
     });
     for (const event of events) {
       if (event.property === "location") {
