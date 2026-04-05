@@ -24,6 +24,8 @@ export interface GameData {
     theme?: string;
     /** Custom messages shown while AI is generating — one picked per request */
     aiThinkingMessages?: string[];
+    /** Hidden games are playable but not listed on the homepage */
+    hidden?: boolean;
   };
   prompts?: GamePrompts;
   properties?: PropertyData[];

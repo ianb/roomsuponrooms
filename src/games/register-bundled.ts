@@ -13,6 +13,7 @@ for (const data of bundledGames) {
     description: data.meta.description,
     theme: data.meta.theme,
     aiThinkingMessages: data.meta.aiThinkingMessages,
+    hidden: data.meta.hidden,
     create() {
       const game = loadGameData(data);
       game.store.snapshot();

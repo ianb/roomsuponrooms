@@ -14,6 +14,7 @@ interface GameInfo {
   slug: string;
   title: string;
   description: string;
+  theme: string | null;
 }
 
 function HomePage() {
@@ -51,9 +52,10 @@ function HomePage() {
               key={game.slug}
               to="/game/$gameId"
               params={{ gameId: game.slug }}
-              className="block rounded-lg border border-content/15 bg-surface p-4 hover:border-accent hover:bg-input"
+              data-theme={game.theme || undefined}
+              className="block rounded-lg border border-content/15 bg-page p-4 font-sans hover:border-accent"
             >
-              <h3 className="font-bold text-accent">{game.title}</h3>
+              <h3 className="font-heading font-bold text-accent">{game.title}</h3>
               <p className="mt-1 text-sm text-content/50">{game.description}</p>
             </Link>
           ))}

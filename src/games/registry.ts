@@ -11,6 +11,7 @@ export interface GameDefinition {
   description: string;
   theme?: string;
   aiThinkingMessages?: string[];
+  hidden?: boolean;
   create: () => GameInstance;
 }
 
@@ -35,7 +36,7 @@ export function getGame(slug: string): GameDefinition | null {
 }
 
 export function listGames(): GameDefinition[] {
-  return Array.from(games.values());
+  return Array.from(games.values()).filter((g) => !g.hidden);
 }
 
 export function isValidGameId(slug: string): boolean {

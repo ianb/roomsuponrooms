@@ -9,6 +9,7 @@ registerGame({
   slug: data.meta.slug,
   title: data.meta.title,
   description: data.meta.description,
+  hidden: data.meta.hidden,
   create() {
     const game = loadGameData(data);
     game.store.snapshot();
