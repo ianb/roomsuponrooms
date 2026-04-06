@@ -46,19 +46,31 @@ export class SeededRandom {
     return (result >>> 0) / 0x100000000;
   }
 
-  /** Return a random integer in [0, max) */
+  /** Return a random integer in [0, max). Returns 0 if max <= 0. */
   nextInt(max: number): number {
+    if (max <= 0) return 0;
     return Math.floor(this.next() * max);
   }
 
-  /** Return true with the given probability (0-1) */
+  /** Return true with the given probability (0-1). */
   chance(probability: number): boolean {
+    if (probability <= 0) return false;
+    if (probability >= 1) return true;
     return this.next() < probability;
   }
 
-  /** Return true with odds of n in d (e.g., 1 in 100) */
+  /** Return true with odds of n in d (e.g., 1 in 100). */
   odds(n: number, d: number): boolean {
+    if (d <= 0) return false;
+    if (n <= 0) return false;
+    if (n >= d) return true;
     return this.nextInt(d) < n;
+  }
+
+  /** Pick a random element from an array. Returns undefined if empty. */
+  pick<T>(items: T[]): T | undefined {
+    if (items.length === 0) return undefined;
+    return items[this.nextInt(items.length)];
   }
 
   private rotl(x: number, k: number): number {

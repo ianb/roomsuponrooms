@@ -67,7 +67,12 @@ export class ColossalCaveLib extends HandlerLib {
     {
       name: "randomInt",
       signature: "randomInt(max)",
-      description: "random integer from 0 to max-1 (seeded)",
+      description: "random integer from 0 to max-1, returns 0 if max <= 0",
+    },
+    {
+      name: "pick",
+      signature: "pick(array)",
+      description: "random element from array, undefined if empty",
     },
     {
       name: "getExitDestinations",
@@ -92,9 +97,14 @@ export class ColossalCaveLib extends HandlerLib {
     return this.store.random.odds(n, d);
   }
 
-  /** Return a random integer from 0 to max-1 */
+  /** Return a random integer from 0 to max-1. Returns 0 if max <= 0. */
   randomInt(max: number): number {
-    return Math.floor(this.store.random.next() * max);
+    return this.store.random.nextInt(max);
+  }
+
+  /** Pick a random element from an array. Returns undefined if empty. */
+  pick<T>(items: T[]): T | undefined {
+    return this.store.random.pick(items);
   }
 
   // --- Entity shortcuts ---
