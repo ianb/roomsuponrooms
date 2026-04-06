@@ -3,6 +3,13 @@ import type { VerbContext, WorldEvent } from "../../core/verb-types.js";
 import { HandlerLib } from "../../core/handler-lib.js";
 import type { LibDoc } from "../../core/handler-lib.js";
 
+class LibArgError extends Error {
+  override name = "LibArgError";
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 /**
  * Extended handler library for Colossal Cave Adventure.
  * Provides game-specific helpers for randomness, scoring, teleportation, etc.
@@ -111,26 +118,32 @@ export class ColossalCaveLib extends HandlerLib {
 
   /** Get an entity by ID (throws if not found) */
   get(id: string): Entity {
+    // eslint-disable-next-line error/no-literal-error-message
+    if (typeof id !== "string") throw new LibArgError("lib.get() expects a string entity ID");
     return this.store.get(id);
   }
 
   /** Get an entity by ID, or null if not found */
   tryGet(id: string): Entity | null {
+    if (typeof id !== "string") return null;
     return this.store.tryGet(id);
   }
 
   /** Check if an entity exists */
   has(id: string): boolean {
+    if (typeof id !== "string") return false;
     return this.store.has(id);
   }
 
   /** Find all entities with a given tag */
   findByTag(tag: string): Entity[] {
+    if (typeof tag !== "string") return [];
     return this.store.findByTag(tag);
   }
 
   /** Get all contents of an entity, including nested contents */
   getContentsDeep(entityId: string): Entity[] {
+    if (typeof entityId !== "string" || !this.store.has(entityId)) return [];
     return this.store.getContentsDeep(entityId);
   }
 
@@ -139,19 +152,27 @@ export class ColossalCaveLib extends HandlerLib {
   /** Create a set-property event (simplified signature) */
   setProp(
     entityId: string,
-    { property, value, description }: { property: string; value: unknown; description: string },
+    opts: { property: string; value: unknown; description: string },
   ): WorldEvent {
-    return this.setEvent(entityId, { property, value, description });
+    if (typeof entityId !== "string" || !opts || typeof opts.property !== "string") {
+      // eslint-disable-next-line error/no-literal-error-message
+      throw new LibArgError("lib.setProp() expects (entityId, {property, value, description})");
+    }
+    return this.setEvent(entityId, opts);
   }
 
   /** Create a move-to-location event (simplified — no `from` required) */
-  moveTo(entityId: string, { to, description }: { to: string; description: string }): WorldEvent {
+  moveTo(entityId: string, opts: { to: string; description: string }): WorldEvent {
+    if (typeof entityId !== "string" || !opts || typeof opts.to !== "string") {
+      // eslint-disable-next-line error/no-literal-error-message
+      throw new LibArgError("lib.moveTo() expects (entityId, {to, description})");
+    }
     return {
       type: "set-property",
       entityId,
       property: "location",
-      value: to,
-      description,
+      value: opts.to,
+      description: opts.description || "",
     };
   }
 
@@ -159,6 +180,10 @@ export class ColossalCaveLib extends HandlerLib {
 
   /** Teleport the player between two rooms. Returns events array. */
   teleport(from: string, to: string): WorldEvent[] {
+    if (typeof from !== "string" || typeof to !== "string") {
+      // eslint-disable-next-line error/no-literal-error-message
+      throw new LibArgError("lib.teleport() expects (fromRoomId, toRoomId)");
+    }
     return [
       {
         type: "set-property",
@@ -175,8 +200,9 @@ export class ColossalCaveLib extends HandlerLib {
 
   /** Add points to the player's score (mutates immediately) */
   addScore(delta: number): void {
-    const current = this.player.properties.score || 0;
-    this.store.setProperty(this.player.id, { name: "score", value: current + delta });
+    const d = typeof delta === "number" ? delta : 0;
+    const current = (this.player.properties.score as number) || 0;
+    this.store.setProperty(this.player.id, { name: "score", value: current + d });
   }
 
   /** Create a score-change event for the event log */
@@ -194,6 +220,7 @@ export class ColossalCaveLib extends HandlerLib {
 
   /** Get list of room IDs reachable from a given room via exits */
   getExitDestinations(roomId: string): string[] {
+    if (typeof roomId !== "string" || !this.store.has(roomId)) return [];
     const exits = this.store.getExits(roomId);
     const destinations: string[] = [];
     for (const exit of exits) {
@@ -206,8 +233,12 @@ export class ColossalCaveLib extends HandlerLib {
   // --- Direct property mutation ---
 
   /** Set a property on an entity immediately (not event-based) */
-  setProperty(id: string, { name, value }: { name: string; value: unknown }): void {
-    this.store.setProperty(id, { name, value });
+  setProperty(id: string, opts: { name: string; value: unknown }): void {
+    if (typeof id !== "string" || !opts || typeof opts.name !== "string") {
+      // eslint-disable-next-line error/no-literal-error-message
+      throw new LibArgError("lib.setProperty() expects (entityId, {name, value})");
+    }
+    this.store.setProperty(id, opts);
   }
 
   // --- Entity creation (for crystal bridge) ---
