@@ -19,7 +19,11 @@
       "description": "Size of the beanstalk plant",
       "schema": {
         "type": "string",
-        "enum": ["tiny", "tall", "huge"]
+        "enum": [
+          "tiny",
+          "tall",
+          "huge"
+        ]
       }
     },
     {
@@ -61,21 +65,6 @@
         "type": "boolean"
       },
       "defaultValue": false
-    },
-    {
-      "name": "remaining",
-      "description": "Number of remaining instances (e.g., dwarves)",
-      "schema": {
-        "type": "number"
-      }
-    },
-    {
-      "name": "hasAxe",
-      "description": "Whether the dwarf still has its axe",
-      "schema": {
-        "type": "boolean"
-      },
-      "defaultValue": true
     },
     {
       "name": "spotted",
@@ -156,6 +145,27 @@
         "type": "number"
       },
       "defaultValue": 0
+    },
+    {
+      "name": "dflag",
+      "description": "Dwarf activation level (0=none, 1=intro, 2=active)",
+      "schema": {
+        "type": "integer"
+      }
+    },
+    {
+      "name": "prevRoom",
+      "description": "Previous room for dwarf movement (avoid backtracking)",
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "dead",
+      "description": "Whether this dwarf has been killed",
+      "schema": {
+        "type": "boolean"
+      }
     }
   ]
 }

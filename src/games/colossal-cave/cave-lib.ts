@@ -64,6 +64,11 @@ export class ColossalCaveLib extends HandlerLib {
       signature: "createEntity(id, {tags, properties})",
       description: "create new entity in store",
     },
+    {
+      name: "getExitDestinations",
+      signature: "getExitDestinations(roomId)",
+      description: "list of room IDs reachable via exits from a room",
+    },
   ];
 
   constructor(context: VerbContext) {
@@ -163,6 +168,19 @@ export class ColossalCaveLib extends HandlerLib {
       value: delta,
       description,
     };
+  }
+
+  // --- Map navigation ---
+
+  /** Get list of room IDs reachable from a given room via exits */
+  getExitDestinations(roomId: string): string[] {
+    const exits = this.store.getExits(roomId);
+    const destinations: string[] = [];
+    for (const exit of exits) {
+      const dest = exit.exit && exit.exit.destination;
+      if (dest && this.store.has(dest)) destinations.push(dest);
+    }
+    return destinations;
   }
 
   // --- Direct property mutation ---
