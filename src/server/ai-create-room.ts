@@ -24,6 +24,7 @@ import {
 } from "./ai-room-grid.js";
 import type { AuthoringInfo } from "./storage.js";
 import { recordAiCall } from "./ai-quota.js";
+import { AiGenerationIncompleteError } from "./ai-errors.js";
 
 export interface AiCreateRoomDebugInfo {
   systemPrompt: string;
@@ -144,6 +145,9 @@ export async function handleAiCreateRoom(
   await recordAiCall(authoring.createdBy, "room");
   const response = result.object;
   const roomData = response.room;
+  if (!roomData.name || !roomData.description) {
+    throw new AiGenerationIncompleteError();
+  }
   console.log(`[ai-create-room] Created: ${roomData.name} (${durationMs}ms)`);
 
   const roomId = uniqueId(store, `room:${roomData.idSlug}`);
