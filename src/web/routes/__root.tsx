@@ -3,6 +3,7 @@ import { Outlet, Link, createRootRoute, useMatchRoute } from "@tanstack/react-ro
 import { AuthContext, fetchAuthStatus, logout } from "../auth.js";
 import type { AuthUser } from "../auth.js";
 import { trpc } from "../trpc.js";
+import { BUILD_COMMIT } from "../../../generated/build-version.js";
 
 export const rootRoute = createRootRoute({
   component: RootLayout,
@@ -61,7 +62,10 @@ function NavBar() {
         </div>
         <div className="flex items-center gap-3 text-sm">
           {auth.loading ? null : auth.user ? (
-            <UserIndicator name={auth.user.displayName} />
+            <UserIndicator
+              name={auth.user.displayName}
+              isAdmin={auth.user.roles.includes("admin")}
+            />
           ) : (
             <Link to="/" className="text-content/40 hover:text-content/70">
               Sign in
@@ -91,7 +95,7 @@ function GameBreadcrumb({ gameId }: { gameId: string }) {
   );
 }
 
-function UserIndicator({ name }: { name: string }) {
+function UserIndicator({ name, isAdmin }: { name: string; isAdmin: boolean }) {
   async function handleLogout(): Promise<void> {
     await logout();
     window.location.reload();
@@ -100,6 +104,11 @@ function UserIndicator({ name }: { name: string }) {
   return (
     <>
       <span className="text-content/50">{name}</span>
+      {isAdmin ? (
+        <Link to="/admin" className="font-mono text-xs text-content/20 hover:text-content/40">
+          {BUILD_COMMIT}
+        </Link>
+      ) : null}
       <button onClick={handleLogout} className="text-content/25 hover:text-content/70">
         Sign out
       </button>
