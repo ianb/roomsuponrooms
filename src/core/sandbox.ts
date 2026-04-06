@@ -19,36 +19,39 @@ const BLOCKED_GLOBALS: Record<string, undefined> = {
 };
 
 /**
- * Flatten prototype methods onto class instances so sval can see them.
- * sval's sandbox doesn't preserve prototype chains, so inherited methods
- * like lib.tryGet() would be invisible without this.
+ * Prepare variables for sandbox import by creating plain wrapper objects
+ * for class instances. sval doesn't preserve prototype chains, so
+ * inherited methods like lib.tryGet() would be invisible without this.
  */
-/**
- * Ensure class instances have prototype methods as own properties so
- * sval can see them. Modifies the instance in place.
- */
-function flattenPrototypeMethods(obj: Record<string, unknown>): void {
-  let proto = Object.getPrototypeOf(obj) as Record<string, unknown> | null;
-  while (proto && proto !== Object.prototype) {
-    for (const name of Object.getOwnPropertyNames(proto)) {
-      if (name === "constructor") continue;
-      if (name in obj) continue; // don't override own properties
-      const desc = Object.getOwnPropertyDescriptor(proto, name);
-      if (desc && typeof desc.value === "function") {
-        obj[name] = (desc.value as (...args: unknown[]) => unknown).bind(obj);
+function prepareVars(variables: Record<string, unknown>): Record<string, unknown> {
+  const prepared: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(variables)) {
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      Object.getPrototypeOf(value) !== Object.prototype
+    ) {
+      const wrapper: Record<string, unknown> = {};
+      // Walk prototype chain to collect all methods
+      let proto = Object.getPrototypeOf(value) as Record<string, unknown> | null;
+      while (proto && proto !== Object.prototype) {
+        for (const name of Object.getOwnPropertyNames(proto)) {
+          if (name === "constructor") continue;
+          const desc = Object.getOwnPropertyDescriptor(proto, name);
+          if (desc && typeof desc.value === "function") {
+            wrapper[name] = (desc.value as (...args: unknown[]) => unknown).bind(value);
+          }
+        }
+        proto = Object.getPrototypeOf(proto) as Record<string, unknown> | null;
       }
-    }
-    proto = Object.getPrototypeOf(proto) as Record<string, unknown> | null;
-  }
-}
-
-function flattenForSandbox(variables: Record<string, unknown>): Record<string, unknown> {
-  for (const value of Object.values(variables)) {
-    if (value !== null && typeof value === "object") {
-      flattenPrototypeMethods(value as Record<string, unknown>);
+      // Own enumerable properties override prototype methods
+      Object.assign(wrapper, value);
+      prepared[key] = wrapper;
+    } else {
+      prepared[key] = value;
     }
   }
-  return variables;
+  return prepared;
 }
 
 /**
@@ -64,7 +67,7 @@ export function runSandboxed(code: string, variables: Record<string, unknown>): 
     sourceType: "script",
     sandBox: true,
   });
-  interpreter.import({ ...BLOCKED_GLOBALS, ...flattenForSandbox(variables) });
+  interpreter.import({ ...BLOCKED_GLOBALS, ...prepareVars(variables) });
   interpreter.run("exports.result = (function() { " + code + " })();");
   return interpreter.exports.result;
 }
@@ -83,7 +86,7 @@ export function buildSandboxedFunction(
       sourceType: "script",
       sandBox: true,
     });
-    interpreter.import({ ...BLOCKED_GLOBALS, ...flattenForSandbox(variables) });
+    interpreter.import({ ...BLOCKED_GLOBALS, ...prepareVars(variables) });
     interpreter.run(wrappedCode);
     return interpreter.exports.result;
   };
