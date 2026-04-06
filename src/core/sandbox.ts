@@ -23,33 +23,32 @@ const BLOCKED_GLOBALS: Record<string, undefined> = {
  * sval's sandbox doesn't preserve prototype chains, so inherited methods
  * like lib.tryGet() would be invisible without this.
  */
+/**
+ * Ensure class instances have prototype methods as own properties so
+ * sval can see them. Modifies the instance in place.
+ */
+function flattenPrototypeMethods(obj: Record<string, unknown>): void {
+  let proto = Object.getPrototypeOf(obj) as Record<string, unknown> | null;
+  while (proto && proto !== Object.prototype) {
+    for (const name of Object.getOwnPropertyNames(proto)) {
+      if (name === "constructor") continue;
+      if (name in obj) continue; // don't override own properties
+      const desc = Object.getOwnPropertyDescriptor(proto, name);
+      if (desc && typeof desc.value === "function") {
+        obj[name] = (desc.value as (...args: unknown[]) => unknown).bind(obj);
+      }
+    }
+    proto = Object.getPrototypeOf(proto) as Record<string, unknown> | null;
+  }
+}
+
 function flattenForSandbox(variables: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(variables)) {
-    if (value !== null && typeof value === "object" && value.constructor !== Object) {
-      const flat: Record<string, unknown> = {};
-      // Walk the prototype chain to collect all methods
-      let proto = Object.getPrototypeOf(value) as Record<string, unknown> | null;
-      while (proto && proto !== Object.prototype) {
-        for (const name of Object.getOwnPropertyNames(proto)) {
-          if (name === "constructor") continue;
-          const desc = Object.getOwnPropertyDescriptor(proto, name);
-          if (desc && typeof desc.value === "function") {
-            flat[name] = (desc.value as (...args: unknown[]) => unknown).bind(value);
-          }
-        }
-        proto = Object.getPrototypeOf(proto) as Record<string, unknown> | null;
-      }
-      // Own properties override prototype methods
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        flat[k] = v;
-      }
-      result[key] = flat;
-    } else {
-      result[key] = value;
+  for (const value of Object.values(variables)) {
+    if (value !== null && typeof value === "object") {
+      flattenPrototypeMethods(value as Record<string, unknown>);
     }
   }
-  return result;
+  return variables;
 }
 
 /**
