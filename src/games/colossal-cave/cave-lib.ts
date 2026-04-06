@@ -65,6 +65,11 @@ export class ColossalCaveLib extends HandlerLib {
       description: "create new entity in store",
     },
     {
+      name: "randomInt",
+      signature: "randomInt(max)",
+      description: "random integer from 0 to max-1 (seeded)",
+    },
+    {
       name: "getExitDestinations",
       signature: "getExitDestinations(roomId)",
       description: "list of room IDs reachable via exits from a room",
@@ -85,6 +90,11 @@ export class ColossalCaveLib extends HandlerLib {
   /** Return true with odds of n in d (e.g., 1 in 100) */
   odds(n: number, d: number): boolean {
     return this.store.random.odds(n, d);
+  }
+
+  /** Return a random integer from 0 to max-1 */
+  randomInt(max: number): number {
+    return Math.floor(this.store.random.next() * max);
   }
 
   // --- Entity shortcuts ---
