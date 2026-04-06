@@ -107,7 +107,7 @@ export function LogEntryView({
       ) : entry.type === "event" ? (
         <span>
           <span className="mr-1">&#x25C6;</span>
-          {entry.text}
+          <HighlightedText text={entry.text} gameId={gameId} onEntityClick={onEntityClick} />
         </span>
       ) : (
         entry.text
