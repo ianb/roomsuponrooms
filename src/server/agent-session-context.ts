@@ -1,6 +1,6 @@
 import type { EntityStore } from "../core/entity.js";
 import type { EventLogEntry, RuntimeStorage } from "./storage.js";
-import { buildRoomView } from "./agent-query-views.js";
+import { buildGetView } from "./agent-query-views.js";
 
 const RECENT_EVENTS_LIMIT = 5;
 
@@ -61,7 +61,12 @@ function renderCurrentRoom(store: EntityStore): string | null {
   const player = players[0];
   if (!player) return null;
   if (!store.has(player.location)) return null;
-  const view = buildRoomView(store, { roomId: player.location, deep: false });
+  const view = buildGetView(store, {
+    id: player.location,
+    withChildren: true,
+    withNeighborhood: true,
+    depth: 1,
+  });
   if (!view) return null;
   return `<current-room>\n${JSON.stringify(view, null, 2)}\n</current-room>`;
 }

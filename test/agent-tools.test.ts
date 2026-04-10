@@ -248,84 +248,112 @@ t.test("apply_edits rejects create with multiple operations", async (t) => {
   }
 });
 
-t.test("query findByTag returns rooms", async (t) => {
+t.test("query get with exact id returns single GetView", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "findByTag", tag: "room" });
+  const result = await runQuery(context, { kind: "get", id: "room:clearing" });
   t.equal(result.ok, true);
   if (result.ok) {
-    const payload = result.result as { results: Array<{ id: string }>; totalMatched: number };
-    t.ok(payload.results.length > 0);
-    t.ok(payload.results.some((r) => r.id === "room:clearing"));
+    const view = result.result as { id: string; name: string; containedBy: string[] };
+    t.equal(view.id, "room:clearing");
+    t.ok(Array.isArray(view.containedBy), "containedBy chain present");
   }
 });
 
-t.test("query getRoom returns room with nested exits and shallow contents", async (t) => {
+t.test("query get with wildcard returns array of matching entities", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "getRoom", id: "room:clearing" });
+  const result = await runQuery(context, { kind: "get", id: "room:*" });
   t.equal(result.ok, true);
   if (result.ok) {
-    const room = result.result as {
-      id: string;
-      name: string;
-      exits: Array<{ direction: string; destinationName: string | null }>;
-      contents: Array<{ id: string; name: string; tags: string[] }>;
-    };
-    t.equal(room.id, "room:clearing");
-    t.ok(room.exits.length > 0, "has exits");
-    for (const exit of room.exits) {
-      t.ok(typeof exit.direction === "string");
-    }
-    // Shallow contents: each entry only has id, name, tags
-    for (const c of room.contents) {
-      t.ok("id" in c && "name" in c && "tags" in c);
-    }
+    const list = result.result as Array<{ id: string; tags: string[] }>;
+    t.ok(Array.isArray(list));
+    t.ok(list.length > 0);
+    t.ok(list.every((r) => r.id.startsWith("room:")));
   }
 });
 
-t.test("query getNeighborhood returns center plus reachable rooms", async (t) => {
+t.test("query get withChildren includes direct contents", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "getNeighborhood", id: "room:clearing" });
+  const result = await runQuery(context, {
+    kind: "get",
+    id: "room:clearing",
+    withChildren: true,
+  });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const view = result.result as { children: Array<{ id: string; tags: string[] }> };
+    t.ok(Array.isArray(view.children));
+  }
+});
+
+t.test("query get withNeighborhood includes reachable rooms", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await runQuery(context, {
+    kind: "get",
+    id: "room:clearing",
+    withNeighborhood: true,
+  });
   t.equal(result.ok, true);
   if (result.ok) {
     const view = result.result as {
-      center: { id: string };
       neighbors: Array<{ via: { direction: string }; room: { id: string } }>;
     };
-    t.equal(view.center.id, "room:clearing");
-    t.ok(view.neighbors.length > 0, "found at least one neighbor via exits");
+    t.ok(Array.isArray(view.neighbors));
+    t.ok(view.neighbors.length > 0, "test world has reachable neighbors from clearing");
   }
 });
 
-t.test("query findByName matches substring on name", async (t) => {
+t.test("query entities returns every entity with containedBy chain", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "findByName", name: "clearing" });
+  const result = await runQuery(context, { kind: "entities" });
   t.equal(result.ok, true);
   if (result.ok) {
-    const payload = result.result as { results: Array<{ id: string }> };
-    t.ok(payload.results.some((r) => r.id === "room:clearing"));
+    const list = result.result as Array<{ id: string; containedBy: string[] }>;
+    t.ok(Array.isArray(list));
+    t.ok(list.some((e) => e.id === "room:clearing"));
+    // Every entity should have a containedBy field (possibly empty for the root)
+    t.ok(list.every((e) => Array.isArray(e.containedBy)));
   }
 });
 
-t.test("query listRooms returns every room with exits", async (t) => {
+t.test("query exits get a destinationName field", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "listRooms" });
+  const result = await runQuery(context, {
+    kind: "get",
+    id: "exit:*",
+    jq: "[.[] | select(.destination != null)]",
+  });
   t.equal(result.ok, true);
   if (result.ok) {
-    const payload = result.result as {
-      rooms: Array<{ id: string; exits: Array<{ direction: string }> }>;
-    };
-    t.ok(payload.rooms.length > 0);
-    t.ok(payload.rooms.some((r) => r.id === "room:clearing"));
+    const list = result.result as Array<{ destinationName: string | null }>;
+    t.ok(Array.isArray(list));
+    if (list.length > 0) {
+      t.ok(list[0]!.destinationName !== undefined, "destinationName field present");
+    }
+  }
+});
+
+t.test("query contains filter narrows array results", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await runQuery(context, { kind: "entities", contains: "clearing" });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const list = result.result as Array<{ id: string }>;
+    t.ok(Array.isArray(list));
+    t.ok(list.some((e) => e.id === "room:clearing"));
   }
 });
 
@@ -334,9 +362,8 @@ t.test("query inline jq projects the result", async (t) => {
   t.teardown(cleanup);
 
   const result = await runQuery(context, {
-    kind: "findByTag",
-    tag: "room",
-    jq: ".results | map(.id)",
+    kind: "entities",
+    jq: '[.[] | select(.tags | index("room")) | .id]',
   });
   t.equal(result.ok, true);
   if (result.ok) {
@@ -350,29 +377,26 @@ t.test("query saveAs persists the result to the scratchpad", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, {
-    kind: "findByTag",
-    tag: "room",
-    saveAs: "rooms",
-  });
+  const result = await runQuery(context, { kind: "entities", saveAs: "all" });
   t.equal(result.ok, true);
-  if (result.ok) t.equal(result.savedAs, "rooms");
-  t.ok(context.savedVars["rooms"]);
+  if (result.ok) t.equal(result.savedAs, "all");
+  t.ok(context.savedVars["all"]);
 });
 
-t.test("query listHandlers returns the live verb registry", async (t) => {
+t.test("query handlers returns the live verb registry", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "listHandlers" });
+  const result = await runQuery(context, { kind: "handlers" });
   t.equal(result.ok, true);
   if (result.ok) {
-    const payload = result.result as { handlers: Array<{ name: string; verb: string }> };
-    t.ok(payload.handlers.length > 0, "registry is non-empty");
+    const list = result.result as Array<{ name: string; verb: string }>;
+    t.ok(Array.isArray(list));
+    t.ok(list.length > 0, "registry is non-empty");
   }
 });
 
-t.test("query findEvents returns the per-user event log", async (t) => {
+t.test("query events returns the per-user event log", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
@@ -386,14 +410,15 @@ t.test("query findEvents returns the per-user event log", async (t) => {
     },
   );
 
-  const result = await runQuery(context, { kind: "findEvents", latest: 5 });
+  const result = await runQuery(context, { kind: "events" });
   t.equal(result.ok, true);
   if (result.ok) {
-    const payload = result.result as {
-      events: Array<{ command: string; changes: Array<{ description: string }> }>;
-    };
-    t.equal(payload.events.length, 1);
-    t.equal(payload.events[0]!.command, "look");
+    const list = result.result as Array<{
+      command: string;
+      changes: Array<{ description: string }>;
+    }>;
+    t.equal(list.length, 1);
+    t.equal(list[0]!.command, "look");
   }
 });
 

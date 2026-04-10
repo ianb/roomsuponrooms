@@ -36,38 +36,125 @@ The world is an Entity-Component-System over rooms, items, NPCs, exits, and othe
 - Verb handlers are code attached to verbs that define how they work for matching entities. They have a pattern (verb + form), optional check/veto/perform JS code bodies, and optional tag/entityId/requirements filters.
 </world-model>`);
 
-  sections.push(`<query-tool-tips>
-The query tool is your main way to learn the world. The input is always a single flat object: a required "kind" string plus the fields that kind needs as siblings. Concrete examples:
+  sections.push(`<query-tool-and-data-shapes>
+The query tool has FOUR kinds. Pick one via the required "kind" field.
 
-  { "kind": "getRoom", "id": "room:gate" }
-  { "kind": "getRoom", "id": "room:gate", "deep": true }
-  { "kind": "getNeighborhood", "id": "room:gate", "depth": 2 }
-  { "kind": "get", "id": "item:rusty-lever" }
-  { "kind": "findByTag", "tag": "npc" }
-  { "kind": "findByTag", "tag": "portable", "at": "room:gate" }
-  { "kind": "findByName", "name": "lever" }
-  { "kind": "getContents", "id": "item:chest" }
-  { "kind": "listRooms" }
-  { "kind": "listHandlers" }
-  { "kind": "getHandler", "name": "ai-insert-lever-turnstile" }
-  { "kind": "findEvents", "latest": 10 }
+  { "kind": "get", "id": "..." }              — fetch one entity (or many, see wildcards)
+  { "kind": "entities" }                       — every entity in the world
+  { "kind": "handlers" }                       — every registered verb handler
+  { "kind": "events" }                         — the per-user player command log
 
-Notes on the kinds:
-- "getRoom" returns the room plus its exits (each with destinationName resolved) and a shallow {id,name,tags} list of contents. Pass deep:true for full entity views of the contents.
-- "getNeighborhood" returns the center room plus the rooms reachable through its exits. depth defaults to 1; use 2 or 3 to plan multi-room puzzles.
-- "findByTag" with the optional "at" field scopes to a single location.
-- "findByName" matches a case-insensitive substring against names and aliases.
-- "findEvents" reads the per-user player command log so you can react to what just happened.
+Plus three OPTIONAL postprocess fields, applied in order, on every kind:
+  "contains": "needle"   case-insensitive substring filter against the JSON-stringified result. For arrays, keeps elements that match. For single objects, keeps the object iff it matches.
+  "jq": ".[] | select(...)"   a jq filter applied after contains. Use for projection, joins, slicing, more complex filters.
+  "saveAs": "name"   stores the (possibly filtered) result under that name in the session scratchpad. Retrieve later with get_var or pipe through another jq call.
 
-Every query also supports two optional sibling fields:
-  "jq":     a jq filter applied to the result before returning. Use this to project, slice, or filter large results in one call.
-  "saveAs": a name. The (possibly jq-filtered) result is persisted under that name in the session scratchpad for later get_var or jq calls.
+==== get ====
 
-Examples combining them:
-  { "kind": "findByTag", "tag": "room", "jq": ".results | map(.id)" }
-  { "kind": "listRooms", "saveAs": "world_map" }
-  { "kind": "getRoom", "id": "room:gate", "jq": ".exits | map({direction, destination})" }
-</query-tool-tips>`);
+  { "kind": "get", "id": "item:lantern" }
+    → single GetView (or error if not found)
+
+  { "kind": "get", "id": "room:gate", "withChildren": true, "withNeighborhood": true }
+    → room with its direct contents AND its reachable neighbor rooms nested in
+
+The id supports glob wildcards via "*". When the id contains a wildcard, the result is an ARRAY of matching entities (possibly empty), not a single object:
+  { "kind": "get", "id": "room:*" }            → all rooms
+  { "kind": "get", "id": "exit:gate:*" }       → all exits leaving "room:gate"
+  { "kind": "get", "id": "*" }                 → every entity (same as kind: "entities")
+
+withChildren and withNeighborhood flags apply to each match:
+  { "kind": "get", "id": "room:*", "withChildren": true }
+    → every room with its direct contents
+
+depth (default 1, max 3) controls how far withNeighborhood walks via exits.
+
+==== Data shapes ====
+
+EntityView (returned by get and entities):
+  {
+    "id": "item:lantern",
+    "tags": ["portable", "light-source"],
+    "name": "Brass Lantern",
+    "description": "A polished brass lantern.",
+    "location": "room:gate",
+    "containedBy": ["room:gate", "world"],   // chain of ancestor location ids walking up to the root
+    "destinationName": "...",                 // ONLY on entities tagged "exit"; resolved name of the destination room
+    "aliases": [...],                         // optional
+    "secret": "...",                          // optional, hidden hint
+    "exit": { direction, destination, destinationIntent },  // only on entities tagged "exit"
+    "room": { darkWhenUnlit, visits, grid },  // only on entities tagged "room"
+    "ai": { prompt, conversationPrompt, imagePrompt },  // optional
+    "properties": { ... }                     // optional bag of typed properties
+  }
+
+GetView (when withChildren / withNeighborhood are set, EntityView is extended):
+  {
+    ...EntityView,
+    "children": [...EntityView],              // direct contents (one level), if withChildren
+    "neighbors": [                            // reachable rooms via exits, if withNeighborhood
+      { "via": { id, direction }, "room": ...GetView }
+    ]
+  }
+
+HandlerView (returned by handlers):
+  {
+    "name": "ai-insert-lever-turnstile",
+    "verb": "insert",
+    "verbAliases": ["put", "place", "fix"],
+    "form": "prepositional",
+    "prep": "into",
+    "priority": 0,
+    "freeTurn": false,
+    "entityId": "...",                        // optional: only matches when this entity is involved
+    "tag": "...",                             // optional: only matches when an involved entity has this tag
+    "hasCheck": true, "hasVeto": false,       // does the handler define these phases
+    "source": "..."                            // origin file or "ai-handler-store"
+  }
+
+EventEntry (returned by events; entries are oldest first):
+  {
+    "offset": 3,                              // 0 = most recent
+    "command": "go north",
+    "timestamp": "2026-04-09T...",
+    "changes": [
+      { "type": "set-property", "entityId": "player:1", "property": "location", "value": "room:gate", "description": "Moved player." }
+    ]
+  }
+
+==== jq cheat sheet ====
+
+Idioms over the entities corpus (kind: "entities"):
+
+  Filter by tag:
+    [.[] | select(.tags | index("room"))]
+
+  Filter by direct location:
+    [.[] | select(.location == "room:gate")]
+
+  Filter transitively contained (uses the containedBy chain):
+    [.[] | select(.containedBy | index("room:gate"))]
+
+  Substring match on name (use 'contains' postprocess instead if simpler):
+    [.[] | select(.name | ascii_downcase | contains("lever"))]
+
+  Project to summaries:
+    map({id, name, tags})
+
+  O(1) id lookups (build an index, then look up):
+    INDEX(.id) as $i | $i["room:gate"]
+
+  Group entities by their first tag:
+    group_by(.tags[0]) | map({tag: .[0].tags[0], items: map(.id)})
+
+  Slice the events array to the last 10:
+    .[-10:]
+
+  Find handlers for a verb:
+    [.[] | select(.verb == "take")]
+
+  Combine 'contains' postprocess with 'jq' for compound filters:
+    contains: "lever", jq: "[.[] | select(.tags | index(\\"portable\\"))]"
+</query-tool-and-data-shapes>`);
 
   sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);
   sections.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);

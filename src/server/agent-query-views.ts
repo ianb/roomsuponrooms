@@ -1,12 +1,27 @@
 import type { Entity, EntityStore } from "../core/entity.js";
 import type { VerbHandler } from "../core/verb-types.js";
 
+/**
+ * The shape of an entity returned by the query tool. Includes the raw entity
+ * fields plus two enrichments computed at view-build time:
+ *
+ * - `containedBy`: the chain of ancestor location ids walking up to the root,
+ *   in order from immediate parent to root. Lets the agent answer "is this
+ *   transitively contained in X?" with a single jq filter:
+ *     `[.[] | select(.containedBy | index("room:gate"))]`
+ *
+ * - `destinationName`: for entities tagged "exit", the resolved name of the
+ *   destination room (or null if missing). Saves the agent a follow-up
+ *   lookup when reading exits.
+ */
 export interface EntityView {
   id: string;
   tags: string[];
   name: string;
   description: string;
   location: string;
+  containedBy: string[];
+  destinationName?: string | null;
   aliases?: string[];
   secret?: string;
   scenery?: Entity["scenery"];
@@ -16,32 +31,20 @@ export interface EntityView {
   properties?: Record<string, unknown>;
 }
 
-export interface EntitySummary {
-  id: string;
-  name: string;
-  tags: string[];
+/**
+ * The result of `get(id)` with optional `withChildren` and `withNeighborhood`
+ * flags. The base shape is an EntityView; setting flags adds extra fields.
+ */
+export interface GetView extends EntityView {
+  /** Set when withChildren=true. Direct contents of this entity (one level). */
+  children?: EntityView[];
+  /** Set when withNeighborhood=true. Reachable rooms via this room's exits. */
+  neighbors?: NeighborhoodEntry[];
 }
 
-export interface ExitView {
-  id: string;
-  direction: string;
-  destination: string | null;
-  destinationName: string | null;
-  destinationIntent: string | null;
-  properties: Record<string, unknown>;
-}
-
-export interface RoomView extends EntityView {
-  exits: ExitView[];
-  contents: EntitySummary[] | EntityView[];
-}
-
-export interface NeighborhoodView {
-  center: RoomView;
-  neighbors: Array<{
-    via: { id: string; direction: string };
-    room: RoomView;
-  }>;
+export interface NeighborhoodEntry {
+  via: { id: string; direction: string };
+  room: GetView;
 }
 
 export interface HandlerView {
@@ -59,97 +62,43 @@ export interface HandlerView {
   hasVeto: boolean;
 }
 
-export function entityToView(e: Entity): EntityView {
+// --- Helpers ---
+
+function computeContainedBy(store: EntityStore, entityId: string): string[] {
+  const chain: string[] = [];
+  const visited = new Set<string>([entityId]);
+  let current: string | undefined = store.has(entityId) ? store.get(entityId).location : undefined;
+  while (current && !visited.has(current)) {
+    chain.push(current);
+    visited.add(current);
+    if (!store.has(current)) break;
+    current = store.get(current).location;
+    if (!current) break;
+  }
+  return chain;
+}
+
+export function entityToView(store: EntityStore, e: Entity): EntityView {
   const view: EntityView = {
     id: e.id,
     tags: e.tags,
     name: e.name,
     description: e.description,
     location: e.location,
+    containedBy: computeContainedBy(store, e.id),
   };
   if (e.aliases && e.aliases.length > 0) view.aliases = e.aliases;
   if (e.secret) view.secret = e.secret;
   if (e.scenery && e.scenery.length > 0) view.scenery = e.scenery;
-  if (e.exit) view.exit = e.exit;
+  if (e.exit) {
+    view.exit = e.exit;
+    const dest = e.exit.destination;
+    view.destinationName = dest && store.has(dest) ? store.get(dest).name : null;
+  }
   if (e.room) view.room = e.room;
   if (e.ai) view.ai = e.ai;
   if (Object.keys(e.properties).length > 0) view.properties = e.properties;
   return view;
-}
-
-export function entityToSummary(e: Entity): EntitySummary {
-  return { id: e.id, name: e.name, tags: e.tags };
-}
-
-export function buildExitView(store: EntityStore, exit: Entity): ExitView {
-  const dest = exit.exit && exit.exit.destination ? exit.exit.destination : null;
-  let destinationName: string | null = null;
-  if (dest && store.has(dest)) {
-    destinationName = store.get(dest).name;
-  }
-  return {
-    id: exit.id,
-    direction: (exit.exit && exit.exit.direction) || "",
-    destination: dest,
-    destinationName,
-    destinationIntent: (exit.exit && exit.exit.destinationIntent) || null,
-    properties: { ...exit.properties },
-  };
-}
-
-export function buildRoomView(
-  store: EntityStore,
-  { roomId, deep }: { roomId: string; deep: boolean },
-): RoomView | null {
-  if (!store.has(roomId)) return null;
-  const room = store.get(roomId);
-  const base = entityToView(room);
-  const allContents = store.getContents(roomId);
-  const exitEntities: Entity[] = [];
-  const otherContents: Entity[] = [];
-  for (const entity of allContents) {
-    if (entity.tags.includes("exit")) {
-      exitEntities.push(entity);
-    } else {
-      otherContents.push(entity);
-    }
-  }
-  return {
-    ...base,
-    exits: exitEntities.map((e) => buildExitView(store, e)),
-    contents: deep ? otherContents.map(entityToView) : otherContents.map(entityToSummary),
-  };
-}
-
-export function walkNeighborhood(
-  store: EntityStore,
-  {
-    view,
-    fromId,
-    remainingDepth,
-    seen,
-  }: {
-    view: NeighborhoodView;
-    fromId: string;
-    remainingDepth: number;
-    seen: Set<string>;
-  },
-): void {
-  if (remainingDepth <= 0) return;
-  for (const exit of store.getContents(fromId)) {
-    if (!exit.tags.includes("exit")) continue;
-    const dest = exit.exit && exit.exit.destination;
-    if (!dest || seen.has(dest)) continue;
-    if (!store.has(dest)) continue;
-    seen.add(dest);
-    const room = buildRoomView(store, { roomId: dest, deep: false });
-    if (!room) continue;
-    view.neighbors.push({
-      via: { id: exit.id, direction: (exit.exit && exit.exit.direction) || "" },
-      room,
-    });
-    walkNeighborhood(store, { view, fromId: dest, remainingDepth: remainingDepth - 1, seen });
-  }
 }
 
 export function handlerPatternView(handler: VerbHandler): HandlerView {
@@ -169,9 +118,84 @@ export function handlerPatternView(handler: VerbHandler): HandlerView {
   };
 }
 
-export function finiteList(entities: Entity[], deep: boolean): unknown {
-  return {
-    results: deep ? entities.map(entityToView) : entities.map(entityToSummary),
-    totalMatched: entities.length,
-  };
+/**
+ * Build the result of `get(id, withChildren?, withNeighborhood?, depth?)`.
+ *
+ * Adds `children` (direct contents) and/or `neighbors` (rooms reachable via
+ * exits walked recursively up to `depth`) to the base entity view, depending
+ * on which flags are set. The neighborhood walk uses a visited set to handle
+ * cycles. Each neighbor room is itself a GetView with its own neighbors[]
+ * recursively populated when depth > 1.
+ */
+export function buildGetView(
+  store: EntityStore,
+  {
+    id,
+    withChildren,
+    withNeighborhood,
+    depth,
+  }: {
+    id: string;
+    withChildren: boolean;
+    withNeighborhood: boolean;
+    depth: number;
+  },
+): GetView | null {
+  if (!store.has(id)) return null;
+  const visited = new Set<string>();
+  return buildGetViewRecursive(store, {
+    id,
+    withChildren,
+    withNeighborhood,
+    remainingDepth: depth,
+    visited,
+  });
+}
+
+function buildGetViewRecursive(
+  store: EntityStore,
+  {
+    id,
+    withChildren,
+    withNeighborhood,
+    remainingDepth,
+    visited,
+  }: {
+    id: string;
+    withChildren: boolean;
+    withNeighborhood: boolean;
+    remainingDepth: number;
+    visited: Set<string>;
+  },
+): GetView | null {
+  if (!store.has(id)) return null;
+  visited.add(id);
+  const entity = store.get(id);
+  const view: GetView = entityToView(store, entity);
+  if (withChildren) {
+    view.children = store.getContents(id).map((child) => entityToView(store, child));
+  }
+  if (withNeighborhood && remainingDepth > 0) {
+    const neighbors: NeighborhoodEntry[] = [];
+    for (const child of store.getContents(id)) {
+      if (!child.tags.includes("exit")) continue;
+      const dest = child.exit && child.exit.destination;
+      if (!dest || visited.has(dest)) continue;
+      if (!store.has(dest)) continue;
+      const neighborRoom = buildGetViewRecursive(store, {
+        id: dest,
+        withChildren,
+        withNeighborhood,
+        remainingDepth: remainingDepth - 1,
+        visited,
+      });
+      if (!neighborRoom) continue;
+      neighbors.push({
+        via: { id: child.id, direction: (child.exit && child.exit.direction) || "" },
+        room: neighborRoom,
+      });
+    }
+    view.neighbors = neighbors;
+  }
+  return view;
 }

@@ -45,7 +45,7 @@ t.test("session context message includes player, room, request", async (t) => {
   t.match(message, /"room:clearing"/, "room id quoted");
 });
 
-t.test("session context current-room includes nested exits and shallow contents", async (t) => {
+t.test("session context current-room includes children and neighbors", async (t) => {
   const { storage, game, cleanup } = makeFixture();
   t.teardown(cleanup);
 
@@ -62,12 +62,12 @@ t.test("session context current-room includes nested exits and shallow contents"
   if (!match) return;
   const room = JSON.parse(match[1]!) as {
     id: string;
-    exits: Array<{ direction: string; destinationName: string | null }>;
-    contents: Array<{ id: string; name: string; tags: string[] }>;
+    children: Array<{ id: string; name: string; tags: string[] }>;
+    neighbors: Array<{ via: { direction: string }; room: { id: string } }>;
   };
   t.equal(room.id, "room:clearing");
-  t.ok(Array.isArray(room.exits), "exits array");
-  t.ok(Array.isArray(room.contents), "contents array");
+  t.ok(Array.isArray(room.children), "children array");
+  t.ok(Array.isArray(room.neighbors), "neighbors array");
 });
 
 t.test("session context recent-events absent when no events", async (t) => {
