@@ -1,0 +1,90 @@
+[
+  {
+    "gameId": "tinkermarket",
+    "imageType": "npc-reference",
+    "r2Key": "tinkermarket/images/npc-reference.png",
+    "promptUsed": "A generic NPC character in this world, establishing the visual style for characters.",
+    "stylePrompt": "Fantasy character portrait, bust or three-quarter view, warm painterly illustration style. Subtle alien features treated as unremarkable — unusual skin textures, odd proportions, extra joints. Practical clothing and visible tools of their trade. Warm brass and lamplight palette. Expressive but understated demeanor. Richly textured with visible brushwork. Soft blurred background suggesting an indoor or sheltered space.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T19:41:12.433Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "room-reference",
+    "r2Key": "tinkermarket/images/room-reference.png",
+    "promptUsed": "A generic room in this world, establishing the visual style and atmosphere.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T19:41:12.873Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:oddments-alley",
+    "r2Key": "tinkermarket/entities/room/oddments-alley.png",
+    "promptUsed": "A side passage off the square, narrower and quieter than the main market. The stalls here are smaller, their wares stranger — things that don't fit neatly into categories. A vendor displays what might be musical instruments or surgical tools. Another sells jars of light in different colors. The noise from the main square fades quickly here. Things cost differently.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T20:09:50.797Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:fair-exchange",
+    "r2Key": "tinkermarket/entities/room/fair-exchange.png",
+    "promptUsed": "A wide outdoor court paved in clean grey cobblestones, lined with sturdy wooden stalls featuring heavy canvas walls and timber doors. A prominent hand-painted sign reads \"ALL PRICES POSTED\" in bold, stern lettering above polished counters in a structured RPG marketplace. Bright, diffuse daylight highlights the orderly atmosphere and the patient, watchful vendors.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T20:14:38.009Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:gate",
+    "r2Key": "tinkermarket/entities/room/gate.png",
+    "promptUsed": "A weathered stone archway with hand-smoothed edges leads into a bustling bazaar, topped by a \"TINKERMARKET\" sign crafted from riveted, mismatched scrap metals. The foreground features uneven cobblestones patched with rusted iron plates and a flattened copper cooking pot. Warm, dusty sunlight illuminates the transition from the ancient grey stone to a vibrant, crowded marketplace in the background.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T20:37:11.218Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:smelting-bay",
+    "r2Key": "tinkermarket/entities/room/smelting-bay.png",
+    "promptUsed": "Wide industrial workshop featuring a brick forge with three crucibles glowing vibrant orange, electric blue, and a distorted eldritch violet. A four-armed laborer fluidly pours molten liquid into wall-mounted molds while casually eating a sandwich amidst a thick metallic haze. Dramatic high-contrast lighting from the glowing basins illuminates the weathered stone and endless racks of iron tools.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T20:38:02.307Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:npc:kelp",
+    "r2Key": "tinkermarket/entities/npc/kelp.png",
+    "promptUsed": "A massive four-armed figure with mottled gray-green skin like weathered iron, illuminated by the fiery orange radiance of molten crucibles in a dark, atmospheric forge. Two muscular arms expertly wield heavy metal tongs while another holds a simple sandwich, surrounded by swirling embers and thick industrial haze. The composition captures a rhythmic, timeless strength, with deep shadows contrasting against the glowing liquid metal.",
+    "stylePrompt": "Fantasy character portrait, bust or three-quarter view, warm painterly illustration style. Subtle alien features treated as unremarkable — unusual skin textures, odd proportions, extra joints. Practical clothing and visible tools of their trade. Warm brass and lamplight palette. Expressive but understated demeanor. Richly textured with visible brushwork. Soft blurred background suggesting an indoor or sheltered space.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T20:42:55.353Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:rendering-yards-entrance",
+    "r2Key": "tinkermarket/entities/room/rendering-yards-entrance.png",
+    "promptUsed": "Gritty industrial market alley where canvas awnings meet rusted corrugated metal roofs, transitioning from damp cobblestones to scored and oily iron floor plates. A hand-lettered sign on a bolted post reads \"RENDERING YARDS\" above a crude \"WATCH YOUR STEP\" warning, surrounded by heavy machinery and rising steam. Harsh cinematic lighting glints off metallic surfaces and murky puddles in a low-angle perspective.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T21:11:47.697Z"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "gameId": "the-aaru",
+    "imageType": "room-reference",
+    "r2Key": "the-aaru/images/room-reference.png",
+    "promptUsed": "A generic room in this world, establishing the visual style and atmosphere.",
+    "stylePrompt": "Retro pixel art in the style of classic 16-bit adventure games. Limited but expressive color palette with visible pixels and clean edges. Sci-fi generation ship interior — layered with centuries of use, modification, and cultural accumulation. Amber and cool blue institutional lighting. Mix of corroded metal, organic overgrowth, and makeshift repairs. No people visible. Atmospheric and moody, with strong contrast between lit and shadowed areas.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T21:15:37.437Z"
+  },
+  {
+    "gameId": "the-aaru",
+    "imageType": "npc-reference",
+    "r2Key": "the-aaru/images/npc-reference.png",
+    "promptUsed": "A generic NPC mechanical non-humanoid robot vacuum character in this world, establishing the visual style for characters.",
+    "stylePrompt": "Retro pixel art character portrait in 16-bit adventure game style. Visible pixels, limited palette, clean outlines. Bust view against a softly detailed background suggesting the ship interior. Characters show signs of long isolation — practical clothing layered and patched, tools and personal items visible. Expressive faces despite pixel constraints. Warm amber or cool blue lighting.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-05T21:18:53.117Z"
+  }
+]
