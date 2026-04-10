@@ -169,15 +169,15 @@ export async function handleUnresolvedExit(
     value: result.roomId,
     description: `Moved ${context.direction}`,
   };
+  const roomDesc = describeCurrentRoom(store);
   // Only persist the player move — AI world-building is saved via saveAiEntity
   const entry: EventLogEntry = {
     command: `go ${context.direction}`,
     events: [moveEvent],
+    output: roomDesc,
     timestamp: new Date().toISOString(),
   };
   await getStorage().appendEvent(session, entry);
-
-  const roomDesc = describeCurrentRoom(store);
   return {
     output: roomDesc,
     aiOutput: debug && result.notes ? `Notes: ${result.notes}` : undefined,

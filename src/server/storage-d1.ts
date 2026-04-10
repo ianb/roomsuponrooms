@@ -140,6 +140,7 @@ export class D1Storage implements RuntimeStorage {
     return result.results.map((row) => ({
       command: row.command,
       events: JSON.parse(row.events),
+      output: row.output || "",
       timestamp: row.timestamp,
     }));
   }
@@ -153,7 +154,7 @@ export class D1Storage implements RuntimeStorage {
       .first<number>("max_seq");
     await this.db
       .prepare(
-        "INSERT INTO events (game_id, user_id, seq, command, events, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO events (game_id, user_id, seq, command, events, output, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
         session.gameId,
@@ -161,6 +162,7 @@ export class D1Storage implements RuntimeStorage {
         (maxSeq || 0) + 1,
         entry.command,
         JSON.stringify(entry.events),
+        entry.output || "",
         entry.timestamp,
       )
       .run();

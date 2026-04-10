@@ -35,6 +35,11 @@ export async function buildSessionContextMessage(
 
   const currentRoom = renderCurrentRoom(store);
   if (currentRoom) sections.push(currentRoom);
+  if (currentRoom) {
+    sections.push(
+      "(The <current-room> block above is the same data you'd get from `get` with withChildren and withNeighborhood. You don't need to re-query it for basic info.)",
+    );
+  }
 
   const events = await storage.loadEvents({ gameId, userId });
   const recent = renderRecentEvents(events);
@@ -74,14 +79,22 @@ function renderCurrentRoom(store: EntityStore): string | null {
 function renderRecentEvents(entries: EventLogEntry[]): string | null {
   if (entries.length === 0) return null;
   const slice = entries.slice(-RECENT_EVENTS_LIMIT);
-  const lines = slice.map((entry, i) => {
+  const blocks = slice.map((entry, i) => {
     const offset = slice.length - i - 1;
     const label = offset === 0 ? "just now" : `${offset} turn${offset === 1 ? "" : "s"} ago`;
     const descs = entry.events
       .map((e) => e.description)
       .filter((d) => d && d.length > 0)
       .join(", ");
-    return `[${label}] ${entry.command}${descs ? " — " + descs : ""}`;
+    const headerLine = `[${label}] ${entry.command}${descs ? " — " + descs : ""}`;
+    const output = entry.output ? entry.output.trim() : "";
+    if (!output) return headerLine;
+    // Indent the response so it's clearly the output, not nested data.
+    const indented = output
+      .split("\n")
+      .map((line) => "  " + line)
+      .join("\n");
+    return `${headerLine}\n${indented}`;
   });
-  return `<recent-events>\n${lines.join("\n")}\n</recent-events>`;
+  return `<recent-events>\n${blocks.join("\n\n")}\n</recent-events>`;
 }

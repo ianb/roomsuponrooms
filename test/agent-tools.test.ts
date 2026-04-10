@@ -44,6 +44,7 @@ async function makeContext(): Promise<{
     summary: null,
     revertOf: null,
     model: null,
+    systemPrompt: null,
     tokenUsage: emptyAgentTokenUsage(),
     createdAt: "2026-04-09T00:00:00Z",
     updatedAt: "2026-04-09T00:00:00Z",
@@ -317,7 +318,9 @@ t.test("query entities returns every entity with containedBy chain", async (t) =
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { kind: "entities" });
+  // Pass a high limit so the assertion sees the full set, not just the
+  // default-paged sample.
+  const result = await runQuery(context, { kind: "entities", limit: 200 });
   t.equal(result.ok, true);
   if (result.ok) {
     const list = result.result as Array<{ id: string; containedBy: string[] }>;
@@ -325,6 +328,39 @@ t.test("query entities returns every entity with containedBy chain", async (t) =
     t.ok(list.some((e) => e.id === "room:clearing"));
     // Every entity should have a containedBy field (possibly empty for the root)
     t.ok(list.every((e) => Array.isArray(e.containedBy)));
+  }
+});
+
+t.test("query default limit truncates to 5 with omittedCount", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await runQuery(context, { kind: "entities" });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const list = result.result as unknown[];
+    t.equal(list.length, 5, "default limit is 5");
+    t.ok(result.totalMatched && result.totalMatched > 5);
+    t.ok(result.omittedCount && result.omittedCount > 0);
+    t.ok(result.hint, "hint included");
+  }
+});
+
+t.test("query saveAs captures the FULL result, even when paged", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await runQuery(context, { kind: "entities", saveAs: "all" });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    // The visible result is paged...
+    const visible = result.result as unknown[];
+    t.equal(visible.length, 5);
+    // ...but the scratchpad has the full set.
+    const stored = context.savedVars["all"] as unknown[];
+    t.ok(Array.isArray(stored));
+    t.ok(stored.length > 5, "scratchpad has untruncated set");
+    t.equal(result.savedAs, "all");
   }
 });
 

@@ -28,6 +28,7 @@ function normalizeSession(raw: unknown): AgentSessionRecord {
   return {
     ...(record as AgentSessionRecord),
     model: record.model === undefined ? null : record.model,
+    systemPrompt: record.systemPrompt === undefined ? null : record.systemPrompt,
     tokenUsage: record.tokenUsage || emptyAgentTokenUsage(),
   };
 }

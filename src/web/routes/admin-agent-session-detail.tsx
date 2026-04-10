@@ -4,7 +4,7 @@ import { rootRoute } from "./__root.js";
 import { trpc } from "../trpc.js";
 import { AuthContext } from "../auth.js";
 import { MessageEntry } from "./agent-session-message-view.js";
-import { SessionTokenUsage } from "./agent-session-token-usage.js";
+import { SessionTokenUsage, SessionSystemPrompt } from "./agent-session-token-usage.js";
 import type { AgentTokenUsage, CostBreakdown } from "./agent-session-token-usage.js";
 
 export const adminAgentSessionDetailRoute = createRoute({
@@ -26,6 +26,7 @@ interface AgentSessionRecord {
   summary: string | null;
   revertOf: string | null;
   model: string | null;
+  systemPrompt: string | null;
   tokenUsage: AgentTokenUsage;
   createdAt: string;
   updatedAt: string;
@@ -117,6 +118,7 @@ function AdminAgentSessionDetailPage() {
       </Link>
       <SessionMetadata session={session} editCount={edits.length} />
       <SessionTokenUsage model={session.model} usage={session.tokenUsage} cost={cost} />
+      <SessionSystemPrompt prompt={session.systemPrompt} />
       <SessionEdits edits={edits} />
       <SessionMessages messages={session.messages} />
       <SessionSavedVars savedVars={session.savedVars} />

@@ -1,3 +1,29 @@
+import { useState } from "react";
+
+export function SessionSystemPrompt({ prompt }: { prompt: string | null }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!prompt) return null;
+  return (
+    <div className="mb-6">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="mb-2 text-lg font-bold hover:text-content/80"
+      >
+        System Prompt{" "}
+        <span className="text-sm font-normal text-content/50">
+          ({prompt.length.toLocaleString()} chars · click to {expanded ? "collapse" : "expand"})
+        </span>
+      </button>
+      {expanded ? (
+        <pre className="overflow-x-auto whitespace-pre-wrap rounded border border-content/10 bg-surface p-3 text-xs text-content/80">
+          {prompt}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
 export interface AgentTokenUsage {
   inputTokens: number;
   cacheReadTokens: number;

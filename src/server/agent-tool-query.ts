@@ -65,11 +65,20 @@ export const queryInputSchema = z.object({
     .describe(
       "Optional postprocess. A jq filter applied to the (possibly contains-filtered) result. Use this for tag filters, location lookups, projections, slicing, etc.",
     ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(200)
+    .optional()
+    .describe(
+      "Optional postprocess. For array results, return only the first N items (default 5). The full count is reported as totalMatched and the number dropped as omittedCount. Pass a larger value if you genuinely want more — but the size cap may still kick in.",
+    ),
   saveAs: z
     .string()
     .optional()
     .describe(
-      "Optional postprocess. A name to save the (possibly filtered) result under in the session scratchpad for later get_var or jq calls.",
+      "Optional postprocess. A name to save the (possibly filtered) result under in the session scratchpad for later get_var or jq calls. The scratchpad gets the FULL untruncated result, not the trimmed sample.",
     ),
 });
 
@@ -78,8 +87,18 @@ export type QueryInput = z.infer<typeof queryInputSchema>;
 export interface QueryResult {
   ok: true;
   result: unknown;
+  /** For truncated array results: the full count before paging. */
+  totalMatched?: number;
+  /** For truncated array results: the number of items dropped. */
+  omittedCount?: number;
+  /** For truncated single-object results: a hint that the result was clipped. */
+  truncated?: boolean;
   savedAs?: string;
+  /** Hint string included on truncated/oversized results explaining what to do. */
+  hint?: string;
 }
+
+const DEFAULT_LIMIT = 5;
 
 export interface QueryError {
   ok: false;
@@ -122,20 +141,85 @@ export async function runQuery(
     }
   }
 
-  const serialized = JSON.stringify(value);
+  // Save the FULL pre-truncation value to the scratchpad if requested. The
+  // scratchpad never sees the trimmed sample so the agent can `get_var` it
+  // later and feed it through jq for further filtering.
+  let savedAs: string | undefined;
+  if (input.saveAs) {
+    context.savedVars[input.saveAs] = value;
+    savedAs = input.saveAs;
+  }
+
+  // Trim top-level arrays to the requested limit (default 5) so big result
+  // sets always come back as a manageable sample with omittedCount metadata.
+  const limit = input.limit || DEFAULT_LIMIT;
+  let totalMatched: number | undefined;
+  let omittedCount: number | undefined;
+  if (Array.isArray(value)) {
+    totalMatched = value.length;
+    if (totalMatched > limit) {
+      value = value.slice(0, limit);
+      omittedCount = totalMatched - limit;
+    }
+  }
+
+  // After trimming, check the size cap. If still oversized (e.g. one item is
+  // huge), keep slicing the array down so the agent at least sees a taste.
+  // For non-array values that overflow, return an error pointing at the
+  // available knobs.
+  let serialized = JSON.stringify(value);
   if (serialized.length > MAX_OUTPUT_BYTES) {
-    return {
-      ok: false,
-      error: `Result is ${serialized.length} bytes; max is ${MAX_OUTPUT_BYTES}. Use 'contains' for substring filtering or a 'jq' filter to project/slice the result.`,
-    };
+    if (Array.isArray(value)) {
+      const trimmed = trimArrayToFit(value, MAX_OUTPUT_BYTES);
+      if (trimmed.items.length === 0) {
+        return {
+          ok: false,
+          error: `Even one item exceeds the ${MAX_OUTPUT_BYTES}-byte cap. Use a 'jq' filter to project just the fields you need.`,
+        };
+      }
+      const dropped = value.length - trimmed.items.length;
+      omittedCount = (omittedCount || 0) + dropped;
+      value = trimmed.items;
+      serialized = trimmed.serialized;
+    } else {
+      return {
+        ok: false,
+        error: `Result is ${serialized.length} bytes; max is ${MAX_OUTPUT_BYTES}. Use 'contains' for substring filtering or a 'jq' filter to project/slice the result.`,
+      };
+    }
   }
 
   const result: QueryResult = { ok: true, result: value };
-  if (input.saveAs) {
-    context.savedVars[input.saveAs] = value;
-    result.savedAs = input.saveAs;
+  if (totalMatched !== undefined) result.totalMatched = totalMatched;
+  if (omittedCount !== undefined && omittedCount > 0) {
+    result.omittedCount = omittedCount;
+    result.hint = `${omittedCount} item${omittedCount === 1 ? "" : "s"} omitted (showing ${
+      Array.isArray(value) ? value.length : 0
+    } of ${totalMatched}). Pass 'limit' for more, 'contains' or 'jq' to filter, or 'saveAs' to capture the full set in the scratchpad.`;
   }
+  if (savedAs !== undefined) result.savedAs = savedAs;
   return result;
+}
+
+/** Slice an array down until its serialized form fits within `maxBytes`. */
+function trimArrayToFit(
+  items: unknown[],
+  maxBytes: number,
+): { items: unknown[]; serialized: string } {
+  let lo = 0;
+  let hi = items.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = items.slice(0, mid);
+    const json = JSON.stringify(candidate);
+    if (json.length <= maxBytes) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  const finalItems = items.slice(0, lo);
+  return { items: finalItems, serialized: JSON.stringify(finalItems) };
 }
 
 function requireField<T>(value: T | undefined, where: { kind: string; field: string }): T {

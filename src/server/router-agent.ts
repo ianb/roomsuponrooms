@@ -74,6 +74,7 @@ export const agentRouter = router({
       summary: null,
       revertOf: null,
       model: null,
+      systemPrompt: null,
       tokenUsage: emptyAgentTokenUsage(),
       createdAt: now,
       updatedAt: now,

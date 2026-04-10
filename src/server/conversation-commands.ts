@@ -92,6 +92,7 @@ export async function handleTalkTo(
       const entry: EventLogEntry = {
         command: `talk to ${npcName}`,
         events,
+        output,
         timestamp: new Date().toISOString(),
       };
       await getStorage().appendEvent(session, entry);
@@ -163,6 +164,8 @@ export async function handleConversationWord(
   // Check for perform code on the matched entry
   result = applyPerformCode(game, { word, npc, result, data });
 
+  const output = highlightTopics(result.output, result.knownWords);
+
   // Apply effects
   if (result.events.length > 0) {
     const events = applyConversationEffects(result.events, {
@@ -173,13 +176,12 @@ export async function handleConversationWord(
       const entry: EventLogEntry = {
         command: word,
         events,
+        output,
         timestamp: new Date().toISOString(),
       };
       await getStorage().appendEvent(session, entry);
     }
   }
-
-  const output = highlightTopics(result.output, result.knownWords);
 
   if (result.closeConversation) {
     game.conversationState = undefined;
@@ -274,6 +276,11 @@ async function handleUnknownWord(
 
   // Apply effects from AI-generated entry
   let closeConversation = false;
+  const parts: string[] = [];
+  if (aiResult.entry.narration) parts.push(aiResult.entry.narration);
+  if (aiResult.entry.response) parts.push(aiResult.entry.response);
+  const newKnownWords = Array.from(state.knownWords);
+  const output = highlightTopics(parts.join("\n"), newKnownWords);
   if (aiResult.entry.effects && aiResult.entry.effects.length > 0) {
     const events = applyConversationEffects(aiResult.entry.effects, {
       store: game.store,
@@ -284,17 +291,12 @@ async function handleUnknownWord(
       const logEntry: EventLogEntry = {
         command: word,
         events,
+        output,
         timestamp: new Date().toISOString(),
       };
       await getStorage().appendEvent(session, logEntry);
     }
   }
-
-  const parts: string[] = [];
-  if (aiResult.entry.narration) parts.push(aiResult.entry.narration);
-  if (aiResult.entry.response) parts.push(aiResult.entry.response);
-  const newKnownWords = Array.from(state.knownWords);
-  const output = highlightTopics(parts.join("\n"), newKnownWords);
 
   if (closeConversation) {
     game.conversationState = undefined;

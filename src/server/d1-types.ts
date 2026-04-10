@@ -55,6 +55,7 @@ export interface EventRow {
   seq: number;
   command: string;
   events: string;
+  output: string;
   timestamp: string;
 }
 

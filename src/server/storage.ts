@@ -27,6 +27,8 @@ export type AiHandlerRecord = HandlerData & {
 export interface EventLogEntry {
   command: string;
   events: WorldEvent[];
+  /** The text response shown to the player after this command. May be empty. */
+  output?: string;
   timestamp: string;
 }
 
@@ -98,6 +100,8 @@ export interface AgentSessionRecord {
   revertOf: string | null;
   /** The LLM model id used for this session, e.g. "gemini-3-flash-preview". */
   model: string | null;
+  /** The system prompt text used on the first tick. Captured once. */
+  systemPrompt: string | null;
   /** Cumulative token usage across every generateText call in this session. */
   tokenUsage: AgentTokenUsage;
   createdAt: string;

@@ -23,6 +23,7 @@ interface AgentSessionRow {
   summary: string | null;
   revert_of: string | null;
   model: string | null;
+  system_prompt: string | null;
   input_tokens: number;
   cache_read_tokens: number;
   cache_write_tokens: number;
@@ -61,6 +62,7 @@ function rowToAgentSession(row: AgentSessionRow): AgentSessionRecord {
     summary: row.summary,
     revertOf: row.revert_of,
     model: row.model,
+    systemPrompt: row.system_prompt,
     tokenUsage: {
       inputTokens: row.input_tokens,
       cacheReadTokens: row.cache_read_tokens,
@@ -100,11 +102,11 @@ export async function createAgentSession(
     .prepare(
       `INSERT INTO agent_sessions
        (id, game_id, user_id, request, status, messages, saved_vars,
-        turn_count, turn_limit, summary, revert_of, model,
+        turn_count, turn_limit, summary, revert_of, model, system_prompt,
         input_tokens, cache_read_tokens, cache_write_tokens,
         output_tokens, reasoning_tokens, total_tokens,
         created_at, updated_at, finished_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       record.id,
@@ -119,6 +121,7 @@ export async function createAgentSession(
       record.summary,
       record.revertOf,
       record.model,
+      record.systemPrompt,
       record.tokenUsage.inputTokens,
       record.tokenUsage.cacheReadTokens,
       record.tokenUsage.cacheWriteTokens,
@@ -152,6 +155,7 @@ const SESSION_PATCH_COLUMNS: Record<string, string> = {
   summary: "summary",
   revertOf: "revert_of",
   model: "model",
+  systemPrompt: "system_prompt",
   finishedAt: "finished_at",
 };
 

@@ -229,6 +229,7 @@ export async function executeCommand(
       const entry: EventLogEntry = {
         command: trimmed,
         events: fallback.events,
+        output: fallback.output,
         timestamp: new Date().toISOString(),
       };
       await getStorage().appendEvent(session, entry);
@@ -252,6 +253,7 @@ export async function executeCommand(
     const entry: EventLogEntry = {
       command: trimmed,
       events: persistEvents,
+      output: result.output,
       timestamp: new Date().toISOString(),
     };
     await getStorage().appendEvent(session, entry);

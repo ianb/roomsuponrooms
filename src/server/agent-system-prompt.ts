@@ -149,11 +149,33 @@ Idioms over the entities corpus (kind: "entities"):
   Slice the events array to the last 10:
     .[-10:]
 
-  Find handlers for a verb:
+Idioms over the handlers corpus (kind: "handlers"):
+
+  Filter by verb:
     [.[] | select(.verb == "take")]
+
+  Filter by an entity-specific binding:
+    [.[] | select(.entityId == "item:rusty-lever")]
+
+  Filter by a tag the handler matches against:
+    [.[] | select(.tag == "container")]
+
+  Find handlers that COULD apply to a target entity (you have its tags via 'get'):
+    Run kind: "get" first, then kind: "handlers" with jq: '[.[] | select(.entityId == $id or (.tag != null and ($entityTags | index(.tag))))]' and feed it via the saved scratchpad.
 
   Combine 'contains' postprocess with 'jq' for compound filters:
     contains: "lever", jq: "[.[] | select(.tags | index(\\"portable\\"))]"
+
+==== Result paging ====
+
+Array results are trimmed to a default of 5 items. The response includes
+"totalMatched" and "omittedCount" so you can tell when results were dropped.
+Knobs:
+  - Pass an explicit "limit": N to see more (max 200).
+  - Pass "saveAs": "name" to capture the FULL untruncated set in the
+    scratchpad — useful when you want to see a few items now and jq the
+    full set on a follow-up call via get_var or another query.
+  - Use "contains" or "jq" to filter the set down before paging kicks in.
 </query-tool-and-data-shapes>`);
 
   sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);

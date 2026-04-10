@@ -70,9 +70,19 @@ export function getLlmAbortSignal(): AbortSignal {
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 type ProviderOpts = Record<string, Record<string, JsonValue>>;
 
-/** Provider-specific options to enable thinking/reasoning */
+/**
+ * Provider-specific options to enable thinking/reasoning. Returns an empty
+ * object if no LLM is configured (e.g. running tests with a mock model)
+ * rather than throwing — callers should always be able to forward provider
+ * options without first checking that an LLM is set up.
+ */
 export function getLlmProviderOptions(): ProviderOpts {
-  const config = cachedConfig || loadConfig();
+  let config: LlmConfig;
+  try {
+    config = cachedConfig || loadConfig();
+  } catch (_e) {
+    return {};
+  }
   if (config.provider === "google") {
     return { google: { thinkingConfig: { thinkingBudget: 2048 } } };
   }

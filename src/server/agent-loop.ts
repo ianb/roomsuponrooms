@@ -1,6 +1,6 @@
 import { generateText, stepCountIs, hasToolCall } from "ai";
 import type { LanguageModel, ModelMessage } from "ai";
-import { getLlm } from "./llm.js";
+import { getLlm, getLlmProviderOptions } from "./llm.js";
 import { getStorage } from "./storage-instance.js";
 import { getGame } from "../games/registry.js";
 import type { GameInstance } from "../games/registry.js";
@@ -158,6 +158,7 @@ export async function tickSession(
       system: systemPrompt,
       messages,
       tools,
+      providerOptions: getLlmProviderOptions(),
       stopWhen: [stepCountIs(stepLimit), hasToolCall("finish"), hasToolCall("bail")],
       onStepFinish: (step) => {
         stepIndex += 1;
@@ -192,39 +193,35 @@ export async function tickSession(
   // Capture the model id once (subsequent ticks reuse it). LanguageModel
   // can be either a string id or a model object with `.modelId`.
   const modelId = session.model || (typeof model === "string" ? model : model.modelId) || null;
+  // Capture the system prompt on first use. Don't overwrite on later ticks
+  // — the world has evolved and we want the original prompt for the audit.
+  const persistedSystemPrompt = session.systemPrompt || systemPrompt;
+
+  // Common patch fields applied to whichever updateAgentSession call below
+  // ends up running for this tick.
+  const tickPatch = {
+    messages: newMessages,
+    savedVars: context.savedVars,
+    turnCount: newTurnCount,
+    tokenUsage: newTokenUsage,
+    model: modelId,
+    systemPrompt: persistedSystemPrompt,
+  };
 
   if (context.terminate && context.terminate.kind === "finish") {
     await storage.commitSession(sessionId, context.terminate.summary);
-    await storage.updateAgentSession(sessionId, {
-      messages: newMessages,
-      savedVars: context.savedVars,
-      turnCount: newTurnCount,
-      tokenUsage: newTokenUsage,
-      model: modelId,
-    });
-    return {
-      status: "finished",
-      turnsRun,
-      summary: context.terminate.summary,
-    };
+    await storage.updateAgentSession(sessionId, tickPatch);
+    return { status: "finished", turnsRun, summary: context.terminate.summary };
   }
 
   if (context.terminate && context.terminate.kind === "bail") {
     await storage.updateAgentSession(sessionId, {
+      ...tickPatch,
       status: "bailed",
       summary: context.terminate.summary,
-      messages: newMessages,
-      savedVars: context.savedVars,
-      turnCount: newTurnCount,
-      tokenUsage: newTokenUsage,
-      model: modelId,
       finishedAt: new Date().toISOString(),
     });
-    return {
-      status: "bailed",
-      turnsRun,
-      summary: context.terminate.summary,
-    };
+    return { status: "bailed", turnsRun, summary: context.terminate.summary };
   }
 
   // Either we hit the step budget or the model decided not to call another tool.
@@ -232,26 +229,16 @@ export async function tickSession(
   if (newTurnCount >= session.turnLimit) {
     const summary = `Turn limit (${session.turnLimit}) reached without finish().`;
     await storage.updateAgentSession(sessionId, {
+      ...tickPatch,
       status: "failed",
       summary,
-      messages: newMessages,
-      savedVars: context.savedVars,
-      turnCount: newTurnCount,
-      tokenUsage: newTokenUsage,
-      model: modelId,
       finishedAt: new Date().toISOString(),
     });
     return { status: "failed", turnsRun, summary };
   }
 
   // Persist progress; status remains 'running' so a future tick can resume.
-  await storage.updateAgentSession(sessionId, {
-    messages: newMessages,
-    savedVars: context.savedVars,
-    turnCount: newTurnCount,
-    tokenUsage: newTokenUsage,
-    model: modelId,
-  });
+  await storage.updateAgentSession(sessionId, tickPatch);
   return { status: "running", turnsRun, summary: null };
 }
 
