@@ -5,6 +5,7 @@ import { editBatchSchema } from "./agent-tool-schemas.js";
 import { applyEditBatch } from "./agent-tool-edits.js";
 import { queryInputSchema, runQuery } from "./agent-tool-query.js";
 import { jqInputSchema, runJq } from "./agent-tool-jq.js";
+import { playtestInputSchema, runPlaytest } from "./agent-tool-playtest.js";
 
 const saveVarSchema = z.object({
   name: z.string(),
@@ -49,6 +50,13 @@ export function buildAgentTools(context: ToolContext) {
         "Run a jq filter against either an inline JSON value or a previously-saved variable. Useful for paginating, projecting, or summarizing query results without dumping them all into context.",
       inputSchema: jqInputSchema,
       execute: async (input) => runJq(context, input),
+    }),
+
+    playtest: tool({
+      description:
+        "Simulate a sequence of player commands in a sandboxed copy of the world. The sandbox starts from the live world plus this session's pending edits, then applies any setup mutations, then runs each command through the verb dispatcher (with AI fallback DISABLED — unhandled commands surface as outcome:'unhandled' instead of triggering the verb-fallback LLM). Returns per-command outcome, output text, the WorldEvents that fired, and which handler ran. Also returns a finalState summary (player location, inventory, current room). Use this to test verb handlers you just wrote, verify a puzzle is solvable, or shortcut the player into a specific state to check a specific interaction. The simulation is hermetic — it does not affect the agent's view, the live world, or the event log.",
+      inputSchema: playtestInputSchema,
+      execute: async (input) => runPlaytest(context, input),
     }),
 
     save_var: tool({

@@ -2,41 +2,20 @@ import type { EntityStore } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
 import { collectTags, describeProperties } from "./ai-prompt-helpers.js";
 
-/**
- * Build the system prompt for the world-editing agent. The agent's tools
- * are introspectable via their `description` fields, so the system prompt
- * focuses on the world model, the rules, and tone.
- */
-export function buildAgentSystemPrompt({
-  store,
-  prompts,
-}: {
-  store: EntityStore;
-  prompts?: GamePrompts;
-}): string {
-  const sections: string[] = [];
-
-  sections.push(`<role>
+const ROLE_SECTION = `<role>
 You are an autonomous world-editing agent for a text adventure game. The game designer has asked you to make a structural change to the shared world. You have tools to read the world, query it, transform JSON, and apply edits.
-</role>`);
+</role>`;
 
-  if (prompts && prompts.world) {
-    sections.push(`<world-style>\n${prompts.world}\n</world-style>`);
-  }
-  if (prompts && prompts.worldCreate) {
-    sections.push(`<creation-guidelines>\n${prompts.worldCreate}\n</creation-guidelines>`);
-  }
-
-  sections.push(`<world-model>
+const WORLD_MODEL_SECTION = `<world-model>
 The world is an Entity-Component-System over rooms, items, NPCs, exits, and other objects.
 - Every entity has: id, tags, name, description, location, optional aliases/secret/properties.
 - Entity ids look like "room:gate", "item:rusty-lever", "npc:kip", "exit:gate:north". Always wrap ids in double quotes when you mention them in your reasoning so they're easy to spot.
 - Rooms are entities tagged "room". Players are at a location, which is a room id.
 - Exits are entities tagged "exit", whose location is the source room and whose exit.direction/destination defines the link to another room.
 - Verb handlers are code attached to verbs that define how they work for matching entities. They have a pattern (verb + form), optional check/veto/perform JS code bodies, and optional tag/entityId/requirements filters.
-</world-model>`);
+</world-model>`;
 
-  sections.push(`<query-tool-and-data-shapes>
+const QUERY_SECTION = `<query-tool-and-data-shapes>
 The query tool has FOUR kinds. Pick one via the required "kind" field.
 
   { "kind": "get", "id": "..." }              — fetch one entity (or many, see wildcards)
@@ -176,20 +155,68 @@ Knobs:
     scratchpad — useful when you want to see a few items now and jq the
     full set on a follow-up call via get_var or another query.
   - Use "contains" or "jq" to filter the set down before paging kicks in.
-</query-tool-and-data-shapes>`);
+</query-tool-and-data-shapes>`;
 
-  sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);
-  sections.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
+const PLAYTEST_SECTION = `<playtest>
+After writing or modifying a verb handler, USE THE PLAYTEST TOOL to verify it works before calling finish(). Playtest runs commands in a sandboxed copy of the world (your pending edits included) without touching the live state.
 
-  sections.push(`<rules>
+  {
+    "setup": [
+      { "entityId": "player:1", "property": "location", "value": "room:gate" },
+      { "entityId": "item:rusty-lever", "property": "location", "value": "player:1" }
+    ],
+    "commands": ["insert lever into turnstile", "go north"]
+  }
+
+Setup uses setProperty semantics — "location" moves the entity (set to a player id to put it in inventory). Each command runs through the parser and verb dispatch and returns:
+  - outcome: "performed" | "vetoed" | "unhandled" | "unresolved" | "movement" | "error"
+  - output: the player-visible response (entity refs are still {{id|name}} templates — the agent reads them as data)
+  - handler: which verb handler ran (when outcome is "performed" or "movement")
+  - events: every WorldEvent the command produced
+The result also includes a finalState block (player location, inventory, current room) so you can confirm the world ended up where you expected.
+
+AI fallback is DISABLED inside playtest. If a command would have triggered the verb-fallback LLM in real play, it surfaces as outcome:"unhandled" — that's a signal to either write the missing handler or accept that the player can't do it.
+
+If a verb handler throws (e.g. accesses a missing entity, references an undefined property), the step's outcome is "error" with the message in 'error'. Treat that as a bug in the handler you wrote.
+</playtest>`;
+
+const RULES_SECTION = `<rules>
 1. Use the query tool to learn the world before making structural changes. Don't guess at ids — look them up.
 2. Edits are sandboxed until you call finish(). Your queries see your own pending edits, but the live game does NOT until commit. Use this freedom to experiment.
 3. Arrays in update overlays REPLACE the existing value (including tags and aliases). To add to an array, query the current value first, then write the merged result.
 4. Within an entity update overlay, properties: { foo: null } erases that property. Top-level fields you omit are left untouched.
 5. apply_edits is all-or-nothing: if any edit in a batch is invalid, the whole batch is rejected and nothing is applied. Read the failure messages and try again.
-6. When the request is complete, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.
-7. Be deliberate. You have a turn limit. Plan, query, then edit.
-</rules>`);
+6. When you write or change a verb handler, use playtest to verify it works before calling finish(). A handler that throws or doesn't reach its expected outcome should be fixed before commit.
+7. When the request is complete, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.
+8. Be deliberate. You have a turn limit. Plan, query, then edit.
+</rules>`;
 
+/**
+ * Build the system prompt for the world-editing agent. The agent's tools
+ * are introspectable via their `description` fields, so the system prompt
+ * focuses on the world model, the rules, and tone.
+ */
+export function buildAgentSystemPrompt({
+  store,
+  prompts,
+}: {
+  store: EntityStore;
+  prompts?: GamePrompts;
+}): string {
+  const sections: string[] = [];
+
+  sections.push(ROLE_SECTION);
+  if (prompts && prompts.world) {
+    sections.push(`<world-style>\n${prompts.world}\n</world-style>`);
+  }
+  if (prompts && prompts.worldCreate) {
+    sections.push(`<creation-guidelines>\n${prompts.worldCreate}\n</creation-guidelines>`);
+  }
+  sections.push(WORLD_MODEL_SECTION);
+  sections.push(QUERY_SECTION);
+  sections.push(PLAYTEST_SECTION);
+  sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);
+  sections.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
+  sections.push(RULES_SECTION);
   return sections.join("\n\n");
 }

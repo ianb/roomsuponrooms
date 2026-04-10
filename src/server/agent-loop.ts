@@ -2,24 +2,14 @@ import { generateText, stepCountIs, hasToolCall } from "ai";
 import type { LanguageModel, ModelMessage } from "ai";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
 import { getStorage } from "./storage-instance.js";
-import { getGame } from "../games/registry.js";
-import type { GameInstance } from "../games/registry.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
-import { applyAiEntityRecords } from "./apply-ai-records.js";
-import { recordToHandler } from "./handler-convert.js";
 import { buildAgentTools } from "./agent-tools.js";
 import { buildAgentSystemPrompt } from "./agent-system-prompt.js";
 import { buildSessionContextMessage } from "./agent-session-context.js";
+import { loadAgentGameInstance } from "./agent-game-loader.js";
 import type { ToolContext } from "./agent-tool-context.js";
-import type { AgentSessionRecord, AgentSessionStatus } from "./storage.js";
+import type { AgentSessionStatus } from "./storage.js";
 import { mergeTokenUsage } from "./agent-token-usage.js";
-
-class GameNotFoundError extends Error {
-  override name = "GameNotFoundError";
-  constructor(slug: string) {
-    super(`Game not found: ${slug}`);
-  }
-}
 
 class SessionNotFoundError extends Error {
   override name = "SessionNotFoundError";
@@ -99,7 +89,7 @@ export async function tickSession(
     throw new SessionAlreadyTerminalError(sessionId, session.status);
   }
 
-  const game = await loadAgentGame(session);
+  const game = await loadAgentGameInstance(session.gameId);
 
   const context: ToolContext = {
     storage,
@@ -240,19 +230,4 @@ export async function tickSession(
   // Persist progress; status remains 'running' so a future tick can resume.
   await storage.updateAgentSession(sessionId, tickPatch);
   return { status: "running", turnsRun, summary: null };
-}
-
-async function loadAgentGame(session: AgentSessionRecord): Promise<GameInstance> {
-  const def = getGame(session.gameId);
-  if (!def) throw new GameNotFoundError(session.gameId);
-  const instance = def.create();
-  // Materialized AI entities/handlers from the live tables.
-  const storage = getStorage();
-  const aiEntities = await storage.loadAiEntities(session.gameId);
-  applyAiEntityRecords(aiEntities, instance.store);
-  const handlerRecords = await storage.loadAiHandlers(session.gameId);
-  for (const record of handlerRecords) {
-    instance.verbs.register(recordToHandler(record));
-  }
-  return instance;
 }
