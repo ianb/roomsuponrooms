@@ -147,4 +147,47 @@ export const adminRouter = router({
         await storage.deleteWorldImage(query);
       }
     }),
+
+  adminAgentSessions: adminProcedure
+    .input(
+      z
+        .object({
+          gameId: z.string().optional(),
+          status: z.enum(["running", "finished", "bailed", "failed"]).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const storage = getStorage();
+      const sessions = await storage.listAgentSessions(input);
+      const summaries = await Promise.all(
+        sessions.map(async (s) => {
+          const edits = await storage.getSessionEdits(s.id);
+          return {
+            id: s.id,
+            gameId: s.gameId,
+            userId: s.userId,
+            request: s.request,
+            status: s.status,
+            turnCount: s.turnCount,
+            turnLimit: s.turnLimit,
+            summary: s.summary,
+            editCount: edits.length,
+            appliedEditCount: edits.filter((e) => e.applied).length,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+            finishedAt: s.finishedAt,
+          };
+        }),
+      );
+      return { sessions: summaries };
+    }),
+
+  adminAgentSession: adminProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    const storage = getStorage();
+    const session = await storage.getAgentSession(input.id);
+    if (!session) return null;
+    const edits = await storage.getSessionEdits(input.id);
+    return { session, edits };
+  }),
 });

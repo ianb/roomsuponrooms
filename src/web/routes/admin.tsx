@@ -136,6 +136,14 @@ function AdminPage() {
           </span>
         ))}
       </div>
+      <div className="mb-6">
+        <Link
+          to="/admin/agent-sessions"
+          className="text-sm font-bold text-content/60 hover:text-content/80"
+        >
+          Agent Sessions &rarr;
+        </Link>
+      </div>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-content/20 text-left text-content/50">

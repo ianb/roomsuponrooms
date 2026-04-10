@@ -8,6 +8,8 @@ import { privacyRoute } from "./routes/privacy.js";
 import { bugsRoute, bugDetailRoute } from "./routes/bugs.js";
 import { adminRoute } from "./routes/admin.js";
 import { adminImagesRoute } from "./routes/admin-images.js";
+import { adminAgentSessionsRoute } from "./routes/admin-agent-sessions.js";
+import { adminAgentSessionDetailRoute } from "./routes/admin-agent-session-detail.js";
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -19,6 +21,8 @@ const routeTree = rootRoute.addChildren([
   bugDetailRoute,
   adminRoute,
   adminImagesRoute,
+  adminAgentSessionsRoute,
+  adminAgentSessionDetailRoute,
 ]);
 
 export const appRouter = createRouter({ routeTree });
