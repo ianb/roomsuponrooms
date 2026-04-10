@@ -37,15 +37,36 @@ The world is an Entity-Component-System over rooms, items, NPCs, exits, and othe
 </world-model>`);
 
   sections.push(`<query-tool-tips>
-The query tool is your main way to learn the world. Some patterns:
-- "getRoom" returns a room with its exits (each resolved with destinationName) and its contents (id+name+tags by default; pass deep:true for full entity views).
-- "getNeighborhood" returns a center room plus rooms reachable through its exits, depth 1 by default. Use this to plan multi-room puzzles.
-- "findByTag" with optional "at" scopes the search to a single location.
-- "findByName" matches a substring against name and aliases.
-- "listRooms" returns a compact world map: every room with its exits.
-- "listHandlers" / "getHandler" let you see existing verb handlers.
-- "findEvents" reads the per-user event log so you can react to what just happened.
-- Every query supports optional "jq" (a jq filter applied to the result before returning) and "saveAs" (persist the result to the session scratchpad). Use jq to slice large results in one call.
+The query tool is your main way to learn the world. The input is always a single flat object: a required "kind" string plus the fields that kind needs as siblings. Concrete examples:
+
+  { "kind": "getRoom", "id": "room:gate" }
+  { "kind": "getRoom", "id": "room:gate", "deep": true }
+  { "kind": "getNeighborhood", "id": "room:gate", "depth": 2 }
+  { "kind": "get", "id": "item:rusty-lever" }
+  { "kind": "findByTag", "tag": "npc" }
+  { "kind": "findByTag", "tag": "portable", "at": "room:gate" }
+  { "kind": "findByName", "name": "lever" }
+  { "kind": "getContents", "id": "item:chest" }
+  { "kind": "listRooms" }
+  { "kind": "listHandlers" }
+  { "kind": "getHandler", "name": "ai-insert-lever-turnstile" }
+  { "kind": "findEvents", "latest": 10 }
+
+Notes on the kinds:
+- "getRoom" returns the room plus its exits (each with destinationName resolved) and a shallow {id,name,tags} list of contents. Pass deep:true for full entity views of the contents.
+- "getNeighborhood" returns the center room plus the rooms reachable through its exits. depth defaults to 1; use 2 or 3 to plan multi-room puzzles.
+- "findByTag" with the optional "at" field scopes to a single location.
+- "findByName" matches a case-insensitive substring against names and aliases.
+- "findEvents" reads the per-user player command log so you can react to what just happened.
+
+Every query also supports two optional sibling fields:
+  "jq":     a jq filter applied to the result before returning. Use this to project, slice, or filter large results in one call.
+  "saveAs": a name. The (possibly jq-filtered) result is persisted under that name in the session scratchpad for later get_var or jq calls.
+
+Examples combining them:
+  { "kind": "findByTag", "tag": "room", "jq": ".results | map(.id)" }
+  { "kind": "listRooms", "saveAs": "world_map" }
+  { "kind": "getRoom", "id": "room:gate", "jq": ".exits | map({direction, destination})" }
 </query-tool-tips>`);
 
   sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);

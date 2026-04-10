@@ -80,7 +80,7 @@ t.test("apply_edits creates an entity, visible to next query", async (t) => {
     t.equal(result.edits[0]!.id, "item:test-lantern");
   }
 
-  const queryResult = await runQuery(context, { get: { id: "item:test-lantern" } });
+  const queryResult = await runQuery(context, { kind: "get", id: "item:test-lantern" });
   t.equal(queryResult.ok, true);
   if (queryResult.ok) {
     const view = queryResult.result as { name: string };
@@ -252,7 +252,7 @@ t.test("query findByTag returns rooms", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { findByTag: { tag: "room" } });
+  const result = await runQuery(context, { kind: "findByTag", tag: "room" });
   t.equal(result.ok, true);
   if (result.ok) {
     const payload = result.result as { results: Array<{ id: string }>; totalMatched: number };
@@ -265,7 +265,7 @@ t.test("query getRoom returns room with nested exits and shallow contents", asyn
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { getRoom: { id: "room:clearing" } });
+  const result = await runQuery(context, { kind: "getRoom", id: "room:clearing" });
   t.equal(result.ok, true);
   if (result.ok) {
     const room = result.result as {
@@ -290,7 +290,7 @@ t.test("query getNeighborhood returns center plus reachable rooms", async (t) =>
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { getNeighborhood: { id: "room:clearing" } });
+  const result = await runQuery(context, { kind: "getNeighborhood", id: "room:clearing" });
   t.equal(result.ok, true);
   if (result.ok) {
     const view = result.result as {
@@ -306,7 +306,7 @@ t.test("query findByName matches substring on name", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { findByName: { query: "clearing" } });
+  const result = await runQuery(context, { kind: "findByName", name: "clearing" });
   t.equal(result.ok, true);
   if (result.ok) {
     const payload = result.result as { results: Array<{ id: string }> };
@@ -318,7 +318,7 @@ t.test("query listRooms returns every room with exits", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { listRooms: {} });
+  const result = await runQuery(context, { kind: "listRooms" });
   t.equal(result.ok, true);
   if (result.ok) {
     const payload = result.result as {
@@ -334,7 +334,8 @@ t.test("query inline jq projects the result", async (t) => {
   t.teardown(cleanup);
 
   const result = await runQuery(context, {
-    findByTag: { tag: "room" },
+    kind: "findByTag",
+    tag: "room",
     jq: ".results | map(.id)",
   });
   t.equal(result.ok, true);
@@ -350,7 +351,8 @@ t.test("query saveAs persists the result to the scratchpad", async (t) => {
   t.teardown(cleanup);
 
   const result = await runQuery(context, {
-    findByTag: { tag: "room" },
+    kind: "findByTag",
+    tag: "room",
     saveAs: "rooms",
   });
   t.equal(result.ok, true);
@@ -362,7 +364,7 @@ t.test("query listHandlers returns the live verb registry", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  const result = await runQuery(context, { listHandlers: {} });
+  const result = await runQuery(context, { kind: "listHandlers" });
   t.equal(result.ok, true);
   if (result.ok) {
     const payload = result.result as { handlers: Array<{ name: string; verb: string }> };
@@ -384,7 +386,7 @@ t.test("query findEvents returns the per-user event log", async (t) => {
     },
   );
 
-  const result = await runQuery(context, { findEvents: { latest: 5 } });
+  const result = await runQuery(context, { kind: "findEvents", latest: 5 });
   t.equal(result.ok, true);
   if (result.ok) {
     const payload = result.result as {
