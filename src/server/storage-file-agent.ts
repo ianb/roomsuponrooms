@@ -15,8 +15,22 @@ import type {
   AiEntityRecord,
   AiHandlerRecord,
 } from "./storage.js";
+import { emptyAgentTokenUsage } from "./storage.js";
 import type { EntityData, HandlerData } from "../core/game-data.js";
 import { playSessionEdits } from "./agent-edit-merge.js";
+
+/**
+ * Backfill optional fields on session records loaded from disk so older
+ * files (written before token usage tracking landed) deserialize cleanly.
+ */
+function normalizeSession(raw: unknown): AgentSessionRecord {
+  const record = raw as Partial<AgentSessionRecord>;
+  return {
+    ...(record as AgentSessionRecord),
+    model: record.model === undefined ? null : record.model,
+    tokenUsage: record.tokenUsage || emptyAgentTokenUsage(),
+  };
+}
 
 function ensureDir(filePath: string): void {
   const dir = dirname(filePath);
@@ -63,7 +77,7 @@ export class FileAgentStorage {
       if (!gameDir.isDirectory()) continue;
       const path = this.sessionFile(gameDir.name, id);
       if (existsSync(path)) {
-        return JSON.parse(readFileSync(path, "utf-8")) as AgentSessionRecord;
+        return normalizeSession(JSON.parse(readFileSync(path, "utf-8")));
       }
     }
     return null;
@@ -93,7 +107,7 @@ export class FileAgentStorage {
       if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir)) {
         if (!file.endsWith(".json")) continue;
-        const record = JSON.parse(readFileSync(resolve(dir, file), "utf-8")) as AgentSessionRecord;
+        const record = normalizeSession(JSON.parse(readFileSync(resolve(dir, file), "utf-8")));
         if (filter && filter.status && record.status !== filter.status) continue;
         records.push(record);
       }

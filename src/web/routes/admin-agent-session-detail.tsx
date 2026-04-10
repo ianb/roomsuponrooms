@@ -4,6 +4,8 @@ import { rootRoute } from "./__root.js";
 import { trpc } from "../trpc.js";
 import { AuthContext } from "../auth.js";
 import { MessageEntry } from "./agent-session-message-view.js";
+import { SessionTokenUsage } from "./agent-session-token-usage.js";
+import type { AgentTokenUsage, CostBreakdown } from "./agent-session-token-usage.js";
 
 export const adminAgentSessionDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -23,6 +25,8 @@ interface AgentSessionRecord {
   turnLimit: number;
   summary: string | null;
   revertOf: string | null;
+  model: string | null;
+  tokenUsage: AgentTokenUsage;
   createdAt: string;
   updatedAt: string;
   finishedAt: string | null;
@@ -44,6 +48,7 @@ interface WorldEditRecord {
 interface SessionDetailData {
   session: AgentSessionRecord;
   edits: WorldEditRecord[];
+  cost: CostBreakdown | null;
 }
 
 function statusBadgeClass(status: string): string {
@@ -101,7 +106,7 @@ function AdminAgentSessionDetailPage() {
   if (error) return <div className="p-8 text-red-400">Error: {error}</div>;
   if (!data) return <div className="p-8 text-content/50">Session not found.</div>;
 
-  const { session, edits } = data;
+  const { session, edits, cost } = data;
   return (
     <div className="mx-auto max-w-5xl p-8">
       <Link
@@ -111,6 +116,7 @@ function AdminAgentSessionDetailPage() {
         &larr; All sessions
       </Link>
       <SessionMetadata session={session} editCount={edits.length} />
+      <SessionTokenUsage model={session.model} usage={session.tokenUsage} cost={cost} />
       <SessionEdits edits={edits} />
       <SessionMessages messages={session.messages} />
       <SessionSavedVars savedVars={session.savedVars} />

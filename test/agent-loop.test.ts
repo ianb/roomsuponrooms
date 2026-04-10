@@ -7,6 +7,7 @@ import "../src/games/test-world.js";
 import { FileStorage } from "../src/server/storage-file.js";
 import { setStorage, getStorage } from "../src/server/storage-instance.js";
 import { tickSession } from "../src/server/agent-loop.js";
+import { emptyAgentTokenUsage } from "../src/server/storage.js";
 import type { AiEntityRecord } from "../src/server/storage.js";
 
 interface ToolStep {
@@ -70,6 +71,8 @@ async function makeSession(id: string, request: string, turnLimit = 10): Promise
     turnLimit,
     summary: null,
     revertOf: null,
+    model: null,
+    tokenUsage: emptyAgentTokenUsage(),
     createdAt: now,
     updatedAt: now,
     finishedAt: null,

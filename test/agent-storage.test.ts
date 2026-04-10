@@ -8,6 +8,7 @@ import type {
   NewWorldEditRecord,
   AiEntityRecord,
 } from "../src/server/storage.js";
+import { emptyAgentTokenUsage } from "../src/server/storage.js";
 import type { EntityData } from "../src/core/game-data.js";
 
 function makeStorage(): { storage: FileStorage; cleanup: () => void } {
@@ -37,6 +38,8 @@ function newSession(overrides: Partial<AgentSessionRecord>): AgentSessionRecord 
     turnLimit: 20,
     summary: null,
     revertOf: null,
+    model: null,
+    tokenUsage: emptyAgentTokenUsage(),
     createdAt: now,
     updatedAt: now,
     finishedAt: null,

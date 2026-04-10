@@ -22,6 +22,13 @@ interface AgentSessionRow {
   turn_limit: number;
   summary: string | null;
   revert_of: string | null;
+  model: string | null;
+  input_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  total_tokens: number;
   created_at: string;
   updated_at: string;
   finished_at: string | null;
@@ -53,6 +60,15 @@ function rowToAgentSession(row: AgentSessionRow): AgentSessionRecord {
     turnLimit: row.turn_limit,
     summary: row.summary,
     revertOf: row.revert_of,
+    model: row.model,
+    tokenUsage: {
+      inputTokens: row.input_tokens,
+      cacheReadTokens: row.cache_read_tokens,
+      cacheWriteTokens: row.cache_write_tokens,
+      outputTokens: row.output_tokens,
+      reasoningTokens: row.reasoning_tokens,
+      totalTokens: row.total_tokens,
+    },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     finishedAt: row.finished_at,
@@ -84,9 +100,11 @@ export async function createAgentSession(
     .prepare(
       `INSERT INTO agent_sessions
        (id, game_id, user_id, request, status, messages, saved_vars,
-        turn_count, turn_limit, summary, revert_of,
+        turn_count, turn_limit, summary, revert_of, model,
+        input_tokens, cache_read_tokens, cache_write_tokens,
+        output_tokens, reasoning_tokens, total_tokens,
         created_at, updated_at, finished_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       record.id,
@@ -100,6 +118,13 @@ export async function createAgentSession(
       record.turnLimit,
       record.summary,
       record.revertOf,
+      record.model,
+      record.tokenUsage.inputTokens,
+      record.tokenUsage.cacheReadTokens,
+      record.tokenUsage.cacheWriteTokens,
+      record.tokenUsage.outputTokens,
+      record.tokenUsage.reasoningTokens,
+      record.tokenUsage.totalTokens,
       record.createdAt,
       record.updatedAt,
       record.finishedAt,
@@ -126,6 +151,7 @@ const SESSION_PATCH_COLUMNS: Record<string, string> = {
   turnLimit: "turn_limit",
   summary: "summary",
   revertOf: "revert_of",
+  model: "model",
   finishedAt: "finished_at",
 };
 
@@ -136,6 +162,22 @@ function patchToSetClause(patch: Partial<AgentSessionRecord>): {
   const sets: string[] = [];
   const values: unknown[] = [];
   for (const [key, value] of Object.entries(patch)) {
+    if (key === "tokenUsage" && value && typeof value === "object") {
+      const usage = value as AgentSessionRecord["tokenUsage"];
+      sets.push("input_tokens = ?");
+      values.push(usage.inputTokens);
+      sets.push("cache_read_tokens = ?");
+      values.push(usage.cacheReadTokens);
+      sets.push("cache_write_tokens = ?");
+      values.push(usage.cacheWriteTokens);
+      sets.push("output_tokens = ?");
+      values.push(usage.outputTokens);
+      sets.push("reasoning_tokens = ?");
+      values.push(usage.reasoningTokens);
+      sets.push("total_tokens = ?");
+      values.push(usage.totalTokens);
+      continue;
+    }
     const column = SESSION_PATCH_COLUMNS[key];
     if (!column) continue;
     sets.push(`${column} = ?`);

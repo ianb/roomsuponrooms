@@ -4,6 +4,7 @@ import { router, aiRoleProcedure } from "./trpc.js";
 import { getStorage } from "./storage-instance.js";
 import { tickSession } from "./agent-loop.js";
 import { isValidGameId } from "../games/registry.js";
+import { emptyAgentTokenUsage } from "./storage.js";
 import type { AgentSessionRecord, AgentSessionStatus } from "./storage.js";
 
 const validGameId = z.string().refine(isValidGameId, { message: "Unknown game" });
@@ -72,6 +73,8 @@ export const agentRouter = router({
       turnLimit: input.turnLimit || 30,
       summary: null,
       revertOf: null,
+      model: null,
+      tokenUsage: emptyAgentTokenUsage(),
       createdAt: now,
       updatedAt: now,
       finishedAt: null,

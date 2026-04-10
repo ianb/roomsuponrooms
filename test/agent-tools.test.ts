@@ -5,6 +5,7 @@ import { join } from "node:path";
 import "../src/games/test-world.js";
 import { getGame } from "../src/games/registry.js";
 import { FileStorage } from "../src/server/storage-file.js";
+import { emptyAgentTokenUsage } from "../src/server/storage.js";
 import type { ToolContext } from "../src/server/agent-tool-context.js";
 import { buildAgentTools } from "../src/server/agent-tools.js";
 import { applyEditBatch } from "../src/server/agent-tool-edits.js";
@@ -42,6 +43,8 @@ async function makeContext(): Promise<{
     turnLimit: 10,
     summary: null,
     revertOf: null,
+    model: null,
+    tokenUsage: emptyAgentTokenUsage(),
     createdAt: "2026-04-09T00:00:00Z",
     updatedAt: "2026-04-09T00:00:00Z",
     finishedAt: null,

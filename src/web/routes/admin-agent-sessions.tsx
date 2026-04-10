@@ -21,6 +21,16 @@ interface SessionSummary {
   summary: string | null;
   editCount: number;
   appliedEditCount: number;
+  model: string | null;
+  tokenUsage: {
+    inputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    outputTokens: number;
+    reasoningTokens: number;
+    totalTokens: number;
+  };
+  costUsd: number | null;
   createdAt: string;
   updatedAt: string;
   finishedAt: string | null;
@@ -57,6 +67,21 @@ function formatDate(iso: string | null): string {
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return text.slice(0, max - 3) + "...";
+}
+
+function formatTokens(n: number): string {
+  if (n === 0) return "0";
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return (n / 1000).toFixed(1) + "k";
+  return (n / 1_000_000).toFixed(2) + "M";
+}
+
+function formatCost(usd: number | null): string {
+  if (usd === null) return "—";
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return `${(usd * 100).toFixed(3)}¢`;
+  if (usd < 1) return `${(usd * 100).toFixed(2)}¢`;
+  return `$${usd.toFixed(4)}`;
 }
 
 function AdminAgentSessionsPage() {
@@ -132,10 +157,13 @@ function AdminAgentSessionsPage() {
               <th className="py-2 pr-4">ID</th>
               <th className="py-2 pr-4">Status</th>
               <th className="py-2 pr-4">Game</th>
-              <th className="py-2 pr-4">User</th>
               <th className="py-2 pr-4">Request</th>
               <th className="py-2 pr-4">Turns</th>
               <th className="py-2 pr-4">Edits</th>
+              <th className="py-2 pr-4 text-right" title="input / cached / output tokens">
+                Tokens
+              </th>
+              <th className="py-2 pr-4 text-right">Cost</th>
               <th className="py-2">Created</th>
             </tr>
           </thead>
@@ -157,17 +185,23 @@ function AdminAgentSessionsPage() {
                   </span>
                 </td>
                 <td className="py-2 pr-4 text-content/60">{s.gameId}</td>
-                <td className="py-2 pr-4 font-mono text-xs text-content/40">
-                  {truncate(s.userId, 12)}
-                </td>
-                <td className="py-2 pr-4 text-content/80">{truncate(s.request, 60)}</td>
+                <td className="py-2 pr-4 text-content/80">{truncate(s.request, 50)}</td>
                 <td className="py-2 pr-4 text-content/50">
                   {s.turnCount}/{s.turnLimit}
                 </td>
                 <td className="py-2 pr-4 text-content/50">
                   {s.appliedEditCount}/{s.editCount}
                 </td>
-                <td className="py-2 text-content/50">{formatDate(s.createdAt)}</td>
+                <td
+                  className="py-2 pr-4 text-right text-xs text-content/50"
+                  title={`input ${s.tokenUsage.inputTokens} (cached ${s.tokenUsage.cacheReadTokens}) / output ${s.tokenUsage.outputTokens}`}
+                >
+                  {formatTokens(s.tokenUsage.inputTokens)}
+                  <span className="text-content/30"> / </span>
+                  {formatTokens(s.tokenUsage.outputTokens)}
+                </td>
+                <td className="py-2 pr-4 text-right text-content/60">{formatCost(s.costUsd)}</td>
+                <td className="py-2 text-xs text-content/50">{formatDate(s.createdAt)}</td>
               </tr>
             ))}
           </tbody>

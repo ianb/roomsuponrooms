@@ -48,6 +48,37 @@ export interface SessionKey {
 
 export type AgentSessionStatus = "running" | "finished" | "bailed" | "failed";
 
+/**
+ * Cumulative token usage across every generateText call in a session.
+ * Mirrors the Vercel AI SDK's LanguageModelUsage shape but only the fields
+ * we actually persist. All counts are sums across ticks.
+ */
+export interface AgentTokenUsage {
+  /** Total input (prompt) tokens, including both cached and uncached. */
+  inputTokens: number;
+  /** Cached prompt tokens read (billed at the cache-read rate). */
+  cacheReadTokens: number;
+  /** Cached prompt tokens written (billed at the cache-write rate, if any). */
+  cacheWriteTokens: number;
+  /** Total output (completion) tokens. */
+  outputTokens: number;
+  /** Reasoning/thinking tokens, included in outputTokens. */
+  reasoningTokens: number;
+  /** inputTokens + outputTokens (provider-reported). */
+  totalTokens: number;
+}
+
+export function emptyAgentTokenUsage(): AgentTokenUsage {
+  return {
+    inputTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+  };
+}
+
 /** Persistent state for one run of the agentic world editor */
 export interface AgentSessionRecord {
   id: string;
@@ -65,6 +96,10 @@ export interface AgentSessionRecord {
   summary: string | null;
   /** If this session reverts another, the original session id */
   revertOf: string | null;
+  /** The LLM model id used for this session, e.g. "gemini-3-flash-preview". */
+  model: string | null;
+  /** Cumulative token usage across every generateText call in this session. */
+  tokenUsage: AgentTokenUsage;
   createdAt: string;
   updatedAt: string;
   finishedAt: string | null;

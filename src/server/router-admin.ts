@@ -6,6 +6,7 @@ import { getImageStorage } from "./image-storage-instance.js";
 import { generateImage } from "./image-gen.js";
 import { getGame } from "../games/registry.js";
 import { BUILD_COMMIT, BUILD_TIME } from "../../generated/build-version.js";
+import { computeCost } from "./agent-pricing.js";
 
 const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
   if (!ctx.roles.includes("admin")) {
@@ -163,6 +164,7 @@ export const adminRouter = router({
       const summaries = await Promise.all(
         sessions.map(async (s) => {
           const edits = await storage.getSessionEdits(s.id);
+          const cost = computeCost(s.model, s.tokenUsage);
           return {
             id: s.id,
             gameId: s.gameId,
@@ -174,6 +176,9 @@ export const adminRouter = router({
             summary: s.summary,
             editCount: edits.length,
             appliedEditCount: edits.filter((e) => e.applied).length,
+            model: s.model,
+            tokenUsage: s.tokenUsage,
+            costUsd: cost ? cost.totalUsd : null,
             createdAt: s.createdAt,
             updatedAt: s.updatedAt,
             finishedAt: s.finishedAt,
@@ -188,6 +193,11 @@ export const adminRouter = router({
     const session = await storage.getAgentSession(input.id);
     if (!session) return null;
     const edits = await storage.getSessionEdits(input.id);
-    return { session, edits };
+    const cost = computeCost(session.model, session.tokenUsage);
+    return {
+      session,
+      edits,
+      cost: cost ? { totalUsd: cost.totalUsd, breakdown: cost.breakdown } : null,
+    };
   }),
 });

@@ -12,6 +12,7 @@ import { buildAgentSystemPrompt } from "./agent-system-prompt.js";
 import { buildSessionContextMessage } from "./agent-session-context.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import type { AgentSessionRecord, AgentSessionStatus } from "./storage.js";
+import { mergeTokenUsage } from "./agent-token-usage.js";
 
 class GameNotFoundError extends Error {
   override name = "GameNotFoundError";
@@ -185,6 +186,12 @@ export async function tickSession(
   // Append new response messages onto the persistent session messages.
   const newMessages: unknown[] = [...messages, ...lastResult.response.messages];
   const newTurnCount = session.turnCount + turnsRun;
+  // Accumulate token usage from this generateText call into the session's
+  // running total. totalUsage spans every step inside the call.
+  const newTokenUsage = mergeTokenUsage(session.tokenUsage, lastResult.totalUsage);
+  // Capture the model id once (subsequent ticks reuse it). LanguageModel
+  // can be either a string id or a model object with `.modelId`.
+  const modelId = session.model || (typeof model === "string" ? model : model.modelId) || null;
 
   if (context.terminate && context.terminate.kind === "finish") {
     await storage.commitSession(sessionId, context.terminate.summary);
@@ -192,6 +199,8 @@ export async function tickSession(
       messages: newMessages,
       savedVars: context.savedVars,
       turnCount: newTurnCount,
+      tokenUsage: newTokenUsage,
+      model: modelId,
     });
     return {
       status: "finished",
@@ -207,6 +216,8 @@ export async function tickSession(
       messages: newMessages,
       savedVars: context.savedVars,
       turnCount: newTurnCount,
+      tokenUsage: newTokenUsage,
+      model: modelId,
       finishedAt: new Date().toISOString(),
     });
     return {
@@ -226,6 +237,8 @@ export async function tickSession(
       messages: newMessages,
       savedVars: context.savedVars,
       turnCount: newTurnCount,
+      tokenUsage: newTokenUsage,
+      model: modelId,
       finishedAt: new Date().toISOString(),
     });
     return { status: "failed", turnsRun, summary };
@@ -236,6 +249,8 @@ export async function tickSession(
     messages: newMessages,
     savedVars: context.savedVars,
     turnCount: newTurnCount,
+    tokenUsage: newTokenUsage,
+    model: modelId,
   });
   return { status: "running", turnsRun, summary: null };
 }

@@ -6,6 +6,7 @@ import "../src/games/test-world.js";
 import { FileStorage } from "../src/server/storage-file.js";
 import { setStorage, getStorage } from "../src/server/storage-instance.js";
 import { handleAiAgentCommand } from "../src/server/ai-commands.js";
+import { emptyAgentTokenUsage } from "../src/server/storage.js";
 import type { AiEntityRecord } from "../src/server/storage.js";
 
 // We can't inject a fake model directly through handleAiAgentCommand because
@@ -40,6 +41,8 @@ t.test("agent session storage wiring is reachable from FileStorage", async (t) =
     turnLimit: 10,
     summary: null,
     revertOf: null,
+    model: null,
+    tokenUsage: emptyAgentTokenUsage(),
     createdAt: "2026-04-09T00:00:00Z",
     updatedAt: "2026-04-09T00:00:00Z",
     finishedAt: null,
@@ -78,6 +81,8 @@ t.test("commit fan-out writes agent provenance", async (t) => {
     turnLimit: 10,
     summary: null,
     revertOf: null,
+    model: null,
+    tokenUsage: emptyAgentTokenUsage(),
     createdAt: "2026-04-09T00:00:00Z",
     updatedAt: "2026-04-09T00:00:00Z",
     finishedAt: null,

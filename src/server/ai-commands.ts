@@ -13,11 +13,9 @@ import { handleAiCreate } from "./ai-create.js";
 import { handleAiCreateExit } from "./ai-create-exit.js";
 import { handleAiCreateRoom } from "./ai-create-room.js";
 import { handleVerbFallback } from "./verb-fallback.js";
-import { nanoid } from "nanoid";
-import { tickSession } from "./agent-loop.js";
-import type { AgentProgressCallback } from "./agent-loop.js";
 
 export { handleAiDestroyCommand, handleAiDestroyVerbCommand } from "./ai-destroy.js";
+export { handleAiAgentCommand } from "./ai-agent-command.js";
 
 interface CommandResponse {
   output: string;
@@ -134,58 +132,6 @@ export async function handleAiCreateCommand(
           }
         : undefined,
   };
-}
-
-export async function handleAiAgentCommand({
-  instructions,
-  gameId,
-  userId,
-  authoring,
-  onProgress,
-}: {
-  instructions: string;
-  gameId: string;
-  userId: string;
-  authoring: AuthoringInfo;
-  onProgress?: AgentProgressCallback;
-}): Promise<CommandResponse> {
-  const storage = getStorage();
-  const id = "s-" + nanoid(10);
-  const now = new Date().toISOString();
-  await storage.createAgentSession({
-    id,
-    gameId,
-    userId,
-    request: instructions,
-    status: "running",
-    messages: [],
-    savedVars: {},
-    turnCount: 0,
-    turnLimit: 30,
-    summary: null,
-    revertOf: null,
-    createdAt: now,
-    updatedAt: now,
-    finishedAt: null,
-  });
-  // Drive ticks until terminal. Per Phase 5 plan: synchronous in v1.
-  let result = await tickSession(id, { onProgress });
-  let safety = 0;
-  while (result.status === "running" && safety < 20) {
-    result = await tickSession(id, { onProgress });
-    safety += 1;
-  }
-  const lines: string[] = [`[Agent session ${id}: ${result.status}]`];
-  if (result.summary) lines.push(result.summary);
-  const session = await storage.getAgentSession(id);
-  if (session) {
-    const edits = await storage.getSessionEdits(id);
-    const applied = edits.filter((e) => e.applied).length;
-    lines.push(`Turns: ${session.turnCount}/${session.turnLimit} · Edits applied: ${applied}`);
-  }
-  // authoring is reserved for future logging on per-edit provenance.
-  void authoring;
-  return { output: lines.join("\n") };
 }
 
 export async function handleUnresolvedExit(
