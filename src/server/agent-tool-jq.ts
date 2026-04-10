@@ -3,7 +3,7 @@ import * as jq from "jq-wasm";
 import type { ToolContext } from "./agent-tool-context.js";
 
 const MAX_INPUT_BYTES = 100_000;
-const MAX_OUTPUT_BYTES = 50_000;
+const MAX_OUTPUT_BYTES = 10_000;
 
 export const jqInputSchema = z.object({
   /** Either inline JSON value or {var: name} to read from saved scratch. */

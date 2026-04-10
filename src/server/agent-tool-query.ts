@@ -18,7 +18,7 @@ import {
   runListRooms,
 } from "./agent-query-runners.js";
 
-const MAX_OUTPUT_BYTES = 50_000;
+const MAX_OUTPUT_BYTES = 10_000;
 
 // --- Schema ---
 
