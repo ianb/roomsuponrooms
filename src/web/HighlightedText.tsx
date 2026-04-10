@@ -128,9 +128,26 @@ export function HighlightedText({
       );
     }
     if (seg.type === "refusal") {
+      // Refusals are wrapped as {!...!}, but the inner text often contains
+      // {{id|name}} entity references emitted by lib.ref(). Recurse so they
+      // render as proper entity highlights instead of leaking the raw
+      // template syntax to the player.
       return (
         <span key={i} className="italic text-content/60">
-          <span className="not-italic text-danger/70">&#x2205;</span> {seg.text}
+          <span className="not-italic text-danger/70">&#x2205;</span>{" "}
+          <HighlightedText
+            text={seg.text}
+            gameId={gameId}
+            onEntityClick={onEntityClick}
+            onTopicClick={onTopicClick}
+            onCommandClick={onCommandClick}
+            onGenerateImage={onGenerateImage}
+            imageStatus={imageStatus}
+            imageVersions={imageVersions}
+            imagePrompts={imagePrompts}
+            generatingImages={generatingImages}
+            isAdmin={isAdmin}
+          />
         </span>
       );
     }
