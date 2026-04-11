@@ -98,42 +98,63 @@ const handlerCreateSchema = z.object({
 
 const handlerUpdateSchema = handlerCreateSchema.partial();
 
-// --- Edit envelopes ---
+// --- Edit envelope ---
+//
+// Flat schema with no discriminated unions. Each edit has a `target` (the
+// entity id or handler name) and exactly ONE of six optional operation
+// fields. The runner detects which is set and routes accordingly. Earlier
+// versions used nested discriminators ({entity: {create|value|delete}})
+// which Gemini Flash couldn't reliably navigate — it would put `name`
+// inside `create` instead of as a sibling, or omit the `entity` wrapper.
+// The flat shape sidesteps that entirely.
 
-const entityEditSchema = z.object({
-  entity: z.object({
-    id: z
-      .string()
-      .describe(
-        'Entity id. For create: use a kebab-case slug like "item:rusty-sword". For update/delete: must reference an existing entity.',
-      ),
-    create: entityCreateSchema.optional(),
-    value: entityUpdateSchema.optional(),
-    delete: z
-      .boolean()
-      .optional()
-      .describe("Set to true to delete this entity. Mutually exclusive with create/value."),
-  }),
+export const editSchema = z.object({
+  target: z
+    .string()
+    .describe(
+      'The entity id (for entity edits, e.g. "item:rusty-sword") or handler name (for handler edits, e.g. "ai-shout-room"). Required for every edit.',
+    ),
+  entityCreate: entityCreateSchema
+    .optional()
+    .describe(
+      'Set this to create a new entity. Provide the FULL EntityData object. Example: {"target": "item:lantern", "entityCreate": {"tags": ["portable"], "name": "Brass Lantern", "description": "...", "location": "room:gate"}}',
+    ),
+  entityUpdate: entityUpdateSchema
+    .optional()
+    .describe(
+      'Set this to update an existing entity with a partial overlay. Top-level fields you omit are left untouched; properties with null erase. Example: {"target": "item:lantern", "entityUpdate": {"properties": {"lit": true}}}',
+    ),
+  entityDelete: z
+    .boolean()
+    .optional()
+    .describe(
+      'Set to true to delete an existing entity. Example: {"target": "item:trash", "entityDelete": true}',
+    ),
+  handlerCreate: handlerCreateSchema
+    .optional()
+    .describe(
+      'Set this to create a new verb handler. Provide pattern + perform code body at minimum. Example: {"target": "ai-shout", "handlerCreate": {"pattern": {"verb": "shout", "form": "intransitive"}, "perform": "return { output: \'Your voice echoes.\', events: [] };"}}',
+    ),
+  handlerUpdate: handlerUpdateSchema
+    .optional()
+    .describe(
+      'Set this to update an existing handler with a partial overlay. Example: {"target": "ai-shout", "handlerUpdate": {"perform": "return { output: \'Updated.\', events: [] };"}}',
+    ),
+  handlerDelete: z
+    .boolean()
+    .optional()
+    .describe(
+      'Set to true to delete an existing handler. Example: {"target": "ai-shout", "handlerDelete": true}',
+    ),
 });
-
-const handlerEditSchema = z.object({
-  handler: z.object({
-    name: z
-      .string()
-      .describe('Handler name. Convention: "ai-<verb>-<scope>" e.g. "ai-shout-room".'),
-    create: handlerCreateSchema.optional(),
-    value: handlerUpdateSchema.optional(),
-    delete: z
-      .boolean()
-      .optional()
-      .describe("Set to true to delete this handler. Mutually exclusive with create/value."),
-  }),
-});
-
-export const editSchema = z.union([entityEditSchema, handlerEditSchema]);
 
 export const editBatchSchema = z.object({
-  edits: z.array(editSchema).min(1),
+  edits: z
+    .array(editSchema)
+    .min(1)
+    .describe(
+      "A batch of one or more edits. Each edit must have exactly ONE operation field set (entityCreate, entityUpdate, entityDelete, handlerCreate, handlerUpdate, or handlerDelete). The whole batch is rejected if any edit fails validation.",
+    ),
 });
 
 export type EditInput = z.infer<typeof editSchema>;

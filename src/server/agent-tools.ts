@@ -82,7 +82,7 @@ export function buildAgentTools(context: ToolContext) {
 
     finish: tool({
       description:
-        "Commit all pending edits in this session and end the loop. Only call when the requested work is genuinely complete.",
+        "Commit all pending edits in this session and end the loop. Only call when the requested work is genuinely complete AND you've verified it with the playtest tool. If your edits added or changed any verb handlers, you MUST playtest the new behavior before calling finish — a handler that throws or produces the wrong outcome is a regression you should fix before commit.",
       inputSchema: finishSchema,
       execute: async (input) => {
         context.terminate = { kind: "finish", summary: input.summary };

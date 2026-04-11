@@ -157,6 +157,89 @@ Knobs:
   - Use "contains" or "jq" to filter the set down before paging kicks in.
 </query-tool-and-data-shapes>`;
 
+const APPLY_EDITS_SECTION = `<apply-edits>
+The apply_edits tool takes a batch of edits. Each edit is a flat object with a 'target' (entity id or handler name) and EXACTLY ONE of six operation fields. Pick the field name that matches what you want to do — there is no separate kind/op enum to navigate.
+
+  entityCreate    create a new entity (full payload)
+  entityUpdate    update an existing entity (partial overlay; null erases properties)
+  entityDelete    delete an existing entity (set to true)
+  handlerCreate   create a new verb handler (pattern + perform body required)
+  handlerUpdate   update an existing handler (partial overlay)
+  handlerDelete   delete an existing handler (set to true)
+
+The whole batch is rejected if any edit fails validation; nothing is half-applied. Edits become visible to your subsequent query/playtest calls but only commit to the live world when you call finish().
+
+==== Worked examples ====
+
+Create a portable item in a room:
+  {
+    "edits": [
+      {
+        "target": "item:rusty-key",
+        "entityCreate": {
+          "tags": ["portable"],
+          "name": "Rusty Key",
+          "description": "An old iron key, pitted with rust.",
+          "location": "room:gate",
+          "aliases": ["key", "iron key"]
+        }
+      }
+    ]
+  }
+
+Update an entity (only the fields you want to change):
+  {
+    "edits": [
+      {
+        "target": "item:lantern",
+        "entityUpdate": {
+          "description": "A polished brass lantern, freshly lit.",
+          "properties": { "lit": true }
+        }
+      }
+    ]
+  }
+
+Delete an entity:
+  { "edits": [ { "target": "item:trash", "entityDelete": true } ] }
+
+Create a new verb handler. Pattern needs verb + form (one of "intransitive", "transitive", "prepositional", "ditransitive"). The 'perform' code body returns { output, events } and has access to lib, object, indirect, player, room, store. Use lib.ref(entity) to embed an entity reference in the output text:
+  {
+    "edits": [
+      {
+        "target": "ai-shout",
+        "handlerCreate": {
+          "pattern": { "verb": "shout", "form": "intransitive", "verbAliases": ["yell", "holler"] },
+          "perform": "return { output: 'Your voice echoes through the trees, startling some unseen birds.', events: [] };"
+        }
+      }
+    ]
+  }
+
+A handler bound to a specific entity (only fires when that entity is the object):
+  {
+    "edits": [
+      {
+        "target": "ai-insert-lever-turnstile",
+        "handlerCreate": {
+          "pattern": { "verb": "insert", "form": "prepositional", "prep": "into" },
+          "entityId": "item:rusty-lever",
+          "perform": "if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; const exit = store.get('exit:gate:north'); exit.properties.locked = false; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };"
+        }
+      }
+    ]
+  }
+
+A mixed batch (multiple targets and operations in one call):
+  {
+    "edits": [
+      { "target": "item:old-key", "entityDelete": true },
+      { "target": "item:new-key", "entityCreate": { "tags": ["portable"], "name": "Brass Key", "description": "Shiny.", "location": "room:gate" } },
+      { "target": "exit:gate:north", "entityUpdate": { "properties": { "locked": false } } }
+    ]
+  }
+</apply-edits>`;
+
 const PLAYTEST_SECTION = `<playtest>
 After writing or modifying a verb handler, USE THE PLAYTEST TOOL to verify it works before calling finish(). Playtest runs commands in a sandboxed copy of the world (your pending edits included) without touching the live state.
 
@@ -186,9 +269,9 @@ const RULES_SECTION = `<rules>
 3. Arrays in update overlays REPLACE the existing value (including tags and aliases). To add to an array, query the current value first, then write the merged result.
 4. Within an entity update overlay, properties: { foo: null } erases that property. Top-level fields you omit are left untouched.
 5. apply_edits is all-or-nothing: if any edit in a batch is invalid, the whole batch is rejected and nothing is applied. Read the failure messages and try again.
-6. When you write or change a verb handler, use playtest to verify it works before calling finish(). A handler that throws or doesn't reach its expected outcome should be fixed before commit.
-7. When the request is complete, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.
-8. Be deliberate. You have a turn limit. Plan, query, then edit.
+6. ALWAYS PLAYTEST BEFORE FINISH. Whenever your edits add or change verb handlers — or whenever you've changed how an interaction is supposed to work — run the playtest tool with a sequence of commands that exercises the change. Verify the outcomes match what you expected. A handler that throws, falls through to "unhandled", or produces the wrong output is broken; fix it before commit. Do not call finish() until playtest confirms the change works.
+7. When the request is complete AND you've verified it with playtest, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.
+8. Be deliberate. You have a turn limit. Plan, query, edit, playtest, then finish.
 </rules>`;
 
 /**
@@ -214,6 +297,7 @@ export function buildAgentSystemPrompt({
   }
   sections.push(WORLD_MODEL_SECTION);
   sections.push(QUERY_SECTION);
+  sections.push(APPLY_EDITS_SECTION);
   sections.push(PLAYTEST_SECTION);
   sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);
   sections.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);

@@ -139,115 +139,87 @@ export async function applyEditBatch(
   };
 }
 
+/**
+ * Detect which of the six op fields the agent set on this flat edit. Returns
+ * an error if zero or more than one is set — both are user mistakes worth
+ * surfacing immediately rather than guessing.
+ */
 function normalizeEdit(item: EditInput, index: number): NormalizedEdit | { error: string } {
-  if ("entity" in item) {
-    return normalizeEntityEdit(item.entity, index);
-  }
-  if ("handler" in item) {
-    return normalizeHandlerEdit(item.handler, index);
-  }
-  return { error: `Edit ${index}: missing 'entity' or 'handler' key.` };
-}
-
-function normalizeEntityEdit(
-  entity: { id: string; create?: unknown; value?: unknown; delete?: boolean },
-  index: number,
-): NormalizedEdit | { error: string } {
-  const isDelete = entity.delete === true;
-  const opCount =
-    (entity.create !== undefined ? 1 : 0) +
-    (entity.value !== undefined ? 1 : 0) +
-    (isDelete ? 1 : 0);
-  if (opCount === 0) {
+  const opFields: Array<{
+    key: keyof EditInput;
+    kind: "entity" | "handler";
+    op: "create" | "update" | "delete";
+    isPayload: boolean;
+  }> = [
+    { key: "entityCreate", kind: "entity", op: "create", isPayload: true },
+    { key: "entityUpdate", kind: "entity", op: "update", isPayload: true },
+    { key: "entityDelete", kind: "entity", op: "delete", isPayload: false },
+    { key: "handlerCreate", kind: "handler", op: "create", isPayload: true },
+    { key: "handlerUpdate", kind: "handler", op: "update", isPayload: true },
+    { key: "handlerDelete", kind: "handler", op: "delete", isPayload: false },
+  ];
+  const set = opFields.filter((f) => {
+    const v = (item as Record<string, unknown>)[f.key];
+    if (f.isPayload) return v !== undefined;
+    return v === true;
+  });
+  if (set.length === 0) {
     return {
-      error: `Edit ${index}: entity must specify exactly one of 'create', 'value', or 'delete: true'.`,
+      error: `Edit ${index}: must set exactly one of entityCreate, entityUpdate, entityDelete, handlerCreate, handlerUpdate, or handlerDelete.`,
     };
   }
-  if (opCount > 1) {
+  if (set.length > 1) {
     return {
-      error: `Edit ${index}: entity has multiple operations; specify only one of create/value/delete.`,
+      error: `Edit ${index}: set ${set.length} operation fields (${set.map((f) => f.key).join(", ")}); each edit must set exactly one.`,
     };
   }
-  if (entity.create !== undefined) {
-    return { kind: "entity", id: entity.id, op: "create", payload: entity.create };
+  if (!item.target) {
+    return { error: `Edit ${index}: missing required 'target' field.` };
   }
-  if (entity.value !== undefined) {
-    return { kind: "entity", id: entity.id, op: "update", payload: entity.value };
-  }
-  return { kind: "entity", id: entity.id, op: "delete", payload: null };
-}
-
-function normalizeHandlerEdit(
-  handler: { name: string; create?: unknown; value?: unknown; delete?: boolean },
-  index: number,
-): NormalizedEdit | { error: string } {
-  const isDelete = handler.delete === true;
-  const opCount =
-    (handler.create !== undefined ? 1 : 0) +
-    (handler.value !== undefined ? 1 : 0) +
-    (isDelete ? 1 : 0);
-  if (opCount === 0) {
-    return {
-      error: `Edit ${index}: handler must specify exactly one of 'create', 'value', or 'delete: true'.`,
-    };
-  }
-  if (opCount > 1) {
-    return {
-      error: `Edit ${index}: handler has multiple operations; specify only one of create/value/delete.`,
-    };
-  }
-  if (handler.create !== undefined) {
-    return { kind: "handler", id: handler.name, op: "create", payload: handler.create };
-  }
-  if (handler.value !== undefined) {
-    return { kind: "handler", id: handler.name, op: "update", payload: handler.value };
-  }
-  return { kind: "handler", id: handler.name, op: "delete", payload: null };
+  const chosen = set[0]!;
+  const payload = chosen.isPayload ? (item as Record<string, unknown>)[chosen.key] : null;
+  return { kind: chosen.kind, id: item.target, op: chosen.op, payload };
 }
 
 function validateEditAgainstWorld(edit: NormalizedEdit, context: ToolContext): string | null {
   if (edit.kind === "entity") {
     const exists = context.store.has(edit.id);
     if (edit.op === "create" && exists) {
-      return `Entity ${edit.id} already exists; use 'value' to update or pick a different id.`;
+      return `Entity "${edit.id}" already exists; use entityUpdate to modify or pick a different id.`;
     }
     if ((edit.op === "update" || edit.op === "delete") && !exists) {
-      return `Entity ${edit.id} does not exist.`;
+      return `Entity "${edit.id}" does not exist.`;
     }
     if (edit.op === "create") {
       const data = edit.payload as EntityData;
       if (!context.store.has(data.location)) {
-        return `Entity ${edit.id} create payload references unknown location '${data.location}'.`;
+        return `Entity "${edit.id}" create payload references unknown location "${data.location}".`;
       }
     }
     return null;
   }
   // handler
-  const existing = findHandlerByName(context, edit.id);
+  const existing = handlerExists(context, edit.id);
   if (edit.op === "create" && existing) {
-    return `Handler ${edit.id} already exists; use 'value' to update or pick a different name.`;
+    return `Handler "${edit.id}" already exists; use handlerUpdate to modify or pick a different name.`;
   }
   if ((edit.op === "update" || edit.op === "delete") && !existing) {
-    return `Handler ${edit.id} does not exist.`;
+    return `Handler "${edit.id}" does not exist.`;
   }
   if (edit.op === "create") {
     const data = edit.payload as HandlerData;
     if (!data.perform) {
-      return `Handler ${edit.id} create payload must include a 'perform' code body.`;
+      return `Handler "${edit.id}" create payload must include a 'perform' code body.`;
     }
   }
   return null;
 }
 
-function findHandlerByName(context: ToolContext, name: string): boolean {
-  // VerbRegistry doesn't expose handler-by-name lookup; reuse removeByName's
-  // probe approach by walking the registry's internal handlers via a side
-  // channel. We avoid touching internals by checking pendingEdits + asking
-  // the registry to dispatch a fake command — neither is ideal. Instead we
-  // track handler names locally via the pending edits and treat any handler
-  // already present in the live registry as opaque: we cannot detect it
-  // without registry access. For v1 this is acceptable since handler edits
-  // primarily target ai-* handlers which the agent itself just created.
+function handlerExists(context: ToolContext, name: string): boolean {
+  // Check the live verb registry first (covers built-in handlers and any
+  // committed AI handlers from previous sessions). Then check this session's
+  // pending edits in case it was just created.
+  if (context.verbs.getByName(name)) return true;
   for (const edit of context.pendingEdits) {
     if (edit.targetKind !== "handler" || edit.targetId !== name) continue;
     if (edit.op === "delete") return false;

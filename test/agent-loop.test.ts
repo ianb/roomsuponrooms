@@ -92,14 +92,12 @@ t.test("loop creates an entity then finishes; entity is committed", async (t) =>
         input: {
           edits: [
             {
-              entity: {
-                id: "item:loop-lantern",
-                create: {
-                  tags: ["portable"],
-                  name: "Loop Lantern",
-                  description: "A lantern from the loop test.",
-                  location: "room:clearing",
-                },
+              target: "item:loop-lantern",
+              entityCreate: {
+                tags: ["portable"],
+                name: "Loop Lantern",
+                description: "A lantern from the loop test.",
+                location: "room:clearing",
               },
             },
           ],
@@ -133,14 +131,12 @@ t.test("loop bail() leaves session bailed and edits unapplied", async (t) => {
         input: {
           edits: [
             {
-              entity: {
-                id: "item:loop-skip",
-                create: {
-                  tags: ["portable"],
-                  name: "Skip",
-                  description: "Will not commit.",
-                  location: "room:clearing",
-                },
+              target: "item:loop-skip",
+              entityCreate: {
+                tags: ["portable"],
+                name: "Skip",
+                description: "Will not commit.",
+                location: "room:clearing",
               },
             },
           ],
@@ -202,14 +198,12 @@ t.test("loop validation failure feeds error back; agent retries successfully", a
         input: {
           edits: [
             {
-              entity: {
-                id: "item:bad-loc",
-                create: {
-                  tags: ["portable"],
-                  name: "Bad",
-                  description: "Wrong location.",
-                  location: "room:does-not-exist",
-                },
+              target: "item:bad-loc",
+              entityCreate: {
+                tags: ["portable"],
+                name: "Bad",
+                description: "Wrong location.",
+                location: "room:does-not-exist",
               },
             },
           ],
@@ -222,14 +216,12 @@ t.test("loop validation failure feeds error back; agent retries successfully", a
         input: {
           edits: [
             {
-              entity: {
-                id: "item:good-loc",
-                create: {
-                  tags: ["portable"],
-                  name: "Good",
-                  description: "Right location.",
-                  location: "room:clearing",
-                },
+              target: "item:good-loc",
+              entityCreate: {
+                tags: ["portable"],
+                name: "Good",
+                description: "Right location.",
+                location: "room:clearing",
               },
             },
           ],

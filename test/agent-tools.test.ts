@@ -66,14 +66,12 @@ t.test("apply_edits creates an entity, visible to next query", async (t) => {
   const result = await applyEditBatch(context, {
     edits: [
       {
-        entity: {
-          id: "item:test-lantern",
-          create: {
-            tags: ["portable"],
-            name: "Test Lantern",
-            description: "A test lantern.",
-            location: "room:clearing",
-          },
+        target: "item:test-lantern",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Test Lantern",
+          description: "A test lantern.",
+          location: "room:clearing",
         },
       },
     ],
@@ -101,25 +99,21 @@ t.test("apply_edits rejects whole batch on validation failure", async (t) => {
   const result = await applyEditBatch(context, {
     edits: [
       {
-        entity: {
-          id: "item:good-thing",
-          create: {
-            tags: ["portable"],
-            name: "Good",
-            description: "Fine.",
-            location: "room:clearing",
-          },
+        target: "item:good-thing",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Good",
+          description: "Fine.",
+          location: "room:clearing",
         },
       },
       {
-        entity: {
-          id: "item:bad-thing",
-          create: {
-            tags: ["portable"],
-            name: "Bad",
-            description: "Bad.",
-            location: "room:nonexistent",
-          },
+        target: "item:bad-thing",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Bad",
+          description: "Bad.",
+          location: "room:nonexistent",
         },
       },
     ],
@@ -150,14 +144,12 @@ t.test("apply_edits rolls back on apply error and persists nothing", async (t) =
   const ok1 = await applyEditBatch(context, {
     edits: [
       {
-        entity: {
-          id: "item:lantern-a",
-          create: {
-            tags: ["portable"],
-            name: "Lantern A",
-            description: "First lantern.",
-            location: "room:clearing",
-          },
+        target: "item:lantern-a",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Lantern A",
+          description: "First lantern.",
+          location: "room:clearing",
         },
       },
     ],
@@ -170,26 +162,22 @@ t.test("apply_edits rolls back on apply error and persists nothing", async (t) =
   const bad = await applyEditBatch(context, {
     edits: [
       {
-        entity: {
-          id: "item:lantern-b",
-          create: {
-            tags: ["portable"],
-            name: "Lantern B",
-            description: "Second lantern.",
-            location: "room:clearing",
-          },
+        target: "item:lantern-b",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Lantern B",
+          description: "Second lantern.",
+          location: "room:clearing",
         },
       },
       {
-        entity: {
-          id: "item:lantern-c",
-          create: {
-            tags: ["portable"],
-            name: "Lantern C",
-            description: "Third lantern.",
-            location: "room:clearing",
-            properties: { totally_unknown_property: 42 },
-          },
+        target: "item:lantern-c",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Lantern C",
+          description: "Third lantern.",
+          location: "room:clearing",
+          properties: { totally_unknown_property: 42 },
         },
       },
     ],
@@ -213,43 +201,82 @@ t.test("apply_edits rejects update of nonexistent entity", async (t) => {
   const result = await applyEditBatch(context, {
     edits: [
       {
-        entity: {
-          id: "item:does-not-exist",
-          value: { name: "Phantom" },
-        },
+        target: "item:does-not-exist",
+        entityUpdate: { name: "Phantom" },
       },
     ],
   });
   t.equal(result.ok, false);
 });
 
-t.test("apply_edits rejects create with multiple operations", async (t) => {
+t.test("apply_edits rejects edit with multiple operations", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
-  // Manually call normalizer through applyEditBatch — Zod allows the union
-  // because we expressed it as a single object with optional ops; we catch
-  // multi-op locally.
+  // Schema allows all op fields as optional; we catch multi-op at the
+  // normalizer.
   const result = await applyEditBatch(context, {
     edits: [
       {
-        entity: {
-          id: "item:two-ops",
-          create: {
-            tags: ["portable"],
-            name: "Confused",
-            description: "Two ops.",
-            location: "room:clearing",
-          },
-          delete: true,
+        target: "item:two-ops",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Confused",
+          description: "Two ops.",
+          location: "room:clearing",
         },
+        entityDelete: true,
       },
     ],
   });
   t.equal(result.ok, false);
   if (!result.ok) {
-    t.match(result.failures[0]!.reason, /multiple operations/);
+    t.match(result.failures[0]!.reason, /set 2 operation fields|exactly one/);
   }
+});
+
+t.test("apply_edits rejects edit with no operation set", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await applyEditBatch(context, {
+    edits: [{ target: "item:nothing" }],
+  });
+  t.equal(result.ok, false);
+  if (!result.ok) {
+    t.match(result.failures[0]!.reason, /must set exactly one/);
+  }
+});
+
+t.test("apply_edits handler create + update with the new flat shape", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const create = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "ai-test-shout",
+        handlerCreate: {
+          pattern: { verb: "shout", form: "intransitive" },
+          perform: 'return { output: "echoes!", events: [] };',
+        },
+      },
+    ],
+  });
+  t.equal(create.ok, true);
+  if (create.ok) t.equal(create.edits[0]!.kind, "handler");
+
+  const update = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "ai-test-shout",
+        handlerUpdate: {
+          perform: 'return { output: "louder echoes!", events: [] };',
+        },
+      },
+    ],
+  });
+  t.equal(update.ok, true);
 });
 
 t.test("query get with exact id returns single GetView", async (t) => {
