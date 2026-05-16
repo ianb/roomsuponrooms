@@ -156,3 +156,153 @@ t.test("playtest captures finalState after multiple commands", async (t) => {
     t.ok(Array.isArray(result.finalState.playerInventory));
   }
 });
+
+t.test("playtest step includes a parse string with entity ids for performed commands", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await runPlaytest(context, {
+    setup: [{ entityId: "player:1", property: "location", value: "room:clearing" }],
+    commands: ["examine lantern"],
+  });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const step = result.steps[0]!;
+    t.ok(step.parse, "step has parse field");
+    // describeResolved renders as 'verb name [id]'. For 'examine lantern' we
+    // expect the lantern entity id to appear in the parse string.
+    t.match(step.parse || "", /item:lantern/, "parse string names the resolved entity id");
+  }
+});
+
+t.test("playtest survives a partial handler update (no-data crash)", async (t) => {
+  // Regression: session s-jGwDamNWSZ deadlocked because a handlerUpdate with
+  // only `perform` set got re-registered as full HandlerData with undefined
+  // pattern, and every subsequent command crashed in the dispatcher with
+  // "Cannot read properties of undefined (reading 'verb')". Verify an update
+  // of just the perform body leaves pattern/form/etc. intact and dispatch
+  // still works.
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  // First, pretend the agent already created a full handler in an earlier
+  // batch — this is the prior state a subsequent update would merge onto.
+  context.pendingEdits.push({
+    seq: -2,
+    gameId: "test",
+    sessionId: "s-test",
+    targetKind: "handler",
+    targetId: "test-shout",
+    op: "create",
+    payload: {
+      pattern: { verb: "shout", form: "intransitive" },
+      perform: "return { output: 'You shout.', events: [] };",
+    },
+    priorState: null,
+    applied: false,
+    createdAt: new Date().toISOString(),
+  });
+  // Then a partial update that ONLY changes the perform body. Previously this
+  // would corrupt the handler record.
+  context.pendingEdits.push({
+    seq: -1,
+    gameId: "test",
+    sessionId: "s-test",
+    targetKind: "handler",
+    targetId: "test-shout",
+    op: "update",
+    payload: {
+      perform: "return { output: 'You bellow.', events: [] };",
+    },
+    priorState: null,
+    applied: false,
+    createdAt: new Date().toISOString(),
+  });
+
+  const result = await runPlaytest(context, {
+    setup: [{ entityId: "player:1", property: "location", value: "room:clearing" }],
+    commands: ["look", "shout"],
+  });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    // The first step (look) used to error with the verb-crash; it must now
+    // succeed. The second step exercises the merged handler.
+    t.notOk(
+      result.steps.some((s) => s.outcome === "error"),
+      "no step crashed",
+    );
+    const shoutStep = result.steps.find((s) => s.command === "shout");
+    t.ok(shoutStep);
+    if (shoutStep) {
+      t.equal(shoutStep.outcome, "performed");
+      t.match(shoutStep.output || "", /bellow/, "merged perform body ran");
+    }
+  }
+});
+
+t.test("playtest surfaces candidates on unhandled with rejection reasons", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  // Push a handler into pendingEdits so the playtest sandbox loads it.
+  // The handler wants "shout" + intransitive — then we send a transitive
+  // "shout X" command. The verb matches but the form doesn't, so dispatch
+  // fails and we should see a candidate with "wrong form" reason.
+  context.pendingEdits.push({
+    seq: -1,
+    gameId: "test",
+    sessionId: "s-test",
+    targetKind: "handler",
+    targetId: "test-shout-intransitive",
+    op: "create",
+    payload: {
+      pattern: { verb: "shout", form: "intransitive" },
+      perform: "return { output: 'You shout.', events: [] };",
+    },
+    priorState: null,
+    applied: false,
+    createdAt: new Date().toISOString(),
+  });
+
+  const result = await runPlaytest(context, {
+    setup: [{ entityId: "player:1", property: "location", value: "room:clearing" }],
+    commands: ["shout lantern"],
+  });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const step = result.steps[0]!;
+    t.equal(step.outcome, "unhandled");
+    t.ok(step.candidates, "candidates field is set on unhandled");
+    if (step.candidates) {
+      const shout = step.candidates.find((c) => c.handler === "test-shout-intransitive");
+      t.ok(shout, "our shout handler is listed as a candidate");
+      if (shout) t.match(shout.reason, /wrong form/, "reason mentions form mismatch");
+    }
+  }
+});
+
+t.test("playtest aborts the command loop on unhandled", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const result = await runPlaytest(context, {
+    setup: [{ entityId: "player:1", property: "location", value: "room:clearing" }],
+    // Second command should never run because the first is unhandled and the
+    // playtest aborts immediately.
+    commands: ["fizzbuzz the moon", "look"],
+  });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    // We expect exactly one step (the aborting one); the second command is
+    // dropped.
+    t.equal(result.steps.length, 1, "loop stopped after the failing step");
+    t.ok(result.abortedAt, "result has abortedAt marker");
+    if (result.abortedAt) {
+      t.equal(result.abortedAt.stepIndex, 0);
+      t.ok(
+        result.abortedAt.reason === "unhandled" || result.abortedAt.reason === "unresolved",
+        `reason is ${result.abortedAt.reason}`,
+      );
+    }
+  }
+});

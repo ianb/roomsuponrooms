@@ -2,7 +2,8 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import type { EntityStore, Entity } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
-import { getLlm, getLlmProviderOptions, getLlmAbortSignal } from "./llm.js";
+import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
+import { runLoggedAiCall } from "./ai-call-log.js";
 import { describeProperties, collectTags, buildPropertiesSchema } from "./ai-prompt-helpers.js";
 import { composeCreatePrompt } from "./ai-prompts.js";
 import { getStorage } from "./storage-instance.js";
@@ -157,14 +158,26 @@ export async function handleAiCreateExit(
   const startTime = Date.now();
 
   const objectSchema = buildExitSchema(store);
-  const result = await generateObject({
-    model: getLlm(),
-    schema: objectSchema,
-    system: systemPrompt,
-    prompt,
-    providerOptions: getLlmProviderOptions(),
-    abortSignal: getLlmAbortSignal(),
-  });
+  const { result, callId: aiCallId } = await runLoggedAiCall(
+    {
+      gameId,
+      userId: authoring.createdBy,
+      kind: "exit",
+      context: `ai create exit ${instructions} in ${room.id}`,
+      model: getLlmModelId(),
+      systemPrompt,
+      prompt,
+    },
+    () =>
+      generateObject({
+        model: getLlm(),
+        schema: objectSchema,
+        system: systemPrompt,
+        prompt,
+        providerOptions: getLlmProviderOptions(),
+        abortSignal: getLlmAbortSignal(),
+      }),
+  );
 
   const durationMs = Date.now() - startTime;
   await recordAiCall(authoring.createdBy, "ai-create-exit");
@@ -205,7 +218,7 @@ export async function handleAiCreateExit(
       destinationIntent: response.destinationIntent,
     },
     properties: Object.keys(extraProps).length > 0 ? extraProps : undefined,
-    authoring,
+    authoring: { ...authoring, aiCallId },
   };
 
   store.create(entityId, entityRecord);

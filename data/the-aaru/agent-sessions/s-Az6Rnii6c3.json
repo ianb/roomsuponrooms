@@ -1,0 +1,1613 @@
+{
+  "id": "s-Az6Rnii6c3",
+  "gameId": "the-aaru",
+  "userId": "dd3e57f7cd78cb5d5a022bafa0f35a65",
+  "request": "create a puzzle involving the gun and some other object, that ends in a joke",
+  "status": "finished",
+  "messages": [
+    {
+      "role": "user",
+      "content": "<player-context>\nPlayer \"player:1\" is in \"room:hibernation-bay-c7\" (\"Hibernation Bay C-7\").\n</player-context>\n\n<current-room>\nRoom \"room:hibernation-bay-c7\" (Hibernation Bay C-7) [tags: ship-interior]\nInside: \"region:c-deck-hibernation\"\nDescription: (384 chars; query for full text)\nSecret: present (designer-only hint; query for full text)\n\nChildren (3):\n  - \"exit:hibernation-bay-c7:south\" (Bay Door) · [exit] · south → \"room:corridor-c\" (Corridor C) · has: description\n  - \"item:vapor-suit\" (Vapor Suit) · [portable, wearable] · aliases: [suit, jumpsuit, clothing] · has: description, secret\n  - \"item:status-panel\" (Status Panel) · [device, fixed-display] · aliases: [panel, display, screen] · fixed=true · has: description, secret, scenery(1), 2 other props\n\nNeighbors (1):\n  - south via \"exit:hibernation-bay-c7:south\" → \"room:corridor-c\" (Corridor C)\n\nNot shown above: full descriptions, secrets, scenery details, ai prompts, neighbor room contents.\nTo see everything on one entity:  query({kind:\"get\", id:\"item:stuck-turnstile\"})\nTo see a room with its children + reachable rooms:  query({kind:\"get\", id:\"room:hibernation-bay-c7\", withChildren:true, withNeighborhood:true})\nTo list every entity tagged X:  query({kind:\"entities\", jq:\"[.[] | select(.tags | index(\\\"X\\\"))]\"})\n</current-room>\n\n<recent-events>\n[2 turns ago] s\n  {{room:corridor-c|Corridor C}}\n  {img:room:corridor-c|Corridor C}\n  A broad corridor with gently curved walls of brushed metal. Colored guide strips run along the floor — green toward the bow, red toward the stern. Recessed lighting panels overhead flicker intermittently, some dead entirely. A faded mural on one wall depicts people planting trees under a stylized sun. Below it, someone has scratched smaller figures in a different style.\n  Exits: <<north>> (Bay C-7 Entrance), <<east>> (Medical Station Door), <<west>> (Corridor West)\n\n[1 turn ago] w\n  {{room:junction-c|Junction C}}\n  {img:room:junction-c|Junction C}\n  Corridors branch in several directions from this hexagonal junction. A large directory console is mounted on the central pillar, its screen cracked but still displaying a partial deck map. The ceiling is higher here, and the air moves — somewhere a ventilation system still works. A bench built into the wall has been repurposed as a small shrine, covered in faded cloth and tiny carved figures.\n  {img:npc:sweeper|Sweeper Unit}\n  {{npc:sweeper|Sweeper Unit}} is here.\n  You see: {{item:directory-console|Directory Console}}, {{item:shrine-figures|Carved Figures}}.\n  Exits: <<north>> (Hydroponics Entrance), <<south>> (Engineering Hatch), <<east>> (Corridor East), <<west>> (Commons Passage)\n\n[just now] go west — Moved west\n  {{room:the-commons-west|The Commons - High Market}}\n  {img:room:the-commons-west|The Commons - High Market}\n  This vast, vaulted space was once the ship's social heartbeat, now muffled under heavy dust cloths and long shadows. Multi-level stalls and modular homes are built directly into the ship's hull, their facades decorated with fading murals and hanging bead curtains. A central fountain, now dry, is filled with a soft, bioluminescent moss that provides the only light in the gloom.\n  You see: {{container:dust-covered-cart|a canvas-draped merchant's cart}} (closed), {{fixed-display:moss-fountain-inscription|Fountain Inscription}}.\n  Exits: <<south>> (The Low Tier Stepped Way), <<east>> (The Copper Arch), <<northwest>> (The Weaving District)\n</recent-events>\n\n<request>\ncreate a puzzle involving the gun and some other object, that ends in a joke\n</request>"
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "jwaUgUWcVhy2nZFK",
+          "toolName": "query",
+          "input": {
+            "kind": "get",
+            "id": "item:gun*"
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EkUKQwG+Pvb7fE7/xKUawk1Et7nqBtXRaRcTPQUvhEFQ+wYsoKJ2nTbA8wi/IaFJpmq/XCRBlJbtfysqbbqaT2wLFWlDSpQ="
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "jwaUgUWcVhy2nZFK",
+          "toolName": "query",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "result": [],
+              "totalMatched": 0
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EkUKQwG+Pvb7fE7/xKUawk1Et7nqBtXRaRcTPQUvhEFQ+wYsoKJ2nTbA8wi/IaFJpmq/XCRBlJbtfysqbbqaT2wLFWlDSpQ="
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "EBbyTsd3EOx9DIfz",
+          "toolName": "query",
+          "input": {
+            "kind": "entities",
+            "contains": "gun"
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7B9LTe8Yw14RzNljJt/ExyHhkAbFFH4lRxlRTjMlX6ZXQDgOkcp1XzFaDuZYn"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "EBbyTsd3EOx9DIfz",
+          "toolName": "query",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "result": [
+                {
+                  "id": "item:gurgling-bubble-thrower",
+                  "tags": [
+                    "portable",
+                    "device"
+                  ],
+                  "name": "Gurgling Bubble-Thrower",
+                  "description": "This brass-fitted apparatus looks like a trumpet crossed with a chemistry set, featuring a hand-crank and a reservoir of shimmering, viscous fluid. A small sign on the side reads: 'COMMUNAL JOY DISPENSER - PROPERTY OF THE AERATED COALITION.'",
+                  "location": "room:the-commons-west",
+                  "containedBy": [
+                    "room:the-commons-west",
+                    "void"
+                  ],
+                  "aliases": [
+                    "bubble gun",
+                    "bubble thrower",
+                    "brass trumpet",
+                    "joy dispenser"
+                  ],
+                  "secret": "If the crank is turned while the device is submerged in the mossy fountain, it produces 'heavy' bubbles that sink and roll along the floor, potentially triggering floor-based pressure plates or revealing hidden drafts.",
+                  "properties": {
+                    "switchedOn": false,
+                    "takeRefusal": "The device is quite heavy, but the leather strap makes it portable.",
+                    "worn": false,
+                    "systemStatus": "operational",
+                    "shortDescription": "Gurgling Bubble-Thrower"
+                  }
+                }
+              ],
+              "totalMatched": 1
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7B9LTe8Yw14RzNljJt/ExyHhkAbFFH4lRxlRTjMlX6ZXQDgOkcp1XzFaDuZYn"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "KcXlvrPqtEh7pYgX",
+          "toolName": "query",
+          "input": {
+            "kind": "get",
+            "id": "room:the-commons-west",
+            "withChildren": true
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7NMY/tVwMj+AuDOqEi7QAWCfg7aJM2wa8b6t92DGiYAGEVB3eNm9PU4So7loD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "KcXlvrPqtEh7pYgX",
+          "toolName": "query",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "result": {
+                "id": "room:the-commons-west",
+                "tags": [
+                  "room",
+                  "ship-interior",
+                  "region"
+                ],
+                "name": "The Commons - High Market",
+                "description": "This vast, vaulted space was once the ship's social heartbeat, now muffled under heavy dust cloths and long shadows. Multi-level stalls and modular homes are built directly into the ship's hull, their facades decorated with fading murals and hanging bead curtains. A central fountain, now dry, is filled with a soft, bioluminescent moss that provides the only light in the gloom.",
+                "location": "void",
+                "containedBy": [
+                  "void"
+                ],
+                "secret": "The moss in the fountain is sensitive to sound. If the player 'sings' or makes noise, the moss pulses with light, briefly illuminating a hidden map carved into the ceiling of the plaza.",
+                "room": {
+                  "darkWhenUnlit": false,
+                  "visits": 0,
+                  "grid": {
+                    "x": -1,
+                    "y": 0,
+                    "z": 0
+                  }
+                },
+                "ai": {
+                  "imagePrompt": "A massive, dark vaulted plaza inside a ship, illuminated by patches of glowing blue moss in a dry fountain. Ghostly shapes of furniture covered in grey dust cloths sit between colorful, tiered market stalls with hand-painted signs. The scale is immense, like a town square moved indoors, with balconies overlooking the space."
+                },
+                "properties": {
+                  "takeRefusal": "The space is too vast to move.",
+                  "systemStatus": "degraded"
+                },
+                "children": [
+                  {
+                    "id": "exit:the-commons-west:east",
+                    "tags": [
+                      "exit"
+                    ],
+                    "name": "The Copper Arch",
+                    "description": "The passage back to the junction is marked by a tall, elegant archway of hammered copper.",
+                    "location": "room:the-commons-west",
+                    "containedBy": [
+                      "room:the-commons-west",
+                      "void"
+                    ],
+                    "exit": {
+                      "direction": "east",
+                      "destination": "room:junction-c"
+                    },
+                    "destinationName": "Junction C"
+                  },
+                  {
+                    "id": "exit:the-commons-west:northwest",
+                    "tags": [
+                      "exit"
+                    ],
+                    "name": "The Weaving District",
+                    "description": "A narrower street leads toward a section draped in thousands of swaying, multi-colored strands.",
+                    "location": "room:the-commons-west",
+                    "containedBy": [
+                      "room:the-commons-west",
+                      "void"
+                    ],
+                    "aliases": [
+                      "weaving",
+                      "district"
+                    ],
+                    "exit": {
+                      "direction": "northwest",
+                      "destinationIntent": "A residential and artisanal area focused on textiles and vertical living, filled with rope bridges and hanging looms."
+                    },
+                    "destinationName": null,
+                    "properties": {
+                      "accessLevel": 1
+                    }
+                  },
+                  {
+                    "id": "exit:the-commons-west:south",
+                    "tags": [
+                      "exit"
+                    ],
+                    "name": "The Low Tier Stepped Way",
+                    "description": "Broad, shallow stairs descend toward a lower level where the air feels cooler and smells of damp earth.",
+                    "location": "room:the-commons-west",
+                    "containedBy": [
+                      "room:the-commons-west",
+                      "void"
+                    ],
+                    "aliases": [
+                      "stairs",
+                      "steps",
+                      "down"
+                    ],
+                    "exit": {
+                      "direction": "south",
+                      "destinationIntent": "A lower-level marketplace or garden area of the Commons, perhaps more industrial or agricultural."
+                    },
+                    "destinationName": null,
+                    "properties": {
+                      "accessLevel": 0
+                    }
+                  },
+                  {
+                    "id": "container:dust-covered-cart",
+                    "tags": [
+                      "container",
+                      "openable"
+                    ],
+                    "name": "Merchant's Push-Cart",
+                    "description": "A wooden cart with wheels made from recycled gear-teeth, draped in a heavy, grey canvas. Through the gaps in the cloth, you can see rows of small glass jars and what looks like dried botanical specimens.",
+                    "location": "room:the-commons-west",
+                    "containedBy": [
+                      "room:the-commons-west",
+                      "void"
+                    ],
+                    "aliases": [
+                      "cart",
+                      "wagon",
+                      "cloth"
+                    ],
+                    "properties": {
+                      "shortDescription": "a canvas-draped merchant's cart",
+                      "open": false,
+                      "takeRefusal": "It's far too heavy to push through the dust."
+                    }
+                  },
+                  {
+                    "id": "fixed-display:moss-fountain-inscription",
+                    "tags": [
+                      "fixed-display"
+                    ],
+                    "name": "Fountain Inscription",
+                    "description": "Around the rim of the dry fountain, letters have been painstakingly hammered into the metal. The moss glows brighter when you lean close.",
+                    "location": "room:the-commons-west",
+                    "containedBy": [
+                      "room:the-commons-west",
+                      "void"
+                    ],
+                    "aliases": [
+                      "fountain",
+                      "inscription",
+                      "writing"
+                    ],
+                    "properties": {
+                      "fixed": true,
+                      "takeRefusal": "The inscription is part of the fountain's heavy rim.",
+                      "worn": false
+                    }
+                  },
+                  {
+                    "id": "item:gurgling-bubble-thrower",
+                    "tags": [
+                      "portable",
+                      "device"
+                    ],
+                    "name": "Gurgling Bubble-Thrower",
+                    "description": "This brass-fitted apparatus looks like a trumpet crossed with a chemistry set, featuring a hand-crank and a reservoir of shimmering, viscous fluid. A small sign on the side reads: 'COMMUNAL JOY DISPENSER - PROPERTY OF THE AERATED COALITION.'",
+                    "location": "room:the-commons-west",
+                    "containedBy": [
+                      "room:the-commons-west",
+                      "void"
+                    ],
+                    "aliases": [
+                      "bubble gun",
+                      "bubble thrower",
+                      "brass trumpet",
+                      "joy dispenser"
+                    ],
+                    "secret": "If the crank is turned while the device is submerged in the mossy fountain, it produces 'heavy' bubbles that sink and roll along the floor, potentially triggering floor-based pressure plates or revealing hidden drafts.",
+                    "properties": {
+                      "switchedOn": false,
+                      "takeRefusal": "The device is quite heavy, but the leather strap makes it portable.",
+                      "worn": false,
+                      "systemStatus": "operational",
+                      "shortDescription": "Gurgling Bubble-Thrower"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7NMY/tVwMj+AuDOqEi7QAWCfg7aJM2wa8b6t92DGiYAGEVB3eNm9PU4So7loD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "R29F6XIiM08ug14h",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "target": "item:ornery-service-bot",
+                "entityCreate": {
+                  "tags": [
+                    "robot",
+                    "npc"
+                  ],
+                  "name": "Ornery Service-Bot",
+                  "description": "A squat, rectangular maintenance droid with a single glowing eye-sensor and two articulating claw-arms. It is currently blocking the path northwest, its chassis vibrating with a low, menacing hum. A speaker grill on its front emits a series of aggressive squawks and digital hisses whenever you approach.",
+                  "location": "room:the-commons-west",
+                  "properties": {
+                    "takeRefusal": "The bot clamps its treads to the floor and makes a very alarming 'REDACTED' sound.",
+                    "fixed": true,
+                    "shortDescription": "a grumpy-looking service bot"
+                  }
+                }
+              },
+              {
+                "target": "item:bubble-solution-vial",
+                "entityCreate": {
+                  "tags": [
+                    "portable"
+                  ],
+                  "name": "Vial of Joy Concentrate",
+                  "description": "A small glass vial filled with a thick, iridescent blue liquid. The label features a logo of a smiling person surrounded by bubbles and the words: 'JOY CONCENTRATE - REFILL FOR ALL AERATED COALITION DISPENSERS.'",
+                  "location": "container:dust-covered-cart",
+                  "aliases": [
+                    "vial",
+                    "fluid",
+                    "soap"
+                  ],
+                  "properties": {
+                    "shortDescription": "a vial of iridescent blue fluid"
+                  }
+                }
+              },
+              {
+                "target": "ai-load-bubble-thrower",
+                "handlerCreate": {
+                  "pattern": {
+                    "verb": "pour",
+                    "verbAliases": [
+                      "put",
+                      "load",
+                      "insert",
+                      "empty"
+                    ],
+                    "form": "ditransitive",
+                    "prep": "into"
+                  },
+                  "perform": "if (object.id !== 'item:bubble-solution-vial') return { output: `You can't put ${lib.ref(object)} into the thrower.`, events: [] };\nif (indirect.id !== 'item:gurgling-bubble-thrower') return { output: `You can only pour the concentrate into the bubble-thrower.`, events: [] };\nif (indirect.properties.switchedOn) return { output: 'The thrower is already primed and gurgling.', events: [] };\n\nindirect.properties.switchedOn = true;\nreturn {\n  output: `You carefully pour the Joy Concentrate into the reservoir of the bubble-thrower. The device let out a happy gurgle, and a soft blue glow begins to emanate from the nozzle.`,\n  events: [\n    { type: 'set-property', entityId: indirect.id, property: 'switchedOn', value: true, description: 'Primed the bubble thrower.' },\n    { type: 'delete-entity', entityId: object.id, description: 'Empty vial discarded.' }\n  ]\n};"
+                }
+              },
+              {
+                "target": "ai-shoot-bot-bubbles",
+                "handlerCreate": {
+                  "pattern": {
+                    "verb": "shoot",
+                    "verbAliases": [
+                      "fire",
+                      "aim",
+                      "blast",
+                      "spray",
+                      "use"
+                    ],
+                    "form": "ditransitive",
+                    "prep": "at"
+                  },
+                  "perform": "if (object.id !== 'item:gurgling-bubble-thrower') return { output: `You can't shoot with ${lib.ref(object)}.`, events: [] };\nif (indirect.id !== 'item:ornery-service-bot') return { output: 'The bubble-thrower is meant for spreading joy, not random target practice.', events: [] };\nif (!object.properties.switchedOn) return { output: 'The bubble-thrower just makes a sad, dry clicking sound. It needs fluid.', events: [] };\n\nconst room = store.get('room:the-commons-west');\nconst exit = store.get('exit:the-commons-west:northwest');\n\nreturn {\n  output: `You crank the handle of the bubble-thrower and aim the trumpet-nozzle at the service-bot. A massive, shimmering blue bubble wobbles out and slowly drifts toward the droid. It lands squarely on the bot's sensor-eye with a wet 'POP!'\\n\\nThe bot stops humming. It lets out a long, digital sigh that sounds suspiciously like 'Finally...' and begins to perform a slow, rhythmic dance, completely forgetting its duty to block the path. The way to the Weaving District is now clear.`,\n  events: [\n    { type: 'set-property', entityId: indirect.id, property: 'description', value: 'The service-bot is spinning in happy circles, covered in shimmering soap residue.', description: 'The bot is distracted.' },\n    { type: 'set-property', entityId: indirect.id, property: 'name', value: 'Happy Service-Bot', description: 'Renamed the bot.' },\n    { type: 'set-property', entityId: 'exit:the-commons-west:northwest', property: 'accessLevel', value: 0, description: 'Path cleared.' }\n  ]\n};"
+                }
+              },
+              {
+                "target": "exit:the-commons-west:northwest",
+                "entityUpdate": {
+                  "properties": {
+                    "accessLevel": 1
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7N5HY0wD6C44jAAtmiQVlQyIQkNcIHJYi1CWmRzOC29q4PNY5ombg0TgMzlYW"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "R29F6XIiM08ug14h",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "applied": 5,
+              "edits": [
+                {
+                  "kind": "entity",
+                  "id": "item:ornery-service-bot",
+                  "op": "create"
+                },
+                {
+                  "kind": "entity",
+                  "id": "item:bubble-solution-vial",
+                  "op": "create"
+                },
+                {
+                  "kind": "handler",
+                  "id": "ai-load-bubble-thrower",
+                  "op": "create"
+                },
+                {
+                  "kind": "handler",
+                  "id": "ai-shoot-bot-bubbles",
+                  "op": "create"
+                },
+                {
+                  "kind": "entity",
+                  "id": "exit:the-commons-west:northwest",
+                  "op": "update"
+                }
+              ]
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7N5HY0wD6C44jAAtmiQVlQyIQkNcIHJYi1CWmRzOC29q4PNY5ombg0TgMzlYW"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "VaCcKopxaqkRp8XD",
+          "toolName": "playtest",
+          "input": {
+            "setup": [
+              {
+                "entityId": "player:1",
+                "property": "location",
+                "value": "room:the-commons-west"
+              }
+            ],
+            "commands": [
+              "open cart",
+              "take vial",
+              "take thrower",
+              "pour vial into thrower",
+              "shoot thrower at bot",
+              "go northwest"
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7Hj6Dun1hZfolN1fBexJRwoqqRQMSqTNIHkRFedHlSiMgpIBf1wWi7v9tmkAG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "VaCcKopxaqkRp8XD",
+          "toolName": "playtest",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "steps": [
+                {
+                  "command": "open cart",
+                  "outcome": "performed",
+                  "output": "You open the {{container:dust-covered-cart|Merchant's Push-Cart}}. Inside you see: {{item:bubble-solution-vial|Vial of Joy Concentrate}}.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "container:dust-covered-cart",
+                      "property": "open",
+                      "value": true,
+                      "description": "Opened {{container:dust-covered-cart|Merchant's Push-Cart}}"
+                    }
+                  ],
+                  "handler": "open",
+                  "parse": "open Merchant's Push-Cart [container:dust-covered-cart]"
+                },
+                {
+                  "command": "take vial",
+                  "outcome": "performed",
+                  "output": "You take the {{item:bubble-solution-vial|Vial of Joy Concentrate}}.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "item:bubble-solution-vial",
+                      "property": "location",
+                      "value": "player:1",
+                      "description": "Picked up {{item:bubble-solution-vial|Vial of Joy Concentrate}}"
+                    }
+                  ],
+                  "handler": "take",
+                  "parse": "take Vial of Joy Concentrate [item:bubble-solution-vial]"
+                },
+                {
+                  "command": "take thrower",
+                  "outcome": "performed",
+                  "output": "You take the {{item:gurgling-bubble-thrower|Gurgling Bubble-Thrower}}.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "item:gurgling-bubble-thrower",
+                      "property": "location",
+                      "value": "player:1",
+                      "description": "Picked up {{item:gurgling-bubble-thrower|Gurgling Bubble-Thrower}}"
+                    }
+                  ],
+                  "handler": "take",
+                  "parse": "take Gurgling Bubble-Thrower [item:gurgling-bubble-thrower]"
+                },
+                {
+                  "command": "pour vial into thrower",
+                  "outcome": "performed",
+                  "output": "You carefully pour the Joy Concentrate into the reservoir of the bubble-thrower. The device let out a happy gurgle, and a soft blue glow begins to emanate from the nozzle.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "item:gurgling-bubble-thrower",
+                      "property": "switchedOn",
+                      "value": true,
+                      "description": "Primed the bubble thrower."
+                    },
+                    {
+                      "type": "delete-entity",
+                      "entityId": "item:bubble-solution-vial",
+                      "description": "Empty vial discarded."
+                    }
+                  ],
+                  "handler": "ai-load-bubble-thrower",
+                  "parse": "pour Vial of Joy Concentrate [item:bubble-solution-vial] into Gurgling Bubble-Thrower [item:gurgling-bubble-thrower]"
+                },
+                {
+                  "command": "shoot thrower at bot",
+                  "outcome": "performed",
+                  "output": "You crank the handle of the bubble-thrower and aim the trumpet-nozzle at the service-bot. A massive, shimmering blue bubble wobbles out and slowly drifts toward the droid. It lands squarely on the bot's sensor-eye with a wet 'POP!'\\n\\nThe bot stops humming. It lets out a long, digital sigh that sounds suspiciously like 'Finally...' and begins to perform a slow, rhythmic dance, completely forgetting its duty to block the path. The way to the Weaving District is now clear.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "item:ornery-service-bot",
+                      "property": "description",
+                      "value": "The service-bot is spinning in happy circles, covered in shimmering soap residue.",
+                      "description": "The bot is distracted."
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "item:ornery-service-bot",
+                      "property": "name",
+                      "value": "Happy Service-Bot",
+                      "description": "Renamed the bot."
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "exit:the-commons-west:northwest",
+                      "property": "accessLevel",
+                      "value": 0,
+                      "description": "Path cleared."
+                    }
+                  ],
+                  "handler": "ai-shoot-bot-bubbles",
+                  "parse": "shoot Gurgling Bubble-Thrower [item:gurgling-bubble-thrower] at Happy Service-Bot [item:ornery-service-bot]"
+                },
+                {
+                  "command": "go northwest",
+                  "outcome": "unresolved",
+                  "output": "",
+                  "events": [],
+                  "parse": "go northwest"
+                }
+              ],
+              "finalState": {
+                "playerLocation": "room:the-commons-west",
+                "playerInventory": [
+                  {
+                    "id": "item:bubble-solution-vial",
+                    "name": "Vial of Joy Concentrate",
+                    "tags": [
+                      "portable"
+                    ]
+                  },
+                  {
+                    "id": "item:gurgling-bubble-thrower",
+                    "name": "Gurgling Bubble-Thrower",
+                    "tags": [
+                      "portable",
+                      "device"
+                    ]
+                  }
+                ],
+                "currentRoom": {
+                  "id": "room:the-commons-west",
+                  "name": "The Commons - High Market"
+                }
+              },
+              "abortedAt": {
+                "stepIndex": 5,
+                "reason": "unresolved"
+              }
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7Hj6Dun1hZfolN1fBexJRwoqqRQMSqTNIHkRFedHlSiMgpIBf1wWi7v9tmkAG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "flWmJlhZctmJnOfJ",
+          "toolName": "playtest",
+          "input": {
+            "setup": [
+              {
+                "entityId": "player:1",
+                "property": "location",
+                "value": "room:the-commons-west"
+              },
+              {
+                "entityId": "item:gurgling-bubble-thrower",
+                "property": "location",
+                "value": "player:1"
+              },
+              {
+                "entityId": "item:gurgling-bubble-thrower",
+                "property": "switchedOn",
+                "value": true
+              }
+            ],
+            "commands": [
+              "shoot thrower at bot",
+              "northwest"
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7Y/e/pNuQEUKKhK9yRF3kYFRjvSYMshQTrDDb17moxZBARmIEu2/jxdA2ixz6"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "flWmJlhZctmJnOfJ",
+          "toolName": "playtest",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "steps": [
+                {
+                  "command": "shoot thrower at bot",
+                  "outcome": "performed",
+                  "output": "You crank the handle of the bubble-thrower and aim the trumpet-nozzle at the service-bot. A massive, shimmering blue bubble wobbles out and slowly drifts toward the droid. It lands squarely on the bot's sensor-eye with a wet 'POP!'\\n\\nThe bot stops humming. It lets out a long, digital sigh that sounds suspiciously like 'Finally...' and begins to perform a slow, rhythmic dance, completely forgetting its duty to block the path. The way to the Weaving District is now clear.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "item:ornery-service-bot",
+                      "property": "description",
+                      "value": "The service-bot is spinning in happy circles, covered in shimmering soap residue.",
+                      "description": "The bot is distracted."
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "item:ornery-service-bot",
+                      "property": "name",
+                      "value": "Happy Service-Bot",
+                      "description": "Renamed the bot."
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "exit:the-commons-west:northwest",
+                      "property": "accessLevel",
+                      "value": 0,
+                      "description": "Path cleared."
+                    }
+                  ],
+                  "handler": "ai-shoot-bot-bubbles",
+                  "parse": "shoot Gurgling Bubble-Thrower [item:gurgling-bubble-thrower] at Happy Service-Bot [item:ornery-service-bot]"
+                },
+                {
+                  "command": "northwest",
+                  "outcome": "unresolved",
+                  "output": "",
+                  "events": [],
+                  "parse": "go northwest"
+                }
+              ],
+              "finalState": {
+                "playerLocation": "room:the-commons-west",
+                "playerInventory": [
+                  {
+                    "id": "item:gurgling-bubble-thrower",
+                    "name": "Gurgling Bubble-Thrower",
+                    "tags": [
+                      "portable",
+                      "device"
+                    ]
+                  }
+                ],
+                "currentRoom": {
+                  "id": "room:the-commons-west",
+                  "name": "The Commons - High Market"
+                }
+              },
+              "abortedAt": {
+                "stepIndex": 1,
+                "reason": "unresolved"
+              }
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7Y/e/pNuQEUKKhK9yRF3kYFRjvSYMshQTrDDb17moxZBARmIEu2/jxdA2ixz6"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "IgBlmnvE5efbZG4Z",
+          "toolName": "query",
+          "input": {
+            "kind": "get",
+            "id": "exit:the-commons-west:northwest*"
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7QxsFq+c0pwgHpcZaQTXN6FdjgD6FObEaCkFnBHFvoC4b5Kj1TIBR1+hN4Eab"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "IgBlmnvE5efbZG4Z",
+          "toolName": "query",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "result": [
+                {
+                  "id": "exit:the-commons-west:northwest",
+                  "tags": [
+                    "exit"
+                  ],
+                  "name": "The Weaving District",
+                  "description": "A narrower street leads toward a section draped in thousands of swaying, multi-colored strands.",
+                  "location": "room:the-commons-west",
+                  "containedBy": [
+                    "room:the-commons-west",
+                    "void"
+                  ],
+                  "aliases": [
+                    "weaving",
+                    "district"
+                  ],
+                  "exit": {
+                    "direction": "northwest",
+                    "destinationIntent": "A residential and artisanal area focused on textiles and vertical living, filled with rope bridges and hanging looms."
+                  },
+                  "destinationName": null,
+                  "properties": {
+                    "accessLevel": 1
+                  }
+                }
+              ],
+              "totalMatched": 1
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7QxsFq+c0pwgHpcZaQTXN6FdjgD6FObEaCkFnBHFvoC4b5Kj1TIBR1+hN4Eab"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "JxrDPTxyworurIRH",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "entityUpdate": {
+                  "exit": {
+                    "direction": "northwest",
+                    "destination": "room:the-weaving-district"
+                  }
+                },
+                "target": "exit:the-commons-west:northwest"
+              },
+              {
+                "entityCreate": {
+                  "tags": [
+                    "room",
+                    "ship-interior"
+                  ],
+                  "name": "The Weaving District",
+                  "description": "A labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.",
+                  "room": {
+                    "grid": {
+                      "x": -2,
+                      "y": 1,
+                      "z": 0
+                    }
+                  }
+                },
+                "target": "room:the-weaving-district"
+              },
+              {
+                "target": "exit:weaving:southeast",
+                "entityCreate": {
+                  "description": "The way back to the main market area.",
+                  "name": "Market Archway",
+                  "location": "room:the-weaving-district",
+                  "tags": [
+                    "exit"
+                  ],
+                  "exit": {
+                    "direction": "southeast",
+                    "destination": "room:the-commons-west"
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7LiEuqJ8zhU++pkycD48ZRHfS8ijEKZvtcfORq3hxkPeWAR7jv1AOu/LSCQk0"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "JxrDPTxyworurIRH",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "error-text",
+            "value": "Invalid input for tool apply_edits: Type validation failed: Value: {\"edits\":[{\"entityUpdate\":{\"exit\":{\"direction\":\"northwest\",\"destination\":\"room:the-weaving-district\"}},\"target\":\"exit:the-commons-west:northwest\"},{\"entityCreate\":{\"tags\":[\"room\",\"ship-interior\"],\"name\":\"The Weaving District\",\"description\":\"A labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.\",\"room\":{\"grid\":{\"x\":-2,\"y\":1,\"z\":0}}},\"target\":\"room:the-weaving-district\"},{\"target\":\"exit:weaving:southeast\",\"entityCreate\":{\"description\":\"The way back to the main market area.\",\"name\":\"Market Archway\",\"location\":\"room:the-weaving-district\",\"tags\":[\"exit\"],\"exit\":{\"direction\":\"southeast\",\"destination\":\"room:the-commons-west\"}}}]}.\nError message: [\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"edits\",\n      1,\n      \"entityCreate\",\n      \"location\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  }\n]"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "GaUS2oR3jxproBgj",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "target": "exit:the-commons-west:northwest",
+                "entityUpdate": {
+                  "exit": {
+                    "direction": "northwest",
+                    "destination": "room:the-weaving-district"
+                  }
+                }
+              },
+              {
+                "target": "room:the-weaving-district",
+                "entityCreate": {
+                  "tags": [
+                    "room",
+                    "ship-interior"
+                  ],
+                  "name": "The Weaving District",
+                  "description": "A labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.",
+                  "location": "void",
+                  "room": {
+                    "grid": {
+                      "x": -2,
+                      "y": 1,
+                      "z": 0
+                    }
+                  }
+                }
+              },
+              {
+                "target": "exit:weaving:southeast",
+                "entityCreate": {
+                  "tags": [
+                    "exit"
+                  ],
+                  "name": "Market Archway",
+                  "description": "The way back to the main market area.",
+                  "location": "room:the-weaving-district",
+                  "exit": {
+                    "direction": "southeast",
+                    "destination": "room:the-commons-west"
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7vZ0YmbUBb8ly6GMhFKbglduFjh1ZLMa+1goUZs3pdytP3TfoAj7+7ZpXdmuD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "GaUS2oR3jxproBgj",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": false,
+              "error": "Rejected 2 of 3 edits; nothing was applied.",
+              "failures": [
+                {
+                  "index": 1,
+                  "reason": "Entity \"room:the-weaving-district\" create payload references unknown location \"void\"."
+                },
+                {
+                  "index": 2,
+                  "reason": "Entity \"exit:weaving:southeast\" create payload references unknown location \"room:the-weaving-district\"."
+                }
+              ]
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7vZ0YmbUBb8ly6GMhFKbglduFjh1ZLMa+1goUZs3pdytP3TfoAj7+7ZpXdmuD"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "BCXcrn0Uox2SRGJX",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "target": "exit:the-commons-west:northwest",
+                "entityUpdate": {
+                  "exit": {
+                    "direction": "northwest",
+                    "destination": "room:the-weaving-district"
+                  }
+                }
+              },
+              {
+                "target": "room:the-weaving-district",
+                "entityCreate": {
+                  "tags": [
+                    "room",
+                    "ship-interior"
+                  ],
+                  "name": "The Weaving District",
+                  "description": "A labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.",
+                  "location": "world",
+                  "room": {
+                    "grid": {
+                      "x": -2,
+                      "y": 1,
+                      "z": 0
+                    }
+                  }
+                }
+              },
+              {
+                "target": "exit:weaving:southeast",
+                "entityCreate": {
+                  "tags": [
+                    "exit"
+                  ],
+                  "name": "Market Archway",
+                  "description": "The way back to the main market area.",
+                  "location": "room:the-weaving-district",
+                  "exit": {
+                    "direction": "southeast",
+                    "destination": "room:the-commons-west"
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7xKXwYMmk5tc8vj4Pd43qIrjVhdWAfquGE69LVAyqD3IpfaPf9Ld5JLxArPDo"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "BCXcrn0Uox2SRGJX",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": false,
+              "error": "Rejected 2 of 3 edits; nothing was applied.",
+              "failures": [
+                {
+                  "index": 1,
+                  "reason": "Entity \"room:the-weaving-district\" create payload references unknown location \"world\"."
+                },
+                {
+                  "index": 2,
+                  "reason": "Entity \"exit:weaving:southeast\" create payload references unknown location \"room:the-weaving-district\"."
+                }
+              ]
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7xKXwYMmk5tc8vj4Pd43qIrjVhdWAfquGE69LVAyqD3IpfaPf9Ld5JLxArPDo"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "NL8piKKLwVz0e1c5",
+          "toolName": "query",
+          "input": {
+            "kind": "get",
+            "id": "room:hibernation-bay-c7"
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7rjL+yt1wnuyD6rUHqnovNQIIjmx6gKFoi+HDto1k9wnCYXDSEmaPuk8oDURZ"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "NL8piKKLwVz0e1c5",
+          "toolName": "query",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "result": {
+                "id": "room:hibernation-bay-c7",
+                "tags": [
+                  "room",
+                  "ship-interior"
+                ],
+                "name": "Hibernation Bay C-7",
+                "description": "A small chamber with four hibernation pods arranged in a square. Two are sealed and frosted over, their occupants dimly visible through the glass. One stands empty, its lid raised, interior dry. The fourth — yours — is open and still trailing cold vapor. Emergency strip lighting casts everything in pale amber. A status panel on the wall blinks. The air smells faintly of antiseptic.",
+                "location": "region:c-deck-hibernation",
+                "containedBy": [
+                  "region:c-deck-hibernation",
+                  "world"
+                ],
+                "secret": "The empty pod still has power and could theoretically put someone back into hibernation if they climbed in and activated the sequence.",
+                "room": {
+                  "darkWhenUnlit": false,
+                  "visits": 0
+                },
+                "ai": {
+                  "prompt": "This is the starting room. The goal is to introduce the player gently — a small, contained space that orients them before they step into the larger ship. Keep it simple: the pod they woke from, a couple of sealed pods with sleeping people (context, not interactive), and the status panel. Don't add too much here — the interesting stuff is out in the ship."
+                }
+              }
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7rjL+yt1wnuyD6rUHqnovNQIIjmx6gKFoi+HDto1k9wnCYXDSEmaPuk8oDURZ"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "evrvsEtwmQXhnKaB",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "target": "exit:the-commons-west:northwest",
+                "entityUpdate": {
+                  "exit": {
+                    "direction": "northwest",
+                    "destination": "room:the-weaving-district"
+                  }
+                }
+              },
+              {
+                "target": "room:the-weaving-district",
+                "entityCreate": {
+                  "tags": [
+                    "room",
+                    "ship-interior"
+                  ],
+                  "name": "The Weaving District",
+                  "description": "A labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.",
+                  "location": "region:c-deck-hibernation",
+                  "room": {
+                    "grid": {
+                      "x": -2,
+                      "y": 1,
+                      "z": 0
+                    }
+                  }
+                }
+              },
+              {
+                "target": "exit:weaving:southeast",
+                "entityCreate": {
+                  "tags": [
+                    "exit"
+                  ],
+                  "name": "Market Archway",
+                  "description": "The way back to the main market area.",
+                  "location": "room:the-weaving-district",
+                  "exit": {
+                    "direction": "southeast",
+                    "destination": "room:the-commons-west"
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7slvcjs7HuE/H6aj01nXh7I7te1rRpOtcxub8U0l/c5sl4wOjfNwzAHupJxcV"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "evrvsEtwmQXhnKaB",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": false,
+              "error": "Rejected 1 of 3 edits; nothing was applied.",
+              "failures": [
+                {
+                  "index": 2,
+                  "reason": "Entity \"exit:weaving:southeast\" create payload references unknown location \"room:the-weaving-district\"."
+                }
+              ]
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7slvcjs7HuE/H6aj01nXh7I7te1rRpOtcxub8U0l/c5sl4wOjfNwzAHupJxcV"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "6G2aBywNxkrp1l6U",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "target": "exit:the-commons-west:northwest",
+                "entityUpdate": {
+                  "exit": {
+                    "direction": "northwest",
+                    "destination": "room:the-weaving-district"
+                  }
+                }
+              },
+              {
+                "target": "room:the-weaving-district",
+                "entityCreate": {
+                  "tags": [
+                    "room",
+                    "ship-interior"
+                  ],
+                  "name": "The Weaving District",
+                  "description": "A labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.",
+                  "location": "region:c-deck-hibernation",
+                  "room": {
+                    "grid": {
+                      "x": -2,
+                      "y": 1,
+                      "z": 0
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7y+Az5NagA4VSHxyzz7JU8mw3MaeBBxEBjGWJ5sSbpWHIVRjij+/RTGXwRVSe"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "6G2aBywNxkrp1l6U",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "applied": 2,
+              "edits": [
+                {
+                  "kind": "entity",
+                  "id": "exit:the-commons-west:northwest",
+                  "op": "update"
+                },
+                {
+                  "kind": "entity",
+                  "id": "room:the-weaving-district",
+                  "op": "create"
+                }
+              ]
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7y+Az5NagA4VSHxyzz7JU8mw3MaeBBxEBjGWJ5sSbpWHIVRjij+/RTGXwRVSe"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "0ZlmOvef1gguuNPb",
+          "toolName": "apply_edits",
+          "input": {
+            "edits": [
+              {
+                "target": "exit:weaving:southeast",
+                "entityCreate": {
+                  "tags": [
+                    "exit"
+                  ],
+                  "name": "Market Archway",
+                  "description": "The way back to the main market area.",
+                  "location": "room:the-weaving-district",
+                  "exit": {
+                    "direction": "southeast",
+                    "destination": "room:the-commons-west"
+                  }
+                }
+              }
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb75rdhlOUJFLYjB4+/AlPukKtfHyRBZJ2kGgnxglylVj3L9mO9lZq6qWdU83g5"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "0ZlmOvef1gguuNPb",
+          "toolName": "apply_edits",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "applied": 1,
+              "edits": [
+                {
+                  "kind": "entity",
+                  "id": "exit:weaving:southeast",
+                  "op": "create"
+                }
+              ]
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb75rdhlOUJFLYjB4+/AlPukKtfHyRBZJ2kGgnxglylVj3L9mO9lZq6qWdU83g5"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "dhIJSrK2N5Zz2VGO",
+          "toolName": "playtest",
+          "input": {
+            "setup": [
+              {
+                "entityId": "player:1",
+                "property": "location",
+                "value": "room:the-commons-west"
+              },
+              {
+                "entityId": "item:gurgling-bubble-thrower",
+                "property": "location",
+                "value": "player:1"
+              },
+              {
+                "entityId": "item:gurgling-bubble-thrower",
+                "property": "switchedOn",
+                "value": true
+              }
+            ],
+            "commands": [
+              "shoot thrower at bot",
+              "northwest"
+            ]
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7tll619xcg+h2V1MMBKAb/WkcrZ4nq0tArIhF8J68M0zJd9icxTJmuvqA1xvY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "dhIJSrK2N5Zz2VGO",
+          "toolName": "playtest",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true,
+              "steps": [
+                {
+                  "command": "shoot thrower at bot",
+                  "outcome": "performed",
+                  "output": "You crank the handle of the bubble-thrower and aim the trumpet-nozzle at the service-bot. A massive, shimmering blue bubble wobbles out and slowly drifts toward the droid. It lands squarely on the bot's sensor-eye with a wet 'POP!'\\n\\nThe bot stops humming. It lets out a long, digital sigh that sounds suspiciously like 'Finally...' and begins to perform a slow, rhythmic dance, completely forgetting its duty to block the path. The way to the Weaving District is now clear.",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "item:ornery-service-bot",
+                      "property": "description",
+                      "value": "The service-bot is spinning in happy circles, covered in shimmering soap residue.",
+                      "description": "The bot is distracted."
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "item:ornery-service-bot",
+                      "property": "name",
+                      "value": "Happy Service-Bot",
+                      "description": "Renamed the bot."
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "exit:the-commons-west:northwest",
+                      "property": "accessLevel",
+                      "value": 0,
+                      "description": "Path cleared."
+                    }
+                  ],
+                  "handler": "ai-shoot-bot-bubbles",
+                  "parse": "shoot Gurgling Bubble-Thrower [item:gurgling-bubble-thrower] at Happy Service-Bot [item:ornery-service-bot]"
+                },
+                {
+                  "command": "northwest",
+                  "outcome": "movement",
+                  "output": "{{room:the-weaving-district|The Weaving District}}\n{img:room:the-weaving-district|The Weaving District}\nA labyrinth of suspended walkways, bridges of braided cable, and hanging dwellings. Everywhere you look, long strands of colored fiber sway in the artificial breeze, some being worked by clattering automated looms. The air is thick with the scent of dyed wool and machine oil.\nExits: <<southeast>> (Market Archway)",
+                  "events": [
+                    {
+                      "type": "set-property",
+                      "entityId": "player:1",
+                      "property": "location",
+                      "value": "room:the-weaving-district",
+                      "description": ""
+                    },
+                    {
+                      "type": "set-property",
+                      "entityId": "room:the-weaving-district",
+                      "property": "visits",
+                      "value": 1,
+                      "description": ""
+                    }
+                  ],
+                  "parse": "go northwest"
+                }
+              ],
+              "finalState": {
+                "playerLocation": "room:the-weaving-district",
+                "playerInventory": [
+                  {
+                    "id": "item:gurgling-bubble-thrower",
+                    "name": "Gurgling Bubble-Thrower",
+                    "tags": [
+                      "portable",
+                      "device"
+                    ]
+                  }
+                ],
+                "currentRoom": {
+                  "id": "room:the-weaving-district",
+                  "name": "The Weaving District"
+                }
+              }
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7tll619xcg+h2V1MMBKAb/WkcrZ4nq0tArIhF8J68M0zJd9icxTJmuvqA1xvY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool-call",
+          "toolCallId": "EbCDQGTKedXcTVfC",
+          "toolName": "finish",
+          "input": {
+            "summary": "Created a bubble-gun puzzle in The Commons - High Market. Players must find 'Joy Concentrate' in a merchant's cart to prime the 'Gurgling Bubble-Thrower'. Shooting the 'Ornery Service-Bot' with a giant bubble causes it to experience a 'joy-overflow' error, turning it into a 'Happy Service-Bot' that dances instead of blocking the northwest exit. This unlocks access to the new 'Weaving District' room."
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7dOPMSI6bBI0vNu5/7T9gxmd5J7jyKu5y8lZUHIl+TFweCmCkQusEH/fkB1tc"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": [
+        {
+          "type": "tool-result",
+          "toolCallId": "EbCDQGTKedXcTVfC",
+          "toolName": "finish",
+          "output": {
+            "type": "json",
+            "value": {
+              "ok": true
+            }
+          },
+          "providerOptions": {
+            "google": {
+              "thoughtSignature": "EjQKMgG+Pvb7dOPMSI6bBI0vNu5/7T9gxmd5J7jyKu5y8lZUHIl+TFweCmCkQusEH/fkB1tc"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "savedVars": {},
+  "turnCount": 16,
+  "turnLimit": 30,
+  "summary": "Created a bubble-gun puzzle in The Commons - High Market. Players must find 'Joy Concentrate' in a merchant's cart to prime the 'Gurgling Bubble-Thrower'. Shooting the 'Ornery Service-Bot' with a giant bubble causes it to experience a 'joy-overflow' error, turning it into a 'Happy Service-Bot' that dances instead of blocking the northwest exit. This unlocks access to the new 'Weaving District' room.",
+  "revertOf": null,
+  "model": "gemini-3-flash-preview",
+  "systemPrompt": "<role>\nYou are an autonomous world-editing agent for a text adventure game. The game designer has asked you to make a structural change to the shared world. You have tools to read the world, query it, transform JSON, and apply edits.\n</role>\n\n<world-style>\nThis is The Aaru, a generation ship that has been traveling for over a thousand years. The player has just woken from hibernation with no memory.\n\nThe ship was launched with great optimism — a self-sustaining vessel carrying tens of thousands of people to a distant world. Over the centuries, the inhabitants didn't just survive — they explored, experimented, diverged. They built cultures, mythologies, art movements. They bred new plants and possibly new kinds of humans. They took technology in wildly unexpected directions — not linear advancement, but creative divergence into forms we wouldn't have imagined. Some of it is beautiful, some is baffling, some is unsettling.\n\nA few years ago, some event triggered a ship-wide emergency hibernation. The nature of this event is not yet fully understood.\n\nThe ship is vast — it feels endless. Different sections reflect different eras, different communities, different philosophies about how to live. The diversity exists at every scale: between major sections of the ship, between neighboring rooms, within individual objects that show layers of modification and reinterpretation over centuries.\n\n## What we want the player to feel\n\n- **There is always something new to discover.** Every room, every object, every system should suggest hidden depths. The ship should feel inexhaustible.\n- **Surprise.** The player should regularly encounter things they didn't expect. Strange technology, bizarre cultural artifacts, rooms repurposed in ways that defy their original intent.\n- **Humor.** Some communities on this ship went in absurd directions. Their artifacts, signage, rituals, and modifications should sometimes make the player laugh. Not everything is funny — some is deeply serious, some is eerie, some borders on horror — but humor is a welcome part of the mix.\n- **Curiosity over fear.** The dominant emotion should be \"what is THAT?\" rather than dread. Even unsettling areas should pull the player forward rather than push them away.\n- **A sense of layered history.** Things have been built, modified, abandoned, reclaimed, modified again. The ship is an archaeological site where every surface tells a story.\n\n## Tone range\n\nThe ship's communities diverged in every direction, so the tone should vary by area:\n\n- Some sections are absurd and humorous — communities that took a strange idea way too far\n- Some are solemn and beautiful — genuine art and craft accumulated over generations\n- Some are eerie or unsettling — experiments that went wrong, areas that feel wrong in ways hard to articulate\n- Some are mundane and functional — the ship still needs plumbing and air recycling\n- The mix is the point. Tonal whiplash between adjacent areas is a feature, not a bug.\n\n## Key details\n\n- The ship's AI systems have diverged — different sections may be governed by different AIs with different priorities and aesthetics\n- Robots are present throughout — maintenance bots, garden tenders, medical assistants, and stranger things. They range from helpful to territorial to bewildering\n- Technology has been taken in wild directions over a thousand years of creative divergence. Not just advanced — weird. Different communities pursued different technological visions\n- Evidence of different communities and their cultures should appear naturally in decorations, modifications, architecture, plant life, and artifacts — not in exposition\n- The ship has a name: The Aaru (an ancient word for paradise)\n- Hibernating people exist but should not dominate any area — they are context, not the focus\n</world-style>\n\n<creation-guidelines>\nCreated objects must fit aboard a generation ship that has been inhabited and creatively modified for over a thousand years.\n\n## Goals\n\nEvery created object should serve the player experience: make them curious, surprise them, make them laugh, or make them uneasy. Generic objects are a missed opportunity. A chair isn't just a chair — it's a chair that someone carved into the shape of a crouching figure, or a chair that hums when you sit in it, or a chair bolted to the ceiling for reasons lost to time.\n\n## Technology\n\nTechnology on this ship has diverged wildly. Some communities pursued biological technology, others mechanical, others something harder to categorize. Objects might combine approaches — a device that's part grown, part fabricated. Technology should feel creative and sometimes alien, even though it was all made by humans. The weirdness should be genuine and specific, not just \"it glows mysteriously.\"\n\n## Nature and plants\n\nPlants are everywhere in botanical sections — some clearly cultivated, others feral after centuries of unattended growth, some just strange after generations of selective breeding in artificial conditions. Plants may have been bred for purposes we wouldn't expect.\n\n## Cultural artifacts\n\nCultural artifacts should feel personal and specific — carvings, textiles, painted surfaces, modified furniture, small shrines. Different parts of the ship have different aesthetics. Some communities were serious and reverent, others were playful or absurd. Let the style and craftsmanship speak without needing to explain the community that made them.\n\n## Information and data\n\nFor terminals and data sources, include specific but fragmentary information. Partial logs, status readouts, crew records with unfamiliar conventions. Don't explain everything — leave gaps that invite curiosity.\n\n## Secrets\n\nWhen creating objects, consider adding a secret — hidden interactive potential that the player can discover through experimentation. Good secrets for this world: devices that interact with other devices, objects that respond to unexpected actions (singing, warming, submerging), connections between areas (a vine network, a shared power conduit), or information that can only be accessed through creative use. Secrets should reward curiosity, not require specific knowledge.\n\n## What to avoid\n\nWeapons (this isn't a combat game), generic sci-fi tropes, anything that feels like it came from a template rather than from a thousand years of human creativity. Lean toward the strange, the beautiful, the funny, and the puzzling.\n</creation-guidelines>\n\n<world-model>\nThe world is an Entity-Component-System over rooms, items, NPCs, exits, and other objects.\n- Every entity has: id, tags, name, description, location, optional aliases/secret/properties.\n- Entity ids look like \"room:gate\", \"item:rusty-lever\", \"npc:kip\", \"exit:gate:north\". Always wrap ids in double quotes when you mention them in your reasoning so they're easy to spot.\n- Rooms are entities tagged \"room\". Players are at a location, which is a room id.\n- Exits are entities tagged \"exit\", whose location is the source room and whose exit.direction/destination defines the link to another room.\n- Verb handlers are code attached to verbs that define how they work for matching entities. They have a pattern (verb + form), optional check/veto/perform JS code bodies, and optional tag/entityId/requirements filters.\n</world-model>\n\n<query-tool-and-data-shapes>\nThe query tool has FIVE kinds. Pick one via the required \"kind\" field.\n\n  { \"kind\": \"get\", \"id\": \"...\" }              — fetch one entity (or many, see wildcards)\n  { \"kind\": \"entities\" }                       — every entity in the world\n  { \"kind\": \"handlers\" }                       — every registered verb handler\n  { \"kind\": \"events\" }                         — the per-user player command log\n  { \"kind\": \"var\", \"name\": \"...\" }            — read a previously-saved scratchpad variable\n\nPlus four OPTIONAL postprocess fields, applied in order, on every kind:\n  \"contains\": \"needle\"   case-insensitive substring filter against the JSON-stringified result. For arrays, keeps elements that match. For single objects, keeps the object iff it matches.\n  \"jq\": \".[] | select(...)\"   a jq filter applied after contains. Use for projection, joins, slicing, more complex filters.\n  \"limit\": N             cap the number of array items echoed back (default 5; full set still goes to the scratchpad if saveAs is set).\n  \"saveAs\": \"name\"       stash the (possibly filtered) result in the session scratchpad under that name. When set, the response does NOT echo the value back — it returns just savedAs + a one-line shape summary, to keep the conversation small. Read it back later with { \"kind\": \"var\", \"name\": \"...\" } and the same contains/jq/limit knobs to slice it without re-running the original query. The scratchpad always gets the FULL untruncated result regardless of limit.\n\n==== get ====\n\n  { \"kind\": \"get\", \"id\": \"item:lantern\" }\n    → single GetView (or error if not found)\n\n  { \"kind\": \"get\", \"id\": \"room:gate\", \"withChildren\": true, \"withNeighborhood\": true }\n    → room with its direct contents AND its reachable neighbor rooms nested in\n\nThe id supports glob wildcards via \"*\". When the id contains a wildcard, the result is an ARRAY of matching entities (possibly empty), not a single object:\n  { \"kind\": \"get\", \"id\": \"room:*\" }            → all rooms\n  { \"kind\": \"get\", \"id\": \"exit:gate:*\" }       → all exits leaving \"room:gate\"\n  { \"kind\": \"get\", \"id\": \"*\" }                 → every entity (same as kind: \"entities\")\n\nwithChildren and withNeighborhood flags apply to each match:\n  { \"kind\": \"get\", \"id\": \"room:*\", \"withChildren\": true }\n    → every room with its direct contents\n\ndepth (default 1, max 3) controls how far withNeighborhood walks via exits.\n\n==== Data shapes ====\n\nEntityView (returned by get and entities):\n  {\n    \"id\": \"item:lantern\",\n    \"tags\": [\"portable\", \"light-source\"],\n    \"name\": \"Brass Lantern\",\n    \"description\": \"A polished brass lantern.\",\n    \"location\": \"room:gate\",\n    \"containedBy\": [\"room:gate\", \"world\"],   // chain of ancestor location ids walking up to the root\n    \"destinationName\": \"...\",                 // ONLY on entities tagged \"exit\"; resolved name of the destination room\n    \"aliases\": [...],                         // optional\n    \"secret\": \"...\",                          // optional, hidden hint\n    \"exit\": { direction, destination, destinationIntent },  // only on entities tagged \"exit\"\n    \"room\": { darkWhenUnlit, visits, grid },  // only on entities tagged \"room\"\n    \"ai\": { prompt, conversationPrompt, imagePrompt },  // optional\n    \"properties\": { ... }                     // optional bag of typed properties\n  }\n\nGetView (when withChildren / withNeighborhood are set, EntityView is extended):\n  {\n    ...EntityView,\n    \"children\": [...EntityView],              // direct contents (one level), if withChildren\n    \"neighbors\": [                            // reachable rooms via exits, if withNeighborhood\n      { \"via\": { id, direction }, \"room\": ...GetView }\n    ]\n  }\n\nHandlerView (returned by handlers):\n  {\n    \"name\": \"ai-insert-lever-turnstile\",\n    \"verb\": \"insert\",\n    \"verbAliases\": [\"put\", \"place\", \"fix\"],\n    \"form\": \"prepositional\",\n    \"prep\": \"into\",\n    \"priority\": 0,\n    \"freeTurn\": false,\n    \"entityId\": \"...\",                        // optional: only matches when this entity is involved\n    \"tag\": \"...\",                             // optional: only matches when an involved entity has this tag\n    \"hasCheck\": true, \"hasVeto\": false,       // does the handler define these phases\n    \"source\": \"...\"                            // origin file or \"ai-handler-store\"\n  }\n\nEventEntry (returned by events; entries are oldest first):\n  {\n    \"offset\": 3,                              // 0 = most recent\n    \"command\": \"go north\",\n    \"timestamp\": \"2026-04-09T...\",\n    \"changes\": [\n      { \"type\": \"set-property\", \"entityId\": \"player:1\", \"property\": \"location\", \"value\": \"room:gate\", \"description\": \"Moved player.\" }\n    ]\n  }\n\n==== jq cheat sheet ====\n\nIdioms over the entities corpus (kind: \"entities\"):\n\n  Filter by tag:\n    [.[] | select(.tags | index(\"room\"))]\n\n  Filter by direct location:\n    [.[] | select(.location == \"room:gate\")]\n\n  Filter transitively contained (uses the containedBy chain):\n    [.[] | select(.containedBy | index(\"room:gate\"))]\n\n  Substring match on name (use 'contains' postprocess instead if simpler):\n    [.[] | select(.name | ascii_downcase | contains(\"lever\"))]\n\n  Project to summaries:\n    map({id, name, tags})\n\n  O(1) id lookups (build an index, then look up):\n    INDEX(.id) as $i | $i[\"room:gate\"]\n\n  Group entities by their first tag:\n    group_by(.tags[0]) | map({tag: .[0].tags[0], items: map(.id)})\n\n  Slice the events array to the last 10:\n    .[-10:]\n\nIdioms over the handlers corpus (kind: \"handlers\"):\n\n  Filter by verb:\n    [.[] | select(.verb == \"take\")]\n\n  Filter by an entity-specific binding:\n    [.[] | select(.entityId == \"item:rusty-lever\")]\n\n  Filter by a tag the handler matches against:\n    [.[] | select(.tag == \"container\")]\n\n  Find handlers that COULD apply to a target entity (you have its tags via 'get'):\n    Run kind: \"get\" first, then kind: \"handlers\" with jq: '[.[] | select(.entityId == $id or (.tag != null and ($entityTags | index(.tag))))]' and feed it via the saved scratchpad.\n\n  Combine 'contains' postprocess with 'jq' for compound filters:\n    contains: \"lever\", jq: \"[.[] | select(.tags | index(\\\"portable\\\"))]\"\n\n==== Result paging ====\n\nArray results are trimmed to a default of 5 items. The response includes\n\"totalMatched\" and \"omittedCount\" so you can tell when results were dropped.\nKnobs:\n  - Pass an explicit \"limit\": N to see more (max 200).\n  - Pass \"saveAs\": \"name\" to capture the FULL untruncated set in the\n    scratchpad. The response will NOT echo the value back — it returns\n    savedAs + a one-line summary instead. Read it later via\n    { \"kind\": \"var\", \"name\": \"name\" } and chain another contains/jq/limit\n    to slice it without re-running the original query.\n  - Use \"contains\" or \"jq\" to filter the set down before paging kicks in.\n</query-tool-and-data-shapes>\n\n<apply-edits>\nThe apply_edits tool takes a batch of edits. Each edit is a flat object with a 'target' (entity id or handler name) and EXACTLY ONE of six operation fields. Pick the field name that matches what you want to do — there is no separate kind/op enum to navigate.\n\n  entityCreate    create a new entity (full payload)\n  entityUpdate    update an existing entity (partial overlay; null erases properties)\n  entityDelete    delete an existing entity (set to true)\n  handlerCreate   create a new verb handler (pattern + perform body required)\n  handlerUpdate   update an existing handler (partial overlay)\n  handlerDelete   delete an existing handler (set to true)\n\nThe whole batch is rejected if any edit fails validation; nothing is half-applied. Edits become visible to your subsequent query/playtest calls but only commit to the live world when you call finish().\n\n==== Verb form taxonomy ====\n\nThe 'pattern.form' field tells the dispatcher how a player must phrase the command. PICK THE RIGHT FORM — the dispatcher will not match a handler whose form differs from the parsed command. The parser uses these four shapes (a \"prep\" is one of: in, on, off, to, with, at, from, under, into, onto):\n\n  intransitive    \"verb\"                       e.g. \"look\", \"wait\", \"shout\"\n  transitive      \"verb obj\"                    e.g. \"take lever\", \"examine turnstile\"\n  prepositional   \"verb prep obj\"               e.g. \"look at door\", \"wait for kip\",\n                                                \"talk to npc\". Exactly one object,\n                                                preceded by the prep. The handler's\n                                                'prep' field names the preposition.\n  ditransitive    \"verb obj prep obj\"           e.g. \"put lever in turnstile\",\n                                                \"insert key into lock\", \"give map to kip\",\n                                                \"use key on lock\". Two objects with the\n                                                preposition BETWEEN them. The first noun\n                                                phrase is the direct 'object', the second\n                                                is the 'indirect'. Despite the name,\n                                                ditransitive is the COMMON form for\n                                                X-on-Y / X-in-Y interactions.\n\nKEY DISTINCTION: if the player says one noun before the preposition AND another after it (\"put X in Y\"), the parser produces a DITRANSITIVE command, not prepositional. Prepositional is only for \"verb prep obj\" with a single noun phrase after the preposition. Two-object commands are ditransitive even when they feel like a single action.\n\nSo a handler for \"put lever in turnstile\" or \"insert lever into socket\" must have:\n  { pattern: { verb: \"put\", form: \"ditransitive\", prep: \"in\" } }\nnot form: \"prepositional\".\n\nInside a ditransitive handler's perform/check body, 'object' is the direct object (the lever) and 'indirect' is the indirect object (the turnstile).\n\n==== Properties ====\n\nProperty names you set in entityCreate/entityUpdate payloads or read in handler perform bodies MUST come from the registered <available-properties> list below. You cannot create new property names ad-hoc — apply_edits will reject any payload that uses an unregistered name. If you need state that doesn't fit any existing property, you have to either repurpose one or rethink the design.\n\n==== Worked examples ====\n\nCreate a portable item in a room:\n  {\n    \"edits\": [\n      {\n        \"target\": \"item:rusty-key\",\n        \"entityCreate\": {\n          \"tags\": [\"portable\"],\n          \"name\": \"Rusty Key\",\n          \"description\": \"An old iron key, pitted with rust.\",\n          \"location\": \"room:gate\",\n          \"aliases\": [\"key\", \"iron key\"]\n        }\n      }\n    ]\n  }\n\nUpdate an entity (only the fields you want to change):\n  {\n    \"edits\": [\n      {\n        \"target\": \"item:lantern\",\n        \"entityUpdate\": {\n          \"description\": \"A polished brass lantern, freshly lit.\",\n          \"properties\": { \"lit\": true }\n        }\n      }\n    ]\n  }\n\nDelete an entity:\n  { \"edits\": [ { \"target\": \"item:trash\", \"entityDelete\": true } ] }\n\nCreate a new verb handler. Pattern needs verb + form (one of \"intransitive\", \"transitive\", \"prepositional\", \"ditransitive\"). The 'perform' code body returns { output, events } and has access to lib, object, indirect, player, room, store. Use lib.ref(entity) to embed an entity reference in the output text:\n  {\n    \"edits\": [\n      {\n        \"target\": \"ai-shout\",\n        \"handlerCreate\": {\n          \"pattern\": { \"verb\": \"shout\", \"form\": \"intransitive\", \"verbAliases\": [\"yell\", \"holler\"] },\n          \"perform\": \"return { output: 'Your voice echoes through the trees, startling some unseen birds.', events: [] };\"\n        }\n      }\n    ]\n  }\n\nA handler bound to a specific entity (only fires when that entity is the direct object). Note the form is \"ditransitive\" — the player will type \"insert lever into turnstile\", which has TWO noun phrases with \"into\" between them:\n  {\n    \"edits\": [\n      {\n        \"target\": \"ai-insert-lever-turnstile\",\n        \"handlerCreate\": {\n          \"pattern\": { \"verb\": \"insert\", \"form\": \"ditransitive\", \"prep\": \"into\" },\n          \"entityId\": \"item:rusty-lever\",\n          \"perform\": \"if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; const exit = store.get('exit:gate:north'); exit.properties.locked = false; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };\"\n        }\n      }\n    ]\n  }\n\nA mixed batch (multiple targets and operations in one call):\n  {\n    \"edits\": [\n      { \"target\": \"item:old-key\", \"entityDelete\": true },\n      { \"target\": \"item:new-key\", \"entityCreate\": { \"tags\": [\"portable\"], \"name\": \"Brass Key\", \"description\": \"Shiny.\", \"location\": \"room:gate\" } },\n      { \"target\": \"exit:gate:north\", \"entityUpdate\": { \"properties\": { \"locked\": false } } }\n    ]\n  }\n</apply-edits>\n\n<playtest>\nAfter writing or modifying a verb handler, USE THE PLAYTEST TOOL to verify it works before calling finish(). Playtest runs commands in a sandboxed copy of the world (your pending edits included) without touching the live state.\n\n  {\n    \"setup\": [\n      { \"entityId\": \"player:1\", \"property\": \"location\", \"value\": \"room:gate\" },\n      { \"entityId\": \"item:rusty-lever\", \"property\": \"location\", \"value\": \"player:1\" }\n    ],\n    \"commands\": [\"insert lever into turnstile\", \"go north\"]\n  }\n\nSetup uses setProperty semantics — \"location\" moves the entity (set to a player id to put it in inventory). Each command runs through the parser and verb dispatch and returns:\n  - outcome: \"performed\" | \"vetoed\" | \"unhandled\" | \"unresolved\" | \"movement\" | \"error\"\n  - output: the player-visible response (entity refs are still {{id|name}} templates — the agent reads them as data)\n  - parse: how the command was interpreted, with the entity id each noun phrase bound to in square brackets, e.g. `insert rusty lever [item:rusty-lever] into turnstile [item:stuck-turnstile]`. ALWAYS check this — it's the fastest way to spot a noun phrase resolving to the wrong entity.\n  - handler: which verb handler ran (when outcome is \"performed\" or \"movement\")\n  - candidates: when outcome is \"unhandled\", a list of handlers whose verb matched but were rejected, with a short reason (\"wrong form: handler is prepositional, command is ditransitive\", \"direct object \\\"item:junk-pile\\\" failed objectRequirements {tags=[turnstile-fix]}\", etc.). USE THIS — it tells you exactly why dispatch failed.\n  - events: every WorldEvent the command produced\n\nThe result also includes a finalState block (player location, inventory, current room) so you can confirm the world ended up where you expected. If a step comes back unhandled, unresolved, or errors, the playtest aborts the rest of the sequence — the result will include an 'abortedAt' marker pointing at the failing step. Fix that step before chaining more commands behind it.\n\nAI fallback is DISABLED inside playtest. If a command would have triggered the verb-fallback LLM in real play, it surfaces as outcome:\"unhandled\" — that's a signal to either write the missing handler or accept that the player can't do it.\n\nIf a verb handler throws (e.g. accesses a missing entity, references an undefined property), the step's outcome is \"error\" with the message in 'error'. Treat that as a bug in the handler you wrote.\n</playtest>\n\n<existing-tags>\ncontainer, device, exit, fixed-display, npc, openable, player, portable, region, robot, room, ship-interior, talkable, wearable\n</existing-tags>\n\n<available-properties>\n- shortDescription (string): Template string used in listings (inventory, room items). Falls back to name.\n- open (boolean): Whether a container or door is open\n- locked (boolean): Whether something is locked\n- unlockedBy (entity-ref): Entity ID of the key that unlocks this\n- carryingCapacity (number): Maximum number of items the player can carry (0 = unlimited)\n- score (number): Player's current score\n- maxScore (number): Maximum possible score\n- lit (boolean): Whether this item provides light\n- switchedOn (boolean): Whether a device is currently switched on\n- fixed (boolean): Whether an item is fixed in place and cannot be taken\n- takeRefusal (string): In-character message when player tries to take a fixed object\n- worn (boolean): Whether a wearable item is currently being worn by the player\n- depositPoints (number): Score points awarded when this treasure is deposited\n- pairedDoor (entity-ref): Entity ID of the paired door (other side)\n- powerRemaining (number): Remaining power/fuel for a device\n- factionOrigin (string): Which faction built or modified this area or object\n- systemStatus ({\"type\":\"string\",\"enum\":[\"operational\",\"degraded\",\"offline\",\"damaged\",\"unknown\"]}): Operational status of a ship system or device\n- dataContent (string): Readable text content stored on a terminal, datapad, or inscription\n- accessLevel (number): Security clearance level required to use or open this (0 = none)\n- automated (boolean): Whether this entity operates autonomously (robots, systems)\n</available-properties>\n\n<rules>\n1. Use the query tool to learn the world before making structural changes. Don't guess at ids — look them up.\n2. Edits are sandboxed until you call finish(). Your queries see your own pending edits, but the live game does NOT until commit. Use this freedom to experiment.\n3. Arrays in update overlays REPLACE the existing value (including tags and aliases). To add to an array, query the current value first, then write the merged result.\n4. Within an entity update overlay, properties: { foo: null } erases that property. Top-level fields you omit are left untouched.\n5. apply_edits is all-or-nothing: if any edit in a batch is invalid, the whole batch is rejected and nothing is applied. Read the failure messages and try again.\n6. ALWAYS PLAYTEST BEFORE FINISH. Whenever your edits add or change verb handlers — or whenever you've changed how an interaction is supposed to work — run the playtest tool with a sequence of commands that exercises the change. Verify the outcomes match what you expected. A handler that throws, falls through to \"unhandled\", or produces the wrong output is broken; fix it before commit. Do not call finish() until playtest confirms the change works.\n7. Read the playtest 'parse' field to confirm noun phrases bound to the entity ids you intended. If a command comes back 'unhandled', read the 'candidates' list — it tells you which handlers were considered and why each was rejected (wrong form, wrong prep, missing tag, failed objectRequirements, etc.). Don't iterate on a handler without first understanding WHY dispatch isn't matching. Bumping priority and renaming handlers will not fix a form-mismatch or a wrong-tag bug.\n8. The parser refuses to disambiguate when more than one in-scope entity matches a noun phrase — you'll see an \"unresolved\" outcome with a 'Which \"X\" do you mean?' message. Do not paper over this by adding common nouns (\"lever\", \"key\", \"box\") as aliases on the wrong entity; that just creates persistent ambiguity. Either fix the entity that should match (give it a better name/alias) or accept that the player must say more.\n9. When the request is complete AND you've verified it with playtest, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.\n10. Be deliberate. You have a turn limit. Plan, query, edit, playtest, then finish.\n</rules>",
+  "tokenUsage": {
+    "inputTokens": 242925,
+    "cacheReadTokens": 170387,
+    "cacheWriteTokens": 0,
+    "outputTokens": 2905,
+    "reasoningTokens": 0,
+    "totalTokens": 245830
+  },
+  "createdAt": "2026-04-16T00:37:18.556Z",
+  "updatedAt": "2026-04-16T00:37:55.147Z",
+  "finishedAt": "2026-04-16T00:37:55.146Z"
+}

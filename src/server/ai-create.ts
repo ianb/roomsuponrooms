@@ -2,7 +2,8 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import type { EntityStore, Entity } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
-import { getLlm, getLlmProviderOptions, getLlmAbortSignal } from "./llm.js";
+import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
+import { runLoggedAiCall } from "./ai-call-log.js";
 import {
   describeProperties,
   collectTags,
@@ -179,14 +180,26 @@ export async function handleAiCreate(
   const startTime = Date.now();
 
   const objectSchema = buildCreateSchema(store);
-  const result = await generateObject({
-    model: getLlm(),
-    schema: objectSchema,
-    system: systemPrompt,
-    prompt,
-    providerOptions: getLlmProviderOptions(),
-    abortSignal: getLlmAbortSignal(),
-  });
+  const { result, callId: aiCallId } = await runLoggedAiCall(
+    {
+      gameId,
+      userId: authoring.createdBy,
+      kind: "entity",
+      context: `ai create ${description} in ${room.id}`,
+      model: getLlmModelId(),
+      systemPrompt,
+      prompt,
+    },
+    () =>
+      generateObject({
+        model: getLlm(),
+        schema: objectSchema,
+        system: systemPrompt,
+        prompt,
+        providerOptions: getLlmProviderOptions(),
+        abortSignal: getLlmAbortSignal(),
+      }),
+  );
 
   const durationMs = Date.now() - startTime;
   await recordAiCall(authoring.createdBy, "ai-create");
@@ -226,7 +239,7 @@ export async function handleAiCreate(
     secret: response.secret || undefined,
     ai: response.imagePrompt ? { imagePrompt: response.imagePrompt } : undefined,
     properties: Object.keys(extraProps).length > 0 ? extraProps : undefined,
-    authoring,
+    authoring: { ...authoring, aiCallId },
   };
 
   store.create(entityId, entityRecord);

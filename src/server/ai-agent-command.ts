@@ -56,7 +56,11 @@ export async function handleAiAgentCommand({
     result = await tickSession(id, { onProgress });
     safety += 1;
   }
-  const lines: string[] = [`[Agent session ${id}: ${result.status}]`];
+  // Lead with a link to the admin detail page so the player can open the
+  // session log in a new tab as soon as the command finishes.
+  const lines: string[] = [
+    `{link:/admin/agent-sessions/${id}|Agent session ${id}} · ${result.status}`,
+  ];
   if (result.summary) lines.push(result.summary);
   const session = await storage.getAgentSession(id);
   if (session) {

@@ -4,6 +4,7 @@ import type { EntityData, HandlerData } from "../core/game-data.js";
 import type { WorldEditRecord } from "./storage.js";
 import { applyAiEntityRecords } from "./apply-ai-records.js";
 import { recordToHandler } from "./handler-convert.js";
+import { mergeHandlerPayload } from "./agent-edit-merge.js";
 
 /**
  * Apply a session's pending world edits on top of an already-initialized
@@ -107,7 +108,27 @@ function applyHandlerEdit(
     verbs.removeByName(edit.targetId);
     return;
   }
-  const data = edit.payload as HandlerData;
+  // For updates, the payload is a partial overlay — just the fields the
+  // agent wants to change. We have to merge it onto the existing handler's
+  // source data, otherwise the rebuilt handler ends up with only the patch
+  // fields (pattern: undefined, etc.) and crashes the dispatcher on the
+  // next command.
+  let data: HandlerData;
+  if (edit.op === "update") {
+    const existing = verbs.getByName(edit.targetId);
+    if (!existing || !existing.data) {
+      // No prior data to merge with — skip. The edit tool's validation phase
+      // should have rejected this, but if we got here regardless, applying a
+      // partial would corrupt the registry.
+      console.warn(
+        `[agent-world-view] Skipping handler update for "${edit.targetId}": no existing handler data to merge against.`,
+      );
+      return;
+    }
+    data = mergeHandlerPayload(existing.data, edit.payload as Partial<HandlerData>);
+  } else {
+    data = edit.payload as HandlerData;
+  }
   const handler = recordToHandler({
     ...data,
     name: edit.targetId,

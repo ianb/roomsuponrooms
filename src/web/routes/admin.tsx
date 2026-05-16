@@ -136,12 +136,18 @@ function AdminPage() {
           </span>
         ))}
       </div>
-      <div className="mb-6">
+      <div className="mb-6 flex gap-4">
         <Link
           to="/admin/agent-sessions"
           className="text-sm font-bold text-content/60 hover:text-content/80"
         >
           Agent Sessions &rarr;
+        </Link>
+        <Link
+          to="/admin/ai-calls"
+          className="text-sm font-bold text-content/60 hover:text-content/80"
+        >
+          AI Calls &rarr;
         </Link>
       </div>
       <table className="w-full text-sm">

@@ -373,21 +373,64 @@ t.test("query default limit truncates to 5 with omittedCount", async (t) => {
   }
 });
 
-t.test("query saveAs captures the FULL result, even when paged", async (t) => {
+t.test("query saveAs suppresses the echoed result and stashes the full set", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
 
   const result = await runQuery(context, { kind: "entities", saveAs: "all" });
   t.equal(result.ok, true);
   if (result.ok) {
-    // The visible result is paged...
-    const visible = result.result as unknown[];
-    t.equal(visible.length, 5);
-    // ...but the scratchpad has the full set.
+    // The response no longer echoes the value back when saveAs is set —
+    // the agent gets metadata only, and reads the data later via kind:"var".
+    t.equal(result.result, undefined, "result field is suppressed");
+    t.equal(result.savedAs, "all");
+    t.ok(result.savedSummary, "summary is set");
+    t.match(result.savedSummary || "", /array of \d+ items/);
+    t.ok(result.totalMatched && result.totalMatched > 5);
+    t.ok(result.hint, "hint explains how to read the variable back");
+    t.match(result.hint || "", /kind:"var"/);
+    // Scratchpad has the full set.
     const stored = context.savedVars["all"] as unknown[];
     t.ok(Array.isArray(stored));
     t.ok(stored.length > 5, "scratchpad has untruncated set");
-    t.equal(result.savedAs, "all");
+  }
+});
+
+t.test("query kind:var reads back a saved variable, with optional jq", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  // Stash the full entities corpus.
+  const saveResult = await runQuery(context, { kind: "entities", saveAs: "all" });
+  t.equal(saveResult.ok, true);
+
+  // Read it back with kind:"var".
+  const readResult = await runQuery(context, { kind: "var", name: "all" });
+  t.equal(readResult.ok, true);
+  if (readResult.ok) {
+    t.ok(Array.isArray(readResult.result));
+  }
+
+  // Read it back with a jq filter to project just ids and tags.
+  const projected = await runQuery(context, {
+    kind: "var",
+    name: "all",
+    jq: "[.[] | {id, tags}]",
+    limit: 3,
+  });
+  t.equal(projected.ok, true);
+  if (projected.ok) {
+    const list = projected.result as Array<{ id: string; tags: string[] }>;
+    t.equal(list.length, 3);
+    t.ok(list[0]!.id);
+    t.ok(Array.isArray(list[0]!.tags));
+  }
+
+  // Missing variable produces a clear error.
+  const missing = await runQuery(context, { kind: "var", name: "no-such-var" });
+  t.equal(missing.ok, false);
+  if (!missing.ok) {
+    t.match(missing.error, /no-such-var/);
   }
 });
 
@@ -488,7 +531,7 @@ t.test("query events returns the per-user event log", async (t) => {
   }
 });
 
-t.test("save_var and get_var round-trip via the bundled tools", async (t) => {
+t.test("save_var stores a value; query kind:var reads it back", async (t) => {
   const { context, cleanup } = await makeContext();
   t.teardown(cleanup);
   const tools = buildAgentTools(context);
@@ -500,12 +543,11 @@ t.test("save_var and get_var round-trip via the bundled tools", async (t) => {
   t.equal(saveResult.ok, true);
   t.same(context.savedVars["rooms"], ["room:clearing"]);
 
-  const getResult = (await tools.get_var.execute!(
-    { name: "rooms" },
-    { toolCallId: "2", messages: [] },
-  )) as { ok: boolean; value?: unknown };
+  const getResult = await runQuery(context, { kind: "var", name: "rooms" });
   t.equal(getResult.ok, true);
-  t.same(getResult.value, ["room:clearing"]);
+  if (getResult.ok) {
+    t.same(getResult.result, ["room:clearing"]);
+  }
 });
 
 t.test("finish sets terminate flag", async (t) => {

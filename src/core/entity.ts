@@ -8,6 +8,7 @@ import {
   UndefinedPropertyError,
   DanglingReferenceError,
   PropertyValueError,
+  RoomMissingRequiredFieldError,
 } from "./entity-errors.js";
 import type { Entity, EntitySnapshot, CreateEntityOptions } from "./entity-types.js";
 import { snapshotEntity, entityFromSnapshot } from "./entity-types.js";
@@ -75,6 +76,13 @@ export class EntityStore {
       throw new DuplicateEntityError(id);
     }
     const { typed, props, exit, grid } = this.splitProps(options);
+    const isRoom = options.tags ? options.tags.includes("room") : false;
+    if (isRoom && !typed.name) {
+      throw new RoomMissingRequiredFieldError(id, "name");
+    }
+    if (isRoom && !typed.description) {
+      throw new RoomMissingRequiredFieldError(id, "description");
+    }
     const entity: Entity = {
       id,
       tags: options.tags ? [...options.tags] : [],

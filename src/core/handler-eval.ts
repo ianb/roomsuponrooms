@@ -123,5 +123,8 @@ export function handlerDataToHandler(
     check: data.check ? buildCheck(data.check, createLib) : undefined,
     veto: data.veto ? buildVeto(data.veto, createLib) : undefined,
     perform: buildPerform(data.perform, createLib),
+    // Stash the original HandlerData so partial agent updates can merge into
+    // it without losing the other fields.
+    data,
   };
 }

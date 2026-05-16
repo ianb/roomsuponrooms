@@ -2,7 +2,8 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import type { Entity, EntityStore } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
-import { getLlm, getLlmProviderOptions, getLlmAbortSignal } from "./llm.js";
+import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
+import { runLoggedAiCall } from "./ai-call-log.js";
 import { composeVerbPrompt } from "./ai-prompts.js";
 
 /** Scenery descriptions stored on the room entity */
@@ -203,12 +204,16 @@ export async function generateSceneryDescription(
     sourceEntity,
     recentOutput,
     prompts,
+    gameId,
+    userId,
   }: {
     word: string;
     room: Entity;
     sourceEntity?: Entity;
     recentOutput?: string;
     prompts?: GamePrompts;
+    gameId?: string;
+    userId?: string;
   },
 ): Promise<{
   entry: SceneryEntry;
@@ -231,14 +236,26 @@ export async function generateSceneryDescription(
   console.log(`[ai-scenery] Generating description for "${word}" on ${label}`);
   const startTime = Date.now();
 
-  const result = await generateObject({
-    model: getLlm(),
-    schema: responseSchema,
-    system: systemPrompt,
-    prompt,
-    providerOptions: getLlmProviderOptions(),
-    abortSignal: getLlmAbortSignal(),
-  });
+  const { result } = await runLoggedAiCall(
+    {
+      gameId: gameId || "unknown",
+      userId: userId || "unknown",
+      kind: "scenery",
+      context: `examine "${word}" on ${label}`,
+      model: getLlmModelId(),
+      systemPrompt,
+      prompt,
+    },
+    () =>
+      generateObject({
+        model: getLlm(),
+        schema: responseSchema,
+        system: systemPrompt,
+        prompt,
+        providerOptions: getLlmProviderOptions(),
+        abortSignal: getLlmAbortSignal(),
+      }),
+  );
 
   const durationMs = Date.now() - startTime;
   console.log(`[ai-scenery] Generated in ${durationMs}ms`);

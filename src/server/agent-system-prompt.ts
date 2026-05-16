@@ -16,17 +16,19 @@ The world is an Entity-Component-System over rooms, items, NPCs, exits, and othe
 </world-model>`;
 
 const QUERY_SECTION = `<query-tool-and-data-shapes>
-The query tool has FOUR kinds. Pick one via the required "kind" field.
+The query tool has FIVE kinds. Pick one via the required "kind" field.
 
   { "kind": "get", "id": "..." }              — fetch one entity (or many, see wildcards)
   { "kind": "entities" }                       — every entity in the world
   { "kind": "handlers" }                       — every registered verb handler
   { "kind": "events" }                         — the per-user player command log
+  { "kind": "var", "name": "..." }            — read a previously-saved scratchpad variable
 
-Plus three OPTIONAL postprocess fields, applied in order, on every kind:
+Plus four OPTIONAL postprocess fields, applied in order, on every kind:
   "contains": "needle"   case-insensitive substring filter against the JSON-stringified result. For arrays, keeps elements that match. For single objects, keeps the object iff it matches.
   "jq": ".[] | select(...)"   a jq filter applied after contains. Use for projection, joins, slicing, more complex filters.
-  "saveAs": "name"   stores the (possibly filtered) result under that name in the session scratchpad. Retrieve later with get_var or pipe through another jq call.
+  "limit": N             cap the number of array items echoed back (default 5; full set still goes to the scratchpad if saveAs is set).
+  "saveAs": "name"       stash the (possibly filtered) result in the session scratchpad under that name. When set, the response does NOT echo the value back — it returns just savedAs + a one-line shape summary, to keep the conversation small. Read it back later with { "kind": "var", "name": "..." } and the same contains/jq/limit knobs to slice it without re-running the original query. The scratchpad always gets the FULL untruncated result regardless of limit.
 
 ==== get ====
 
@@ -152,8 +154,10 @@ Array results are trimmed to a default of 5 items. The response includes
 Knobs:
   - Pass an explicit "limit": N to see more (max 200).
   - Pass "saveAs": "name" to capture the FULL untruncated set in the
-    scratchpad — useful when you want to see a few items now and jq the
-    full set on a follow-up call via get_var or another query.
+    scratchpad. The response will NOT echo the value back — it returns
+    savedAs + a one-line summary instead. Read it later via
+    { "kind": "var", "name": "name" } and chain another contains/jq/limit
+    to slice it without re-running the original query.
   - Use "contains" or "jq" to filter the set down before paging kicks in.
 </query-tool-and-data-shapes>`;
 
@@ -168,6 +172,37 @@ The apply_edits tool takes a batch of edits. Each edit is a flat object with a '
   handlerDelete   delete an existing handler (set to true)
 
 The whole batch is rejected if any edit fails validation; nothing is half-applied. Edits become visible to your subsequent query/playtest calls but only commit to the live world when you call finish().
+
+==== Verb form taxonomy ====
+
+The 'pattern.form' field tells the dispatcher how a player must phrase the command. PICK THE RIGHT FORM — the dispatcher will not match a handler whose form differs from the parsed command. The parser uses these four shapes (a "prep" is one of: in, on, off, to, with, at, from, under, into, onto):
+
+  intransitive    "verb"                       e.g. "look", "wait", "shout"
+  transitive      "verb obj"                    e.g. "take lever", "examine turnstile"
+  prepositional   "verb prep obj"               e.g. "look at door", "wait for kip",
+                                                "talk to npc". Exactly one object,
+                                                preceded by the prep. The handler's
+                                                'prep' field names the preposition.
+  ditransitive    "verb obj prep obj"           e.g. "put lever in turnstile",
+                                                "insert key into lock", "give map to kip",
+                                                "use key on lock". Two objects with the
+                                                preposition BETWEEN them. The first noun
+                                                phrase is the direct 'object', the second
+                                                is the 'indirect'. Despite the name,
+                                                ditransitive is the COMMON form for
+                                                X-on-Y / X-in-Y interactions.
+
+KEY DISTINCTION: if the player says one noun before the preposition AND another after it ("put X in Y"), the parser produces a DITRANSITIVE command, not prepositional. Prepositional is only for "verb prep obj" with a single noun phrase after the preposition. Two-object commands are ditransitive even when they feel like a single action.
+
+So a handler for "put lever in turnstile" or "insert lever into socket" must have:
+  { pattern: { verb: "put", form: "ditransitive", prep: "in" } }
+not form: "prepositional".
+
+Inside a ditransitive handler's perform/check body, 'object' is the direct object (the lever) and 'indirect' is the indirect object (the turnstile).
+
+==== Properties ====
+
+Property names you set in entityCreate/entityUpdate payloads or read in handler perform bodies MUST come from the registered <available-properties> list below. You cannot create new property names ad-hoc — apply_edits will reject any payload that uses an unregistered name. If you need state that doesn't fit any existing property, you have to either repurpose one or rethink the design.
 
 ==== Worked examples ====
 
@@ -216,13 +251,13 @@ Create a new verb handler. Pattern needs verb + form (one of "intransitive", "tr
     ]
   }
 
-A handler bound to a specific entity (only fires when that entity is the object):
+A handler bound to a specific entity (only fires when that entity is the direct object). Note the form is "ditransitive" — the player will type "insert lever into turnstile", which has TWO noun phrases with "into" between them:
   {
     "edits": [
       {
         "target": "ai-insert-lever-turnstile",
         "handlerCreate": {
-          "pattern": { "verb": "insert", "form": "prepositional", "prep": "into" },
+          "pattern": { "verb": "insert", "form": "ditransitive", "prep": "into" },
           "entityId": "item:rusty-lever",
           "perform": "if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; const exit = store.get('exit:gate:north'); exit.properties.locked = false; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };"
         }
@@ -254,9 +289,12 @@ After writing or modifying a verb handler, USE THE PLAYTEST TOOL to verify it wo
 Setup uses setProperty semantics — "location" moves the entity (set to a player id to put it in inventory). Each command runs through the parser and verb dispatch and returns:
   - outcome: "performed" | "vetoed" | "unhandled" | "unresolved" | "movement" | "error"
   - output: the player-visible response (entity refs are still {{id|name}} templates — the agent reads them as data)
+  - parse: how the command was interpreted, with the entity id each noun phrase bound to in square brackets, e.g. \`insert rusty lever [item:rusty-lever] into turnstile [item:stuck-turnstile]\`. ALWAYS check this — it's the fastest way to spot a noun phrase resolving to the wrong entity.
   - handler: which verb handler ran (when outcome is "performed" or "movement")
+  - candidates: when outcome is "unhandled", a list of handlers whose verb matched but were rejected, with a short reason ("wrong form: handler is prepositional, command is ditransitive", "direct object \\"item:junk-pile\\" failed objectRequirements {tags=[turnstile-fix]}", etc.). USE THIS — it tells you exactly why dispatch failed.
   - events: every WorldEvent the command produced
-The result also includes a finalState block (player location, inventory, current room) so you can confirm the world ended up where you expected.
+
+The result also includes a finalState block (player location, inventory, current room) so you can confirm the world ended up where you expected. If a step comes back unhandled, unresolved, or errors, the playtest aborts the rest of the sequence — the result will include an 'abortedAt' marker pointing at the failing step. Fix that step before chaining more commands behind it.
 
 AI fallback is DISABLED inside playtest. If a command would have triggered the verb-fallback LLM in real play, it surfaces as outcome:"unhandled" — that's a signal to either write the missing handler or accept that the player can't do it.
 
@@ -270,8 +308,10 @@ const RULES_SECTION = `<rules>
 4. Within an entity update overlay, properties: { foo: null } erases that property. Top-level fields you omit are left untouched.
 5. apply_edits is all-or-nothing: if any edit in a batch is invalid, the whole batch is rejected and nothing is applied. Read the failure messages and try again.
 6. ALWAYS PLAYTEST BEFORE FINISH. Whenever your edits add or change verb handlers — or whenever you've changed how an interaction is supposed to work — run the playtest tool with a sequence of commands that exercises the change. Verify the outcomes match what you expected. A handler that throws, falls through to "unhandled", or produces the wrong output is broken; fix it before commit. Do not call finish() until playtest confirms the change works.
-7. When the request is complete AND you've verified it with playtest, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.
-8. Be deliberate. You have a turn limit. Plan, query, edit, playtest, then finish.
+7. Read the playtest 'parse' field to confirm noun phrases bound to the entity ids you intended. If a command comes back 'unhandled', read the 'candidates' list — it tells you which handlers were considered and why each was rejected (wrong form, wrong prep, missing tag, failed objectRequirements, etc.). Don't iterate on a handler without first understanding WHY dispatch isn't matching. Bumping priority and renaming handlers will not fix a form-mismatch or a wrong-tag bug.
+8. The parser refuses to disambiguate when more than one in-scope entity matches a noun phrase — you'll see an "unresolved" outcome with a 'Which "X" do you mean?' message. Do not paper over this by adding common nouns ("lever", "key", "box") as aliases on the wrong entity; that just creates persistent ambiguity. Either fix the entity that should match (give it a better name/alias) or accept that the player must say more.
+9. When the request is complete AND you've verified it with playtest, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.
+10. Be deliberate. You have a turn limit. Plan, query, edit, playtest, then finish.
 </rules>`;
 
 /**

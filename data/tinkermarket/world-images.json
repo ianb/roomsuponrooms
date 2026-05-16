@@ -86,5 +86,38 @@
     "width": null,
     "height": null,
     "createdAt": "2026-04-05T21:11:47.697Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:market-square",
+    "r2Key": "tinkermarket/entities/room/market-square.png",
+    "promptUsed": "A sun-drenched bazaar at a busy crossroads, shaded by a canopy of mismatched, vibrant fabric awnings that cast dappled patches of color over dusty paths. Bustling crowds navigate between weathered wooden stalls and blankets spread with goods, while a laborer carries a heavy wooden crate toward a vacant gap. High-angle wide shot, rich with textures of layered cloth, sun-bleached wood, and a warm, hazy atmosphere.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-11T17:46:26.807Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:market-square-south",
+    "r2Key": "tinkermarket/entities/room/market-square-south.png",
+    "promptUsed": "A sun-drenched corner of a medieval square featuring a weathered wooden notice board bristling with layered parchment and a polished stone bench against a low masonry wall. A gleaming brass cart with rising steam stands nearby on textured cobblestones, with the plaza opening into a wide, airy space in the background. Cinematic soft lighting highlights the contrast between the rough wood, the smooth stone, and the metallic sheen of the vendor's cart.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-11T17:46:32.453Z"
+  },
+  {
+    "gameId": "tinkermarket",
+    "imageType": "entity:room:food-row",
+    "r2Key": "tinkermarket/entities/room/food-row.png",
+    "promptUsed": "A bustling market alley filled with thick white steam rising from blackened iron pots and a massive wooden broth vat. Vendors in rough linen tunics fry golden flatbreads on glowing, fire-heated stones, casting warm orange light onto damp cobblestones and weathered stone walls. The atmosphere is dense and hazy, with a row of weary workers eating on a dark timber bench tucked into the shadows.",
+    "stylePrompt": "Richly detailed fantasy concept art in warm brass, amber, and lamplight tones. Slightly painterly with visible texture, worn and lived-in. Dense with specific material detail — interesting surfaces, layered objects, evidence of use and activity. Warm atmospheric lighting from lanterns or glowing materials. Subtle dimensional strangeness: faint glows, unusual textures, geometry that doesn't quite resolve. No people visible. The scene should feel like a place with history and purpose.",
+    "mimeType": "image/png",
+    "width": null,
+    "height": null,
+    "createdAt": "2026-04-11T17:47:08.897Z"
   }
 ]

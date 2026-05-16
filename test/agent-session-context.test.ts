@@ -45,7 +45,7 @@ t.test("session context message includes player, room, request", async (t) => {
   t.match(message, /"room:clearing"/, "room id quoted");
 });
 
-t.test("session context current-room includes children and neighbors", async (t) => {
+t.test("session context current-room is a compact text summary, not JSON", async (t) => {
   const { storage, game, cleanup } = makeFixture();
   t.teardown(cleanup);
 
@@ -56,18 +56,25 @@ t.test("session context current-room includes children and neighbors", async (t)
     request: "test",
   });
 
-  // Extract the JSON between <current-room> tags
   const match = /<current-room>\n([\s\S]*?)\n<\/current-room>/.exec(message);
-  t.ok(match, "current-room section parses");
+  t.ok(match, "current-room section present");
   if (!match) return;
-  const room = JSON.parse(match[1]!) as {
-    id: string;
-    children: Array<{ id: string; name: string; tags: string[] }>;
-    neighbors: Array<{ via: { direction: string }; room: { id: string } }>;
-  };
-  t.equal(room.id, "room:clearing");
-  t.ok(Array.isArray(room.children), "children array");
-  t.ok(Array.isArray(room.neighbors), "neighbors array");
+  const body = match[1]!;
+  // The new format is human-readable text. It must NOT be valid JSON, and it
+  // must not bury the room id inside a sea of nested arrays the way the old
+  // JSON dump did.
+  t.throws(() => JSON.parse(body), "body is text, not JSON");
+  t.match(body, /Room "room:clearing"/, "room header includes id");
+  t.match(body, /Children \(/, "children section is summarized");
+  // Test world has at least one exit out of room:clearing — neighbors should
+  // be listed.
+  t.match(body, /Neighbors \(/, "neighbors section is summarized");
+  // The footer must teach the agent how to recover the data we left out.
+  t.match(body, /query\(\{kind:"get"/, "footer shows the query call to read more");
+  // Sanity: don't accidentally dump the entire description verbatim — the
+  // whole point of the rewrite is to keep this section short. Cap at ~2KB
+  // for the test world.
+  t.ok(body.length < 2000, `room block is concise (${body.length} bytes)`);
 });
 
 t.test("session context recent-events absent when no events", async (t) => {

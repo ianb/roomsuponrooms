@@ -1,4 +1,5 @@
 import type { EntityStore, Entity } from "./entity.js";
+import type { HandlerData } from "./game-data.js";
 
 // --- Parsed command structures ---
 
@@ -80,6 +81,13 @@ export interface VerbHandler {
   check?: (context: VerbContext) => CheckResult;
   veto?: (context: VerbContext) => VetoResult;
   perform: (context: VerbContext) => PerformResult;
+  /**
+   * Original source record this handler was compiled from, if any.
+   * Carried on data-driven (HandlerData-derived) handlers so partial
+   * updates can merge into the full shape. Built-in code handlers that
+   * register directly via VerbRegistry.register() leave this undefined.
+   */
+  data?: HandlerData;
 }
 
 export interface VerbContext {

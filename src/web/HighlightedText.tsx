@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 
 const HIGHLIGHT_PATTERN =
-  /{img:([^|}]+)\|?([^}]*)}|{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>|\(\(([^|]+)\|([^)]+)\)\)|{!([^!]+)!}/g;
+  /{img:([^|}]+)\|?([^}]*)}|{link:([^|}]+)\|([^}]+)}|{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>|\(\(([^|]+)\|([^)]+)\)\)|{!([^!]+)!}/g;
 
 interface TextSegment {
-  type: "text" | "entity" | "topic" | "direction" | "command" | "refusal" | "image";
+  type: "text" | "entity" | "topic" | "direction" | "command" | "refusal" | "image" | "link";
   text: string;
   entityId?: string;
   command?: string;
+  href?: string;
 }
 
 function parseSegments(text: string): TextSegment[] {
@@ -24,15 +25,17 @@ function parseSegments(text: string): TextSegment[] {
     if (match[1]) {
       segments.push({ type: "image", text: match[2] || "", entityId: match[1] });
     } else if (match[3] && match[4]) {
-      segments.push({ type: "entity", text: match[4], entityId: match[3] });
-    } else if (match[5]) {
-      segments.push({ type: "topic", text: match[5] });
-    } else if (match[6]) {
-      segments.push({ type: "direction", text: match[6] });
-    } else if (match[7] && match[8]) {
-      segments.push({ type: "command", text: match[8], command: match[7] });
-    } else if (match[9]) {
-      segments.push({ type: "refusal", text: match[9] });
+      segments.push({ type: "link", text: match[4], href: match[3] });
+    } else if (match[5] && match[6]) {
+      segments.push({ type: "entity", text: match[6], entityId: match[5] });
+    } else if (match[7]) {
+      segments.push({ type: "topic", text: match[7] });
+    } else if (match[8]) {
+      segments.push({ type: "direction", text: match[8] });
+    } else if (match[9] && match[10]) {
+      segments.push({ type: "command", text: match[10], command: match[9] });
+    } else if (match[11]) {
+      segments.push({ type: "refusal", text: match[11] });
     }
     lastIndex = match.index + match[0].length;
     match = HIGHLIGHT_PATTERN.exec(text);
@@ -125,6 +128,19 @@ export function HighlightedText({
         <span key={i} className="text-highlight-direction">
           {seg.text}
         </span>
+      );
+    }
+    if (seg.type === "link" && seg.href) {
+      return (
+        <a
+          key={i}
+          href={seg.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-highlight-topic underline hover:no-underline"
+        >
+          {seg.text}
+        </a>
       );
     }
     if (seg.type === "refusal") {

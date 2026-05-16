@@ -45,3 +45,19 @@ export class PropertyValueError extends Error {
     this.name = "PropertyValueError";
   }
 }
+
+/**
+ * Thrown when a room entity is created without a name or description. Rooms
+ * are the primary unit the player interacts with, so a nameless or blank room
+ * is always a bug — usually upstream in AI generation or a caller dropping
+ * typed fields. Fail fast here so the broken room never makes it to storage.
+ */
+export class RoomMissingRequiredFieldError extends Error {
+  constructor(
+    public readonly entityId: string,
+    public readonly field: "name" | "description",
+  ) {
+    super(`Room "${entityId}" was created without a ${field}`);
+    this.name = "RoomMissingRequiredFieldError";
+  }
+}

@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { EntityStore, Entity } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
 import type { WorldEvent } from "../core/verb-types.js";
-import { getLlm, getLlmProviderOptions, getLlmAbortSignal } from "./llm.js";
+import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
+import { runLoggedAiCall } from "./ai-call-log.js";
 import {
   describeProperties,
   collectTags,
@@ -131,16 +132,28 @@ export async function handleAiCreateRoom(
   const prompt = buildPrompt(store, { exit, sourceRoom, playerId });
   const direction = (exit.exit && exit.exit.direction) || "unknown";
   console.log("[ai-create-room] Materializing room via:", direction);
-  const startTime = Date.now();
   const objectSchema = buildRoomSchema(store);
-  const result = await generateObject({
-    model: getLlm(),
-    schema: objectSchema,
-    system: systemPrompt,
-    prompt,
-    providerOptions: getLlmProviderOptions(),
-    abortSignal: getLlmAbortSignal(),
-  });
+  const startTime = Date.now();
+  const { result, callId: aiCallId } = await runLoggedAiCall(
+    {
+      gameId,
+      userId: authoring.createdBy,
+      kind: "room",
+      context: `unresolved-exit ${direction} from ${sourceRoom.id}`,
+      model: getLlmModelId(),
+      systemPrompt,
+      prompt,
+    },
+    () =>
+      generateObject({
+        model: getLlm(),
+        schema: objectSchema,
+        system: systemPrompt,
+        prompt,
+        providerOptions: getLlmProviderOptions(),
+        abortSignal: getLlmAbortSignal(),
+      }),
+  );
   const durationMs = Date.now() - startTime;
   await recordAiCall(authoring.createdBy, "room");
   const response = result.object;
@@ -149,16 +162,12 @@ export async function handleAiCreateRoom(
     throw new AiGenerationIncompleteError();
   }
   console.log(`[ai-create-room] Created: ${roomData.name} (${durationMs}ms)`);
-
+  // Stamp aiCallId onto authoring so every entity this call creates links
+  // back to the logged prompt/response.
+  const stamped: AuthoringInfo = { ...authoring, aiCallId };
   const roomId = uniqueId(store, `room:${roomData.idSlug}`);
-  // Compute grid coordinates from source room + direction
   const newCoords = computeRoomCoordinates(sourceRoom, direction);
-  const roomProps = filterKnownProperties(store, {
-    name: roomData.name,
-    description: roomData.description,
-    ...roomData.properties,
-    ...(roomData.secret ? { secret: roomData.secret } : {}),
-  });
+  const roomProps = filterKnownProperties(store, { ...roomData.properties });
   if (newCoords) {
     roomProps.gridX = newCoords.x;
     roomProps.gridY = newCoords.y;
@@ -167,44 +176,36 @@ export async function handleAiCreateRoom(
   await createAndSave(store, {
     id: roomId,
     tags: roomData.tags,
+    name: roomData.name,
+    description: roomData.description,
+    secret: roomData.secret,
     properties: roomProps,
     ai: roomData.imagePrompt ? { imagePrompt: roomData.imagePrompt } : undefined,
     gameId,
-    authoring,
+    authoring: stamped,
   });
-  await ensureGridCoords(store, { room: sourceRoom, gameId, authoring });
+  await ensureGridCoords(store, { room: sourceRoom, gameId, authoring: stamped });
 
   const events: WorldEvent[] = [];
-  function setExit({
-    property,
-    value,
-    description,
-  }: {
-    property: string;
-    value: unknown;
-    description: string;
-  }): void {
-    store.setProperty(exit.id, { name: property, value });
-    events.push({ type: "set-property", entityId: exit.id, property, value, description });
-  }
+  const setExit = (opts: { property: string; value: unknown; description: string }): void => {
+    store.setProperty(exit.id, { name: opts.property, value: opts.value });
+    events.push({ type: "set-property", entityId: exit.id, ...opts });
+  };
   setExit({ property: "destination", value: roomId, description: "Resolved exit" });
   setExit({ property: "destinationIntent", value: undefined, description: "Cleared intent" });
-  if (roomData.exitUpdate) {
-    if (roomData.exitUpdate.name)
-      setExit({
-        property: "name",
-        value: roomData.exitUpdate.name,
-        description: "Updated exit name",
-      });
-    if (roomData.exitUpdate.description)
-      setExit({
-        property: "description",
-        value: roomData.exitUpdate.description,
-        description: "Updated exit desc",
-      });
+  const update = roomData.exitUpdate;
+  if (update && update.name) {
+    setExit({ property: "name", value: update.name, description: "Updated exit name" });
+  }
+  if (update && update.description) {
+    setExit({
+      property: "description",
+      value: update.description,
+      description: "Updated exit desc",
+    });
   }
 
-  await persistEntity(store, { entity: exit, gameId, authoring });
+  await persistEntity(store, { entity: exit, gameId, authoring: stamped });
   const roomSlug = roomId.replace("room:", "");
   await createReturnAndAdditionalExits(store, {
     roomSlug,
@@ -213,21 +214,23 @@ export async function handleAiCreateRoom(
     direction,
     roomData,
     gameId,
-    authoring,
+    authoring: stamped,
   });
-
   for (const item of roomData.contents) {
     const iid = uniqueId(store, `${item.idCategory}:${item.idSlug}`);
-    const ip = filterKnownProperties(store, {
-      location: roomId,
+    const ip = filterKnownProperties(store, { ...item.properties });
+    await createAndSave(store, {
+      id: iid,
+      tags: item.tags,
       name: item.name,
       description: item.description,
-      ...item.properties,
+      location: roomId,
+      aliases: item.aliases.length > 0 ? item.aliases : undefined,
+      properties: ip,
+      gameId,
+      authoring: stamped,
     });
-    if (item.aliases.length > 0) ip.aliases = item.aliases;
-    await createAndSave(store, { id: iid, tags: item.tags, properties: ip, gameId, authoring });
   }
-
   return {
     output: roomData.description,
     notes: response.notes || undefined,
@@ -239,26 +242,13 @@ export async function handleAiCreateRoom(
   };
 }
 
+type RoomData = z.infer<ReturnType<typeof buildRoomSchema>>["room"];
 interface ExitCreationParams {
   roomSlug: string;
   roomId: string;
   sourceRoom: Entity;
   direction: string;
-  roomData: {
-    returnExitName?: string;
-    returnExitDescription?: string;
-    additionalExits: Array<{
-      direction: string;
-      name: string;
-      description: string;
-      destinationIntent?: string;
-      connectTo?: string;
-      backExitName?: string;
-      backExitDescription?: string;
-      aliases: string[];
-      properties: Record<string, unknown>;
-    }>;
-  };
+  roomData: RoomData;
   gameId: string;
   authoring: AuthoringInfo;
 }
@@ -283,20 +273,17 @@ async function createReturnAndAdditionalExits(
     const eid = `exit:${roomSlug}:${ed.direction.toLowerCase().replace(/\s+/g, "-")}`;
     if (store.has(eid)) continue;
     const isConnected = ed.connectTo && store.has(ed.connectTo);
-    const ep = filterKnownProperties(store, {
-      name: ed.name,
-      description: ed.description,
-      ...ed.properties,
-    });
-    if (ed.aliases.length > 0) ep.aliases = ed.aliases;
     const exitData = isConnected
       ? { direction: ed.direction, destination: ed.connectTo as string }
       : { direction: ed.direction, destinationIntent: ed.destinationIntent };
     await createAndSave(store, {
       id: eid,
       tags: ["exit"],
-      properties: ep,
+      name: ed.name,
+      description: ed.description,
       location: roomId,
+      aliases: ed.aliases.length > 0 ? ed.aliases : undefined,
+      properties: filterKnownProperties(store, { ...ed.properties }),
       exit: exitData,
       gameId,
       authoring,

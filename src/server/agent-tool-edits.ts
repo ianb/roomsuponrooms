@@ -1,4 +1,5 @@
 import type { EntityData, HandlerData } from "../core/game-data.js";
+import { UndefinedPropertyError } from "../core/entity-errors.js";
 import type {
   NewWorldEditRecord,
   WorldEditOp,
@@ -102,7 +103,15 @@ export async function applyEditBatch(
     });
   } catch (e: unknown) {
     context.store.restoreState(snapshot);
-    const reason = e instanceof Error ? e.message : String(e);
+    let reason = e instanceof Error ? e.message : String(e);
+    // UndefinedPropertyError is the most common surprise — the agent picks
+    // a property name that isn't in the registry and gets a one-line error
+    // with no hint about valid alternatives. List the registered names so it
+    // can pick one without re-reading the system prompt.
+    if (e instanceof UndefinedPropertyError) {
+      const known = Object.keys(context.store.registry.definitions).toSorted().join(", ");
+      reason = `${reason}. Valid property names are: ${known}. Properties cannot be created ad-hoc; pick one of these or rethink the design.`;
+    }
     return {
       ok: false,
       error: `Edit batch failed during apply: ${reason}. Nothing was persisted.`,

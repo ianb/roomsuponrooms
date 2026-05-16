@@ -1,6 +1,5 @@
-import type { EntityStore } from "../core/entity.js";
+import type { Entity, EntityStore } from "../core/entity.js";
 import type { EventLogEntry, RuntimeStorage } from "./storage.js";
-import { buildGetView } from "./agent-query-views.js";
 
 const RECENT_EVENTS_LIMIT = 5;
 
@@ -35,11 +34,6 @@ export async function buildSessionContextMessage(
 
   const currentRoom = renderCurrentRoom(store);
   if (currentRoom) sections.push(currentRoom);
-  if (currentRoom) {
-    sections.push(
-      "(The <current-room> block above is the same data you'd get from `get` with withChildren and withNeighborhood. You don't need to re-query it for basic info.)",
-    );
-  }
 
   const events = await storage.loadEvents({ gameId, userId });
   const recent = renderRecentEvents(events);
@@ -66,14 +60,133 @@ function renderCurrentRoom(store: EntityStore): string | null {
   const player = players[0];
   if (!player) return null;
   if (!store.has(player.location)) return null;
-  const view = buildGetView(store, {
-    id: player.location,
-    withChildren: true,
-    withNeighborhood: true,
-    depth: 1,
-  });
-  if (!view) return null;
-  return `<current-room>\n${JSON.stringify(view, null, 2)}\n</current-room>`;
+  const room = store.get(player.location);
+  const lines: string[] = [];
+  // Header: id, name, parent location. Tags only when interesting (every room
+  // has "room"; mention extras like "dark", etc.).
+  const extraTags = room.tags.filter((t) => t !== "room");
+  const tagSuffix = extraTags.length > 0 ? ` [tags: ${extraTags.join(", ")}]` : "";
+  lines.push(`Room "${room.id}" (${room.name})${tagSuffix}`);
+  if (room.location) lines.push(`Inside: "${room.location}"`);
+  lines.push(...renderHiddenFieldNotes(room));
+
+  // Children: one terse line each. Sorted so exits come first (they're the
+  // most actionable for navigation), then NPCs, then everything else.
+  const children = store.getContents(room.id).filter((c) => c.id !== player.id);
+  if (children.length > 0) {
+    const sorted = children.toSorted(compareForRoom);
+    lines.push("");
+    lines.push(`Children (${children.length}):`);
+    for (const child of sorted) lines.push("  - " + summarizeChild(child, store));
+  }
+
+  // Neighbors: just id + name + via direction. No nested children.
+  const neighbors = collectNeighbors(store, room);
+  if (neighbors.length > 0) {
+    lines.push("");
+    lines.push(`Neighbors (${neighbors.length}):`);
+    for (const n of neighbors) {
+      lines.push(
+        `  - ${n.via.direction || "?"} via "${n.via.id}" → "${n.room.id}" (${n.room.name})`,
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push(
+    "Not shown above: full descriptions, secrets, scenery details, ai prompts, neighbor room contents.",
+  );
+  lines.push('To see everything on one entity:  query({kind:"get", id:"item:stuck-turnstile"})');
+  lines.push(
+    'To see a room with its children + reachable rooms:  query({kind:"get", id:"' +
+      room.id +
+      '", withChildren:true, withNeighborhood:true})',
+  );
+  lines.push(
+    'To list every entity tagged X:  query({kind:"entities", jq:"[.[] | select(.tags | index(\\"X\\"))]"})',
+  );
+
+  return `<current-room>\n${lines.join("\n")}\n</current-room>`;
+}
+
+/**
+ * Build a one-line summary of an entity for the children listing. Includes
+ * id, name, key tags, aliases (when set), and short data-presence indicators
+ * for descriptions, secrets, scenery, and properties so the agent can see
+ * what's there to query without dumping it all.
+ */
+function summarizeChild(entity: Entity, store: EntityStore): string {
+  const parts: string[] = [`"${entity.id}" (${entity.name})`];
+  if (entity.tags.length > 0) parts.push(`[${entity.tags.join(", ")}]`);
+  if (entity.aliases && entity.aliases.length > 0) {
+    parts.push(`aliases: [${entity.aliases.join(", ")}]`);
+  }
+  // Exit-specific: direction → destination.
+  if (entity.exit) {
+    const dest = entity.exit.destination;
+    const destName = dest && store.has(dest) ? store.get(dest).name : null;
+    const destStr = dest ? `"${dest}"${destName ? ` (${destName})` : ""}` : "(no destination)";
+    parts.push(`${entity.exit.direction} → ${destStr}`);
+  }
+  // Property summary: drop a few key state flags inline rather than a count.
+  const propKeys = entity.properties ? Object.keys(entity.properties) : [];
+  const stateFlags = propKeys
+    .filter((k) => typeof entity.properties[k] === "boolean")
+    .map((k) => `${k}=${entity.properties[k]}`);
+  if (stateFlags.length > 0) parts.push(stateFlags.join(", "));
+  // Indicators for richer data the agent might want to query.
+  const has: string[] = [];
+  if (entity.description && entity.description.length > 0) has.push("description");
+  if (entity.secret && entity.secret.length > 0) has.push("secret");
+  if (entity.scenery && entity.scenery.length > 0) has.push(`scenery(${entity.scenery.length})`);
+  if (entity.ai) has.push("ai");
+  if (propKeys.length > stateFlags.length) {
+    has.push(`${propKeys.length - stateFlags.length} other props`);
+  }
+  if (has.length > 0) parts.push(`has: ${has.join(", ")}`);
+  return parts.join(" · ");
+}
+
+function renderHiddenFieldNotes(room: Entity): string[] {
+  const notes: string[] = [];
+  if (room.description && room.description.length > 0) {
+    notes.push(`Description: (${room.description.length} chars; query for full text)`);
+  }
+  if (room.secret && room.secret.length > 0) {
+    notes.push("Secret: present (designer-only hint; query for full text)");
+  }
+  return notes;
+}
+
+interface NeighborSummary {
+  via: { id: string; direction: string };
+  room: { id: string; name: string };
+}
+
+function collectNeighbors(store: EntityStore, room: Entity): NeighborSummary[] {
+  const out: NeighborSummary[] = [];
+  for (const child of store.getContents(room.id)) {
+    if (!child.tags.includes("exit")) continue;
+    const dest = child.exit && child.exit.destination;
+    if (!dest || !store.has(dest)) continue;
+    const destRoom = store.get(dest);
+    out.push({
+      via: { id: child.id, direction: (child.exit && child.exit.direction) || "" },
+      room: { id: destRoom.id, name: destRoom.name },
+    });
+  }
+  return out;
+}
+
+function compareForRoom(a: Entity, b: Entity): number {
+  return rankForRoom(a) - rankForRoom(b);
+}
+
+function rankForRoom(e: Entity): number {
+  if (e.tags.includes("exit")) return 0;
+  if (e.tags.includes("npc")) return 1;
+  if (e.tags.includes("portable")) return 2;
+  return 3;
 }
 
 function renderRecentEvents(entries: EventLogEntry[]): string | null {

@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { Entity, EntityStore } from "../core/entity.js";
 import type { JSONSchema7 } from "../core/json-schema.js";
 import type { PropertyDefinition } from "../core/properties.js";
+import { TYPED_ENTITY_KEYS } from "../core/entity-split-props.js";
+import { TypedFieldInPropertiesError } from "./ai-errors.js";
 
 /** Format a property schema as a concise type string */
 function formatSchemaType(schema: JSONSchema7): string {
@@ -44,7 +46,16 @@ export function describeProperties(store: EntityStore): string {
   return Object.values(defs).map(formatPropertyDef).join("\n");
 }
 
-/** Filter properties to only include those defined in the store's registry, skipping undefined */
+/**
+ * Filter properties to only include those defined in the store's registry.
+ * Skips undefined values. Throws on typed-field keys (name, description,
+ * location, aliases, secret, direction, destination, destinationIntent,
+ * gridX/Y/Z) — those must be passed as top-level fields, not through the
+ * properties bag, and silently dropping them produces empty entities. Warns
+ * (but does not throw) on unknown keys, since those can legitimately come
+ * from an LLM inventing a property name and the caller may want to tolerate
+ * that.
+ */
 export function filterKnownProperties(
   store: EntityStore,
   props: Record<string, unknown>,
@@ -52,6 +63,9 @@ export function filterKnownProperties(
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(props)) {
     if (value === undefined) continue;
+    if (TYPED_ENTITY_KEYS.has(key)) {
+      throw new TypedFieldInPropertiesError(key);
+    }
     if (store.registry.definitions[key]) {
       result[key] = value;
     } else {

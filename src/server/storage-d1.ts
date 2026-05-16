@@ -1,3 +1,8 @@
+/* eslint-disable max-lines -- Thin RuntimeStorage wrapper that delegates to
+   per-feature storage-d1-*.ts modules. Each delegating method is three
+   trivial lines; adding a new feature grows this file linearly without
+   introducing real complexity. The sub-modules are where the actual logic
+   lives. */
 import type {
   RuntimeStorage,
   AiEntityRecord,
@@ -18,6 +23,8 @@ import type {
   AgentSessionStatus,
   WorldEditRecord,
   NewWorldEditRecord,
+  AiCallRecord,
+  AiCallSummary,
 } from "./storage.js";
 import * as agentDb from "./storage-d1-agent.js";
 import type { D1Database, EntityRow, HandlerRow, EventRow, ConversationRow } from "./d1-types.js";
@@ -25,6 +32,7 @@ import * as bugDb from "./storage-d1-bugs.js";
 import * as adminDb from "./storage-d1-admin.js";
 import * as imageDb from "./storage-d1-images.js";
 import * as errorDb from "./storage-d1-errors.js";
+import * as aiCallDb from "./storage-d1-ai-calls.js";
 import * as userDb from "./storage-d1-users.js";
 import { rowToAuthoring, authoringBindValues } from "./d1-types.js";
 import { deserializeEntityRow, serializeEntityRecord } from "./entity-serialize.js";
@@ -277,6 +285,15 @@ export class D1Storage implements RuntimeStorage {
   }
   async logError(entry: ErrorLogRecord): Promise<void> {
     return errorDb.logError(this.db, entry);
+  }
+  logAiCall(entry: AiCallRecord): Promise<void> {
+    return aiCallDb.logAiCall(this.db, entry);
+  }
+  getAiCall(id: string): Promise<AiCallRecord | null> {
+    return aiCallDb.getAiCall(this.db, id);
+  }
+  listAiCalls(f: { gameId?: string; limit?: number }): Promise<AiCallSummary[]> {
+    return aiCallDb.listAiCalls(this.db, f);
   }
   async getImageSettings(gameId: string): Promise<ImageSettings | null> {
     return imageDb.getImageSettings(this.db, gameId);

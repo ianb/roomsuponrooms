@@ -58,7 +58,6 @@ function summarizeToolCall(name: string, input: unknown): string {
     return `jq ${String(obj["filter"] || "")}`;
   }
   if (name === "save_var") return `save_var ${String(obj["name"] || "")}`;
-  if (name === "get_var") return `get_var ${String(obj["name"] || "")}`;
   if (name === "finish") return `finish: ${String(obj["summary"] || "")}`;
   if (name === "bail") return `bail: ${String(obj["reason"] || "")}`;
   return name;

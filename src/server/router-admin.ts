@@ -200,4 +200,26 @@ export const adminRouter = router({
       cost: cost ? { totalUsd: cost.totalUsd, breakdown: cost.breakdown } : null,
     };
   }),
+
+  adminAiCalls: adminProcedure
+    .input(
+      z
+        .object({ gameId: z.string().optional(), limit: z.number().int().positive().optional() })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const storage = getStorage();
+      if (!storage.listAiCalls) return { calls: [] };
+      const calls = await storage.listAiCalls({
+        gameId: input ? input.gameId : undefined,
+        limit: input && input.limit ? input.limit : 100,
+      });
+      return { calls };
+    }),
+
+  adminAiCall: adminProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    const storage = getStorage();
+    if (!storage.getAiCall) return null;
+    return storage.getAiCall(input.id);
+  }),
 });

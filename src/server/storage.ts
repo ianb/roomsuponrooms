@@ -7,6 +7,13 @@ export interface AuthoringInfo {
   createdBy: string;
   creationSource: string;
   creationCommand?: string;
+  /**
+   * Id of the logged AI call that produced this content, if any. Points into
+   * the ai_calls log so you can retrieve the exact prompt and response that
+   * generated an entity after the fact. May be absent for content authored
+   * before AI call logging was introduced, or for non-AI creation paths.
+   */
+  aiCallId?: string;
 }
 
 /** Metadata added to AI-created entities */
@@ -221,6 +228,11 @@ export interface RuntimeStorage {
   // --- Error Log (optional — only D1 persists) ---
   logError?(entry: ErrorLogRecord): Promise<void>;
 
+  // --- AI Call Log (optional — stores prompt/response for single-shot LLM calls) ---
+  logAiCall?(record: AiCallRecord): Promise<void>;
+  getAiCall?(id: string): Promise<AiCallRecord | null>;
+  listAiCalls?(filter: { gameId?: string; limit?: number }): Promise<AiCallSummary[]>;
+
   // --- Image Settings (optional — admin only) ---
   getImageSettings?(gameId: string): Promise<ImageSettings | null>;
   saveImageSettings?(settings: ImageSettingsInput): Promise<void>;
@@ -312,4 +324,51 @@ export interface ErrorLogRecord {
   context?: string;
   userId?: string;
   gameId?: string;
+}
+
+/**
+ * A single server-side LLM call — captured so that when AI-generated content
+ * looks wrong after the fact, you can retrieve the exact prompt and response
+ * that produced it. Referenced by AuthoringInfo.aiCallId on AI-authored
+ * entities. Pruned on a rolling window so the table doesn't grow forever.
+ */
+export interface AiCallRecord {
+  /** Unique id, e.g. "aic-{timestamp}-{random}". */
+  id: string;
+  timestamp: string;
+  gameId: string;
+  userId: string;
+  /**
+   * Which creation path made the call — room, entity, exit, scenery,
+   * verb-fallback, conversation, etc. Used for filtering and debugging.
+   */
+  kind: string;
+  /** Short human-readable context, e.g. "unresolved-exit w from room:food-row". */
+  context: string;
+  /** LLM model id (from process.env LLM_MODEL), e.g. "claude-opus-4-6". */
+  model: string;
+  systemPrompt: string;
+  prompt: string;
+  /** The LLM's structured output (result.object). May be undefined if the call failed. */
+  response: unknown;
+  durationMs: number;
+  /** Input (prompt) tokens, if reported by the provider. */
+  tokensIn?: number;
+  /** Output (completion) tokens, if reported by the provider. */
+  tokensOut?: number;
+  /** Error message if the call threw, or absent on success. */
+  error?: string;
+}
+
+/** A listing row — omits the large prompt/response fields for efficient listing. */
+export interface AiCallSummary {
+  id: string;
+  timestamp: string;
+  gameId: string;
+  userId: string;
+  kind: string;
+  context: string;
+  model: string;
+  durationMs: number;
+  error?: string;
 }

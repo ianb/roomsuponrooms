@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { EntityStore, Entity } from "../core/entity.js";
 import type { ResolvedCommand, VerbHandler, VerbContext, WorldEvent } from "../core/verb-types.js";
 import type { VerbRegistry } from "../core/verbs.js";
-import { getLlm, getLlmProviderOptions, getLlmAbortSignal } from "./llm.js";
+import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
+import { runLoggedAiCall } from "./ai-call-log.js";
 import type { AiHandlerRecord, AuthoringInfo } from "./storage.js";
 import { recordToHandler } from "./handler-convert.js";
 import { getStorage } from "./storage-instance.js";
@@ -113,14 +114,26 @@ export async function handleVerbFallback(
   console.log("[ai-fallback] Calling LLM for:", describeCommand(command));
   const startTime = Date.now();
 
-  const result = await generateObject({
-    model: getLlm(),
-    schema: fallbackResponseSchema,
-    system: systemPrompt,
-    prompt,
-    providerOptions: getLlmProviderOptions(),
-    abortSignal: getLlmAbortSignal(),
-  });
+  const { result, callId: aiCallId } = await runLoggedAiCall(
+    {
+      gameId,
+      userId: authoring.createdBy,
+      kind: "verb-fallback",
+      context: `${describeCommand(command)} in ${room.id}`,
+      model: getLlmModelId(),
+      systemPrompt,
+      prompt,
+    },
+    () =>
+      generateObject({
+        model: getLlm(),
+        schema: fallbackResponseSchema,
+        system: systemPrompt,
+        prompt,
+        providerOptions: getLlmProviderOptions(),
+        abortSignal: getLlmAbortSignal(),
+      }),
+  );
 
   const durationMs = Date.now() - startTime;
   await recordAiCall(authoring.createdBy, "verb-fallback");
@@ -182,7 +195,7 @@ export async function handleVerbFallback(
     freeTurn: response.decision === "refuse",
     entityId: targetEntity ? targetEntity.id : undefined,
     perform: buildPerformCode(response),
-    authoring,
+    authoring: { ...authoring, aiCallId },
   };
 
   if (response.decision === "refuse") {

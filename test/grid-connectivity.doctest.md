@@ -7,8 +7,15 @@ import { EntityStore } from "../src/core/entity.js";
 import { createRegistry } from "../src/core/properties.js";
 import { defineBaseProperties } from "../src/core/base-properties.js";
 import { buildRoomSchema } from "../src/server/ai-create-room-schema.js";
-import { computeRoomCoordinates, buildAdjacentRoomContext } from "../src/server/ai-prompt-helpers.js";
-import { ensureGridCoords, resolveOrCreateBackExit, createAndSave } from "../src/server/ai-room-grid.js";
+import {
+  computeRoomCoordinates,
+  buildAdjacentRoomContext,
+} from "../src/server/ai-prompt-helpers.js";
+import {
+  ensureGridCoords,
+  resolveOrCreateBackExit,
+  createAndSave,
+} from "../src/server/ai-room-grid.js";
 import { setStorage } from "../src/server/storage-instance.js";
 import { z } from "zod";
 
@@ -21,7 +28,9 @@ function makeStore(): EntityStore {
 // Minimal mock storage that just records calls
 const saved: Array<{ id: string; properties: Record<string, unknown> }> = [];
 setStorage({
-  saveAiEntity: async (record) => { saved.push({ id: record.id, properties: record.properties }); },
+  saveAiEntity: async (record) => {
+    saved.push({ id: record.id, properties: record.properties });
+  },
   loadAiEntities: async () => [],
   loadAiHandlers: async () => [],
   saveAiHandler: async () => {},
@@ -78,14 +87,14 @@ parsed.room.additionalExits[0].connectTo
 
 destinationIntent should be undefined when connectTo is used:
 
-``` continue
+```continue
 parsed.room.additionalExits[0].destinationIntent
 => undefined
 ```
 
 connectTo exits can include back-exit names:
 
-``` continue
+```continue
 const withBackNames = {
   room: {
     idSlug: "dark-tunnel-2",
@@ -115,7 +124,7 @@ parsed4.room.returnExitName
 => Narrow Crawlway
 ```
 
-``` continue
+```continue
 parsed4.room.additionalExits[0].backExitName
 => Jagged Crack
 ```
@@ -155,7 +164,7 @@ parsed2.room.additionalExits[0].destinationIntent
 
 When the AI provides neither, the schema still parses (both are optional):
 
-``` continue
+```continue
 const neither = {
   room: {
     idSlug: "dead-end",
@@ -201,12 +210,12 @@ context.includes("Crystal Cavern")
 
 The room should appear listed under "east" since it's at (1,0,0) relative to (0,0,0):
 
-``` continue
+```continue
 context.includes("east:")
 => true
 ```
 
-``` continue
+```continue
 context.includes("room:cavern")
 => true
 ```
@@ -299,19 +308,19 @@ store7.get("exit:target:west").exit.destination
 
 The destinationIntent should be cleared:
 
-``` continue
+```continue
 store7.get("exit:target:west").exit.destinationIntent
 => undefined
 ```
 
 And the AI-provided name/description should be applied:
 
-``` continue
+```continue
 store7.get("exit:target:west").name
 => Rusty Gate
 ```
 
-``` continue
+```continue
 store7.get("exit:target:west").description
 => A rusty gate leads to a new area.
 ```
@@ -343,12 +352,12 @@ store8.has("exit:target2:west")
 => true
 ```
 
-``` continue
+```continue
 store8.get("exit:target2:west").name
 => Crumbling Archway
 ```
 
-``` continue
+```continue
 store8.get("exit:target2:west").description
 => An archway opens to the west.
 ```
@@ -360,11 +369,15 @@ saved.length = 0;
 const store8b = makeStore();
 store8b.create("room:target3", {
   tags: ["room"],
-  name: "Target 3", room: { grid: { x: 1, y: 0, z: 0 } },
+  name: "Target 3",
+  description: "Target 3.",
+  room: { grid: { x: 1, y: 0, z: 0 } },
 });
 store8b.create("room:new-room3", {
   tags: ["room"],
-  name: "New Room 3", room: { grid: { x: 0, y: 0, z: 0 } },
+  name: "New Room 3",
+  description: "New Room 3.",
+  room: { grid: { x: 0, y: 0, z: 0 } },
 });
 
 await resolveOrCreateBackExit(store8b, {
@@ -386,6 +399,7 @@ const store9 = makeStore();
 store9.create("room:origin", {
   tags: ["room"],
   name: "Origin",
+  description: "Origin.",
 });
 
 const room = store9.get("room:origin");
@@ -401,7 +415,9 @@ Already-set coords are not overwritten:
 const store10 = makeStore();
 store10.create("room:placed", {
   tags: ["room"],
-  name: "Placed", room: { grid: { x: 5, y: 3, z: 1 } },
+  name: "Placed",
+  description: "Placed.",
+  room: { grid: { x: 5, y: 3, z: 1 } },
 });
 
 saved.length = 0;
@@ -413,7 +429,7 @@ saved.length
 => 0
 ```
 
-``` continue
+```continue
 store10.get("room:placed").room.grid.x
 => 5
 ```

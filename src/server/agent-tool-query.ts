@@ -20,7 +20,7 @@ const MAX_OUTPUT_BYTES = 10_000;
 // or per-user events. Anything else (filter by tag, find by name, get
 // contents, list rooms, etc.) is a jq filter over the bulk results.
 
-const queryKindEnum = z.enum(["get", "entities", "handlers", "events"]);
+const queryKindEnum = z.enum(["get", "entities", "handlers", "events", "var"]);
 
 export const queryInputSchema = z.object({
   kind: queryKindEnum.describe(
@@ -33,9 +33,14 @@ export const queryInputSchema = z.object({
       "  - entities: {} — every entity in the world (with containedBy ancestor chain).",
       "  - handlers: {} — every registered verb handler with its pattern.",
       "  - events: {}   — the per-user player command log, oldest first.",
+      "  - var: { name } — read a previously-saved scratchpad variable. Combine with contains/jq/limit to slice it without re-running the original query.",
     ].join("\n"),
   ),
   id: z.string().optional().describe("Required by: get. The entity id to fetch."),
+  name: z
+    .string()
+    .optional()
+    .describe("Required by: var. The saved variable name to read from the scratchpad."),
   withChildren: z
     .boolean()
     .optional()
@@ -78,7 +83,7 @@ export const queryInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Optional postprocess. A name to save the (possibly filtered) result under in the session scratchpad for later get_var or jq calls. The scratchpad gets the FULL untruncated result, not the trimmed sample.",
+      "Optional postprocess. A name to save the (possibly filtered) result under in the session scratchpad. When set, the response does NOT echo the value back — it returns just savedAs + a brief summary (count or shape). Read the saved value later with query({kind:'var', name:'...'}). The scratchpad gets the FULL untruncated result regardless of any limit.",
     ),
 });
 
@@ -86,7 +91,13 @@ export type QueryInput = z.infer<typeof queryInputSchema>;
 
 export interface QueryResult {
   ok: true;
-  result: unknown;
+  /**
+   * The query result. Omitted when `saveAs` is set — the value is in the
+   * scratchpad and the caller can read it back via `kind:"var"`. Suppressing
+   * the echo keeps the conversation small when the agent is just stashing a
+   * big result for later filtering.
+   */
+  result?: unknown;
   /** For truncated array results: the full count before paging. */
   totalMatched?: number;
   /** For truncated array results: the number of items dropped. */
@@ -94,6 +105,12 @@ export interface QueryResult {
   /** For truncated single-object results: a hint that the result was clipped. */
   truncated?: boolean;
   savedAs?: string;
+  /**
+   * One-line shape summary for saved values, so the agent has some
+   * confidence in what was stashed without seeing the bytes. Set only when
+   * saveAs is set.
+   */
+  savedSummary?: string;
   /** Hint string included on truncated/oversized results explaining what to do. */
   hint?: string;
 }
@@ -142,12 +159,30 @@ export async function runQuery(
   }
 
   // Save the FULL pre-truncation value to the scratchpad if requested. The
-  // scratchpad never sees the trimmed sample so the agent can `get_var` it
-  // later and feed it through jq for further filtering.
+  // scratchpad never sees the trimmed sample so the agent can read it back
+  // later via query({kind:"var", name:"..."}) and feed it through jq for
+  // further filtering.
   let savedAs: string | undefined;
+  let savedSummary: string | undefined;
   if (input.saveAs) {
     context.savedVars[input.saveAs] = value;
     savedAs = input.saveAs;
+    savedSummary = summarizeForSave(value);
+  }
+
+  // When the caller asked us to save the value, suppress the echo entirely:
+  // they get back a confirmation + summary, not a duplicate of the bytes.
+  // The agent reads the saved value later via kind:"var".
+  if (savedAs !== undefined) {
+    const result: QueryResult = { ok: true, savedAs };
+    if (savedSummary) result.savedSummary = savedSummary;
+    if (Array.isArray(value)) result.totalMatched = value.length;
+    result.hint =
+      `Saved to scratchpad as "${savedAs}". Read it back with ` +
+      `query({kind:"var", name:"${savedAs}"}); ` +
+      "slice or filter via the same call's contains/jq/limit fields, " +
+      `e.g. query({kind:"var", name:"${savedAs}", jq:"[.[] | select(.tag == \\"foo\\")]", limit: 10}).`;
+    return result;
   }
 
   // Trim top-level arrays to the requested limit (default 5) so big result
@@ -197,8 +232,25 @@ export async function runQuery(
       Array.isArray(value) ? value.length : 0
     } of ${totalMatched}). Pass 'limit' for more, 'contains' or 'jq' to filter, or 'saveAs' to capture the full set in the scratchpad.`;
   }
-  if (savedAs !== undefined) result.savedAs = savedAs;
   return result;
+}
+
+/**
+ * Build a one-line description of a value the agent just stashed in the
+ * scratchpad — type and approximate size, no contents. The agent can re-read
+ * the actual data via kind:"var" if it needs more.
+ */
+function summarizeForSave(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `array of ${value.length} item${value.length === 1 ? "" : "s"}`;
+  if (typeof value === "object") {
+    const keys = Object.keys(value as object);
+    return `object with ${keys.length} key${keys.length === 1 ? "" : "s"}${
+      keys.length > 0 && keys.length <= 6 ? `: ${keys.join(", ")}` : ""
+    }`;
+  }
+  if (typeof value === "string") return `string (${value.length} chars)`;
+  return typeof value;
 }
 
 /** Slice an array down until its serialized form fits within `maxBytes`. */
@@ -242,6 +294,20 @@ async function dispatchQuery(context: ToolContext, input: QueryInput): Promise<u
       return runHandlers(context);
     case "events":
       return runEvents(context);
+    case "var": {
+      const name = requireField(input.name, { kind: "var", field: "name" });
+      if (!(name in context.savedVars)) {
+        throw new SavedVarNotFoundError(name);
+      }
+      return context.savedVars[name];
+    }
+  }
+}
+
+class SavedVarNotFoundError extends Error {
+  override name = "SavedVarNotFoundError";
+  constructor(public readonly varName: string) {
+    super(`No saved variable named "${varName}".`);
   }
 }
 
@@ -250,5 +316,6 @@ function formatRunnerError(e: unknown): string {
     return `Query kind "${e.kind}" requires the "${e.fieldName}" field.`;
   }
   if (e instanceof EntityNotFoundError) return `Entity "${e.id}" does not exist.`;
+  if (e instanceof SavedVarNotFoundError) return e.message;
   return e instanceof Error ? e.message : String(e);
 }

@@ -17,8 +17,11 @@ import type {
   AgentSessionStatus,
   WorldEditRecord,
   NewWorldEditRecord,
+  AiCallRecord,
+  AiCallSummary,
 } from "./storage.js";
 import { FileAgentStorage } from "./storage-file-agent.js";
+import { FileAiCallLog } from "./storage-file-ai-calls.js";
 
 function ensureDir(filePath: string): void {
   const dir = dirname(filePath);
@@ -43,11 +46,13 @@ export class FileStorage implements RuntimeStorage {
   private dataDir: string;
   private userDataDir: string;
   private agentStorage: FileAgentStorage;
+  private aiCallLog: FileAiCallLog;
 
   constructor({ dataDir, userDataDir }: { dataDir: string; userDataDir: string }) {
     this.dataDir = dataDir;
     this.userDataDir = userDataDir;
     this.agentStorage = new FileAgentStorage(dataDir);
+    this.aiCallLog = new FileAiCallLog(dataDir);
   }
 
   private path(...segments: string[]): string {
@@ -298,5 +303,16 @@ export class FileStorage implements RuntimeStorage {
   }
   async commitSession(sessionId: string, summary: string): Promise<void> {
     return this.agentStorage.commitSession(sessionId, summary);
+  }
+
+  // --- AI call log ---
+  async logAiCall(record: AiCallRecord): Promise<void> {
+    return this.aiCallLog.logAiCall(record);
+  }
+  async getAiCall(id: string): Promise<AiCallRecord | null> {
+    return this.aiCallLog.getAiCall(id);
+  }
+  async listAiCalls(filter: { gameId?: string; limit?: number }): Promise<AiCallSummary[]> {
+    return this.aiCallLog.listAiCalls(filter);
   }
 }

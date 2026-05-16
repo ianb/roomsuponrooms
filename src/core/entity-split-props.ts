@@ -16,7 +16,14 @@ export interface SplitResult {
   grid?: { x: number; y: number; z: number };
 }
 
-const SKIP_KEYS = new Set([
+/**
+ * Keys that must never appear in an entity's `properties` bag — they are
+ * routed to typed fields (name, description, etc.) or to the exit sub-object
+ * (direction, destination, destinationIntent) or to the grid sub-object.
+ * Exported so `filterKnownProperties` can use this as its canonical list when
+ * rejecting typed-field keys.
+ */
+export const TYPED_ENTITY_KEYS: ReadonlySet<string> = new Set([
   "name",
   "description",
   "location",
@@ -29,6 +36,8 @@ const SKIP_KEYS = new Set([
   "gridY",
   "gridZ",
 ]);
+
+const SKIP_KEYS = TYPED_ENTITY_KEYS;
 
 export function splitProperties(
   opts: CreateEntityOptions,

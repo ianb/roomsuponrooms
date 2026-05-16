@@ -118,6 +118,8 @@ export async function handleSceneryCheck(
     sourceEntity,
     recentOutput: scenerySource.source === "output" ? scenerySource.outputText : undefined,
     prompts,
+    gameId,
+    userId: authoring.createdBy,
   });
 
   // Record AI usage if this was a new generation (not cached)

@@ -59,6 +59,17 @@ export function getLlm(): LanguageModel {
   return cachedModel;
 }
 
+/** The configured model id, for logging/telemetry. Falls back to "unknown"
+ *  if no LLM is configured (e.g. in tests with a mock model). */
+export function getLlmModelId(): string {
+  try {
+    const config = cachedConfig || loadConfig();
+    return `${config.provider}:${config.model}`;
+  } catch (_e) {
+    return "unknown";
+  }
+}
+
 /** Default timeout (ms) for AI API calls */
 export const LLM_TIMEOUT_MS = 45_000;
 

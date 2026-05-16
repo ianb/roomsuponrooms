@@ -2,6 +2,10 @@ import { z } from "zod";
 import { processCommand } from "../core/world.js";
 import type { Entity, EntityStore } from "../core/entity.js";
 import type { CommandResult } from "../core/world.js";
+import type { VerbContext } from "../core/verb-types.js";
+import type { VerbRegistry } from "../core/verbs.js";
+import { describeResolved } from "../core/debug-helpers.js";
+import { diagnoseUnhandled } from "../core/verb-diagnostics.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
 import { loadAgentGameInstance } from "./agent-game-loader.js";
@@ -43,8 +47,22 @@ export interface PlaytestStep {
   command: string;
   outcome: "performed" | "vetoed" | "unhandled" | "unresolved" | "movement" | "error";
   output: string;
+  /**
+   * How the parser/resolver interpreted the command. For resolved commands,
+   * each noun phrase is annotated with the entity id it resolved to, e.g.
+   * `insert rusty lever [item:rusty-lever] into turnstile [item:stuck-turnstile]`.
+   * For unresolved/error/unparseable inputs the parsed form is used (no ids).
+   */
+  parse?: string;
   /** Set when outcome === 'performed' or 'movement'. */
   handler?: string;
+  /**
+   * On outcome === 'unhandled', a list of handlers whose verb (or alias)
+   * matched the parsed verb but were rejected, with a short reason. Lets the
+   * agent see whether dispatch failed due to wrong form, missing tag, failed
+   * objectRequirements, etc.
+   */
+  candidates?: Array<{ handler: string; reason: string }>;
   /** WorldEvents emitted during this command. */
   events: Array<{
     type: string;
@@ -65,6 +83,13 @@ export interface PlaytestResult {
     playerInventory: Array<{ id: string; name: string; tags: string[] }>;
     currentRoom: { id: string; name: string };
   };
+  /**
+   * Set when the command loop was aborted before running the rest of the
+   * commands because a step came back unhandled, unresolved, or errored.
+   * Includes the index of the failing step and the reason category so the
+   * agent can quickly see which step stopped the playtest.
+   */
+  abortedAt?: { stepIndex: number; reason: "unhandled" | "unresolved" | "error" };
   /** Number of trailing steps dropped to fit the size cap. */
   omittedSteps?: number;
   /** Hint when steps were omitted. */
@@ -130,9 +155,21 @@ export async function runPlaytest(
   // Run each command. processCommand handles parsing, resolution, and verb
   // dispatch but NOT AI fallback, conversation mode, or persistence —
   // exactly what we want for a sandboxed simulation.
+  //
+  // Abort the loop on the first unhandled/unresolved/error step. Continuing
+  // past one of those just runs subsequent commands against a divergent state
+  // and confuses the agent — better to surface one clean failure with full
+  // diagnostics than a misleading parade of "performed" steps that depended
+  // on a step that didn't actually happen.
   const steps: PlaytestStep[] = [];
+  let abortedAt: PlaytestResult["abortedAt"] | undefined;
   for (const command of input.commands) {
-    steps.push(runOneCommand({ store: game.store, verbs: game.verbs, command }));
+    const step = runOneCommand({ store: game.store, verbs: game.verbs, command });
+    steps.push(step);
+    if (step.outcome === "unhandled" || step.outcome === "unresolved" || step.outcome === "error") {
+      abortedAt = { stepIndex: steps.length - 1, reason: step.outcome };
+      break;
+    }
   }
 
   // Build the final state summary so the agent doesn't have to follow up
@@ -142,6 +179,7 @@ export async function runPlaytest(
   // Apply size cap. Drop trailing steps if needed so the agent at least
   // sees the early ones.
   let result: PlaytestResult = { ok: true, steps, finalState };
+  if (abortedAt) result.abortedAt = abortedAt;
   let serialized = JSON.stringify(result);
   let omitted = 0;
   while (serialized.length > MAX_OUTPUT_BYTES && steps.length > 0) {
@@ -171,7 +209,7 @@ function runOneCommand({
   command,
 }: {
   store: EntityStore;
-  verbs: Parameters<typeof processCommand>[1]["verbs"];
+  verbs: VerbRegistry;
   command: string;
 }): PlaytestStep {
   let result: CommandResult;
@@ -193,7 +231,7 @@ function runOneCommand({
     value: e.value,
     description: e.description,
   }));
-  const debug = result.debug as { outcome?: string; handler?: string } | undefined;
+  const debug = result.debug as { outcome?: string; handler?: string; parse?: string } | undefined;
   let outcome: PlaytestStep["outcome"];
   if (result.unresolvedExit || result.unresolvedObject) {
     outcome = "unresolved";
@@ -213,6 +251,25 @@ function runOneCommand({
     events,
   };
   if (debug && debug.handler) step.handler = debug.handler;
+  // Build a parse string. For unhandled commands the resolver succeeded —
+  // re-derive the parse with entity ids from result.unhandled.command so the
+  // agent can see exactly which entities the noun phrases bound to. For other
+  // outcomes fall back to whatever debug.parse already gave us.
+  if (result.unhandled) {
+    step.parse = describeResolved(result.unhandled.command);
+  } else if (debug && debug.parse) {
+    step.parse = debug.parse;
+  }
+  if (result.unhandled) {
+    const ctx: VerbContext = {
+      store,
+      command: result.unhandled.command,
+      player: result.unhandled.player,
+      room: result.unhandled.room,
+    };
+    const candidates = diagnoseUnhandled(ctx, { verbs });
+    if (candidates.length > 0) step.candidates = candidates;
+  }
   return step;
 }
 

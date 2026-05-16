@@ -12,10 +12,6 @@ const saveVarSchema = z.object({
   value: z.unknown(),
 });
 
-const getVarSchema = z.object({
-  name: z.string(),
-});
-
 const finishSchema = z.object({
   summary: z.string().describe("A short description of what the agent accomplished."),
 });
@@ -61,22 +57,11 @@ export function buildAgentTools(context: ToolContext) {
 
     save_var: tool({
       description:
-        "Persist a value to a session-scoped scratch slot under the given name. Useful for stashing query results or jq outputs to feed into a later jq call. Variables do not survive past finish()/bail().",
+        'Persist a value to a session-scoped scratch slot under the given name. Useful for stashing literal JSON or jq outputs you want to feed into a later jq call. Variables do not survive past finish()/bail(). Read them back with query({kind:"var", name:"..."}).',
       inputSchema: saveVarSchema,
       execute: async (input) => {
         context.savedVars[input.name] = input.value;
         return { ok: true as const };
-      },
-    }),
-
-    get_var: tool({
-      description: "Retrieve a previously-saved variable by name.",
-      inputSchema: getVarSchema,
-      execute: async (input) => {
-        if (!(input.name in context.savedVars)) {
-          return { ok: false as const, error: `No variable named '${input.name}'.` };
-        }
-        return { ok: true as const, value: context.savedVars[input.name] };
       },
     }),
 
