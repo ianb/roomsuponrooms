@@ -1,5 +1,6 @@
 import type { EntityStore } from "../core/index.js";
 import { describeRoomFull } from "../core/index.js";
+import { HELP_TEXT } from "../core/handler-lib-docs.js";
 import type { GameInstance } from "../games/registry.js";
 import { getStorage } from "./storage-instance.js";
 import type { AuthoringInfo, SessionKey } from "./storage.js";
@@ -65,7 +66,14 @@ export function handleSpecialCommand(
     return doUndo();
   }
 
-  if (trimmed === "/reset" && reinitGame) {
+  // `help` is intercepted here (not dispatched through the verb registry) so
+  // it works even when the player's current room is missing — at which point
+  // processCommand's getPlayerRoom would throw before reaching any verb.
+  if (trimmed === "help") {
+    return { output: HELP_TEXT, debug: undefined };
+  }
+
+  if ((trimmed === "/reset" || trimmed === "reset" || trimmed === "restart") && reinitGame) {
     const doReset = async () => {
       await getStorage().clearEvents(session);
       const rebuilt = await reinitGame(session);

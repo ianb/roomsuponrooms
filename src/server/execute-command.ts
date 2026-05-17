@@ -1,4 +1,6 @@
-import { processCommand } from "../core/index.js";
+import type { processCommand } from "../core/index.js";
+import type { DebugInfo } from "../core/world.js";
+import { processWithRecovery } from "./execute-command-recovery.js";
 import type { GameInstance } from "../games/registry.js";
 import { getStorage } from "./storage-instance.js";
 import type { AuthoringInfo, EventLogEntry, SessionKey } from "./storage.js";
@@ -94,6 +96,61 @@ function parseBugCommand(text: string): string | null {
   return match ? match[1]! : null;
 }
 
+async function handleUnhandledFallback(
+  game: GameInstance,
+  {
+    unhandled,
+    trimmed,
+    session,
+    input,
+    authoring,
+    aiInstructions,
+    existingDebug,
+    onAiStart,
+  }: {
+    unhandled: NonNullable<ReturnType<typeof processCommand>["unhandled"]>;
+    trimmed: string;
+    session: SessionKey;
+    input: CommandInput;
+    authoring: AuthoringInfo;
+    aiInstructions: string | undefined;
+    existingDebug: DebugInfo | undefined;
+    onAiStart?: () => void;
+  },
+): Promise<CommandResult> {
+  if (onAiStart) onAiStart();
+  const verbAuthoring = { ...authoring, creationSource: "verb-fallback" };
+  const fallback = await handleVerbFallbackCommand(game.store, {
+    unhandled,
+    gameId: input.gameId,
+    verbs: game.verbs,
+    libClass: game.libClass,
+    prompts: game.prompts,
+    debug: input.debug,
+    existingDebug,
+    aiInstructions,
+    authoring: verbAuthoring,
+  });
+  if (fallback.events.length > 0) {
+    const entry: EventLogEntry = {
+      command: trimmed,
+      events: fallback.events,
+      output: fallback.output,
+      timestamp: new Date().toISOString(),
+    };
+    await getStorage().appendEvent(session, entry);
+  }
+  const targetId =
+    unhandled.command.form !== "intransitive" ? unhandled.command.object.id : undefined;
+  recordOutput(game, { command: trimmed, output: fallback.output, entityId: targetId });
+  return {
+    output: fallback.output,
+    aiOutput: fallback.aiOutput,
+    debug: fallback.debug,
+    eventDescriptions: collectEventDescriptions(fallback.events),
+  };
+}
+
 async function tryConversationMode(
   game: GameInstance,
   {
@@ -180,11 +237,15 @@ export async function executeCommand(
       trimmed.slice(bracketMatch.index + bracketMatch[0].length).trim()
     : trimmed;
 
-  const result = processCommand(game.store, {
-    input: commandText,
-    verbs: game.verbs,
-    debug: input.debug,
+  const recovery = await processWithRecovery({
+    game,
+    session,
+    reinitGame,
+    processArgs: { input: commandText, verbs: game.verbs, debug: input.debug },
   });
+  if (!recovery.ok) return recovery.response;
+  ({ game } = recovery);
+  const { result } = recovery;
 
   if (result.unresolvedExit) {
     if (!hasAiRole) return { output: result.output || "You can't go that way." };
@@ -212,39 +273,16 @@ export async function executeCommand(
 
   if (result.unhandled) {
     if (!hasAiRole) return { output: result.output || "I don't understand that." };
-    if (onAiStart) onAiStart();
-    const verbAuthoring = { ...authoring, creationSource: "verb-fallback" };
-    const fallback = await handleVerbFallbackCommand(game.store, {
+    return handleUnhandledFallback(game, {
       unhandled: result.unhandled,
-      gameId: input.gameId,
-      verbs: game.verbs,
-      libClass: game.libClass,
-      prompts: game.prompts,
-      debug: input.debug,
-      existingDebug: result.debug,
+      trimmed,
+      session,
+      input,
+      authoring,
       aiInstructions,
-      authoring: verbAuthoring,
+      existingDebug: result.debug,
+      onAiStart,
     });
-    if (fallback.events.length > 0) {
-      const entry: EventLogEntry = {
-        command: trimmed,
-        events: fallback.events,
-        output: fallback.output,
-        timestamp: new Date().toISOString(),
-      };
-      await getStorage().appendEvent(session, entry);
-    }
-    const targetId =
-      result.unhandled.command.form !== "intransitive"
-        ? result.unhandled.command.object.id
-        : undefined;
-    recordOutput(game, { command: trimmed, output: fallback.output, entityId: targetId });
-    return {
-      output: fallback.output,
-      aiOutput: fallback.aiOutput,
-      debug: fallback.debug,
-      eventDescriptions: collectEventDescriptions(fallback.events),
-    };
   }
 
   // Don't persist start-conversation events (ephemeral)
