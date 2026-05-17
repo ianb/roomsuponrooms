@@ -6,6 +6,7 @@ import { getImageStorage } from "./image-storage-instance.js";
 import { generateImage } from "./image-gen.js";
 import { getGame } from "../games/registry.js";
 import { getLlm } from "./llm.js";
+import { applyAiEntityRecords } from "./apply-ai-records.js";
 import type { ImageStorage } from "./image-storage.js";
 
 /** Resolve style prompt from D1 settings, falling back to game file prompts */
@@ -39,6 +40,10 @@ async function resolveImagePrompt(input: {
   const def = getGame(input.gameId);
   if (!def) return "";
   const instance = def.create();
+  // AI-generated entities (rooms, NPCs created in-game) live in storage, not
+  // the static game definition — load them so we can find them by id.
+  const aiEntities = await getStorage().loadAiEntities(input.gameId);
+  applyAiEntityRecords(aiEntities, instance.store);
   if (!instance.store.has(input.entityId)) return "";
   const entity = instance.store.get(input.entityId);
   const aiPrompt = entity.ai && entity.ai.imagePrompt;
