@@ -9,6 +9,7 @@ import { diagnoseUnhandled } from "../core/verb-diagnostics.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
 import { loadAgentGameInstance } from "./agent-game-loader.js";
+import { trySceneryResolve, describeSceneryGap } from "./agent-tool-playtest-scenery.js";
 
 const MAX_OUTPUT_BYTES = 10_000;
 
@@ -232,6 +233,17 @@ function runOneCommand({
     description: e.description,
   }));
   const debug = result.debug as { outcome?: string; handler?: string; parse?: string } | undefined;
+
+  // Scenery fallback: processCommand only consults the entity registry, so an
+  // examine of a stored scenery word comes back as unresolved here even though
+  // it would resolve in real play (via executeCommand's trySceneryFallback).
+  // Surface stored scenery hits so the agent can verify its scenery edits
+  // without depending on the AI fallback (which is disabled in playtest).
+  if (result.unresolvedObject) {
+    const resolved = trySceneryResolve(store, { command, unresolved: result.unresolvedObject });
+    if (resolved) return resolved;
+  }
+
   let outcome: PlaytestStep["outcome"];
   if (result.unresolvedExit || result.unresolvedObject) {
     outcome = "unresolved";
@@ -269,6 +281,12 @@ function runOneCommand({
     };
     const candidates = diagnoseUnhandled(ctx, { verbs });
     if (candidates.length > 0) step.candidates = candidates;
+  }
+  // If this remains unresolved, attach a scenery diagnostic so the agent can
+  // see which words the room *would* resolve and which it wouldn't.
+  if (outcome === "unresolved" && result.unresolvedObject) {
+    const diagnostic = describeSceneryGap(store, result.unresolvedObject.objectName);
+    if (diagnostic) step.output = `${step.output}\n${diagnostic}`;
   }
   return step;
 }

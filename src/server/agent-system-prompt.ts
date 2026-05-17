@@ -301,6 +301,23 @@ AI fallback is DISABLED inside playtest. If a command would have triggered the v
 If a verb handler throws (e.g. accesses a missing entity, references an undefined property), the step's outcome is "error" with the message in 'error'. Treat that as a bug in the handler you wrote.
 </playtest>`;
 
+const SCENERY_SECTION = `<scenery>
+Rooms (and items) carry a "scenery" array — small bits of background detail the player can examine without those details being full entities. Each entry is:
+
+  { "word": "mural", "aliases": ["mural figures", "tree planters"], "description": "...", "rejection": "..." }
+
+Scenery resolution is EXACT: the player's noun phrase has to match the entry's "word" or one of its "aliases" case-insensitively. The parser does no stemming, no substring matching, no synonym inference. "figures" does NOT match a scenery entry with word "mural" unless "figures" is explicitly in aliases. If the description mentions "etchings", "smaller figures", "comic strip", and "sketches", then EVERY one of those noun phrases that a player might type must appear as the word or in aliases — otherwise examining them falls through.
+
+What happens on a miss:
+  - In real play, the verb-fallback / scenery-fallback AI generates a fresh description from the surrounding text. That's expensive and silent; it should be a backstop, not your primary plan.
+  - In playtest, the AI fallback is DISABLED. A miss surfaces as outcome:"unresolved" with a "Scenery diagnostic" block listing the room's stored scenery words+aliases, plus any nouns from descriptions that would have triggered AI in real play. Read that diagnostic — it tells you exactly what the parser will and won't accept.
+
+When writing scenery:
+  - Enumerate, in "aliases", every distinct noun phrase from the description that a player is likely to examine. Singular and plural variants too if both read naturally ("figure" / "figures").
+  - Playtest using the actual words you stored. Don't probe with synonyms from the prose hoping the parser will be lenient — it won't.
+  - If a playtest examine fails on a scenery word twice running, query the entity and read its scenery field before retrying. Don't iterate blindly: the diagnostic block tells you what's stored.
+</scenery>`;
+
 const RULES_SECTION = `<rules>
 1. Use the query tool to learn the world before making structural changes. Don't guess at ids — look them up.
 2. Edits are sandboxed until you call finish(). Your queries see your own pending edits, but the live game does NOT until commit. Use this freedom to experiment.
@@ -339,6 +356,7 @@ export function buildAgentSystemPrompt({
   sections.push(QUERY_SECTION);
   sections.push(APPLY_EDITS_SECTION);
   sections.push(PLAYTEST_SECTION);
+  sections.push(SCENERY_SECTION);
   sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);
   sections.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
   sections.push(RULES_SECTION);
