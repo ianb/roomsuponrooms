@@ -10,6 +10,7 @@ import { composeVerbPrompt, composeCreatePrompt, composeConversationPrompt } fro
 import type { GameInstance } from "../games/registry.js";
 import { getGame, listGames, isValidGameId } from "../games/registry.js";
 import { executeCommand } from "./execute-command.js";
+import { restoreConversationState } from "./conversation-commands.js";
 import type { SessionKey } from "./storage.js";
 import { logErrorObj } from "./error-log.js";
 import { bugRouter } from "./router-bugs.js";
@@ -51,8 +52,22 @@ async function initGame(session: SessionKey): Promise<GameInstance> {
   }
   // Events are per-user
   const events = await storage.loadEvents(session);
+  // Track the last unclosed start-conversation event so we can restore the
+  // in-memory conversation state after replay (the state itself isn't
+  // persisted, but the start/close markers are).
+  let activeConversationNpc: string | null = null;
   for (const entry of events) {
     applyEvents(instance.store, entry.events);
+    for (const ev of entry.events) {
+      if (ev.type === "start-conversation") activeConversationNpc = ev.entityId;
+      else if (ev.type === "close-conversation") activeConversationNpc = null;
+    }
+  }
+  if (activeConversationNpc) {
+    await restoreConversationState(instance, {
+      npcId: activeConversationNpc,
+      gameId: session.gameId,
+    });
   }
   const handlerRecords = await storage.loadAiHandlers(session.gameId);
   for (const record of handlerRecords) {

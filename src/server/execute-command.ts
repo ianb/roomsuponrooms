@@ -285,12 +285,14 @@ export async function executeCommand(
     });
   }
 
-  // Don't persist start-conversation events (ephemeral)
-  const persistEvents = result.events.filter((e) => e.type !== "start-conversation");
-  if (persistEvents.length > 0) {
+  // Persist all events, including start-conversation — it acts as a marker so
+  // event replay can restore the in-memory conversation state after an isolate
+  // restart. The matching close-conversation event is written when the
+  // conversation ends.
+  if (result.events.length > 0) {
     const entry: EventLogEntry = {
       command: trimmed,
-      events: persistEvents,
+      events: result.events,
       output: result.output,
       timestamp: new Date().toISOString(),
     };

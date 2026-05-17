@@ -18,6 +18,28 @@ interface ConversationResponse {
   debug?: unknown;
 }
 
+/**
+ * Restore in-memory conversation state for an NPC after a fresh game init.
+ * Used during event replay: a persisted start-conversation event reaches us
+ * without the corresponding close-conversation marker, so we recreate enough
+ * state for subsequent words (including `bye`) to be routed back through
+ * handleConversationWord. seenWords are not reconstructed — we don't persist
+ * per-word conversation events with enough metadata to replay them, so the
+ * topic list may show stale-unseen status until the user revisits topics.
+ */
+export async function restoreConversationState(
+  game: GameInstance,
+  { npcId, gameId }: { npcId: string; gameId: string },
+): Promise<void> {
+  if (!game.store.has(npcId)) return;
+  const npc = game.store.get(npcId);
+  const initial = (game.conversations && game.conversations[npcId]) || null;
+  const data = await loadConversationData(gameId, { npcId, initial });
+  if (data.words.length === 0) return;
+  const { state } = startConversation(data, { npc });
+  game.conversationState = state;
+}
+
 /** Load conversation data for an NPC, merging initial game data with stored entries */
 async function loadConversationData(
   gameId: string,
@@ -184,6 +206,7 @@ export async function handleConversationWord(
   }
 
   if (result.closeConversation) {
+    await persistCloseConversation(session, { npcId: state.npcId, word });
     game.conversationState = undefined;
     return { output, conversationMode: null };
   }
@@ -192,6 +215,23 @@ export async function handleConversationWord(
     output,
     conversationMode: { npcName, knownWords: result.knownWords },
   };
+}
+
+/**
+ * Persist a close-conversation event so subsequent reinits know the
+ * conversation has ended and don't try to restore it.
+ */
+async function persistCloseConversation(
+  session: SessionKey,
+  { npcId, word }: { npcId: string; word: string },
+): Promise<void> {
+  const entry: EventLogEntry = {
+    command: word,
+    events: [{ type: "close-conversation", entityId: npcId, description: "Conversation closed" }],
+    output: "",
+    timestamp: new Date().toISOString(),
+  };
+  await getStorage().appendEvent(session, entry);
 }
 
 /** Handle an unknown word — either reject (closed/full) or call AI */
@@ -299,6 +339,7 @@ async function handleUnknownWord(
   }
 
   if (closeConversation) {
+    await persistCloseConversation(session, { npcId: state.npcId, word });
     game.conversationState = undefined;
     return { output, conversationMode: null };
   }
