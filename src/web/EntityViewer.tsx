@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { trpc } from "./trpc.js";
 import { useStickyState } from "./use-sticky-state.js";
+import { subscribeQuery } from "./query-subscribe.js";
+import { PropertyTable } from "./PropertyTable.js";
 
 interface EntityListItem {
   id: string;
@@ -38,19 +40,27 @@ export function EntityViewer({
   const [showDiff, setShowDiff] = useStickyState("extenso:showDiff", false);
   const [othersExpanded, setOthersExpanded] = useState(false);
 
-  useEffect(() => {
-    trpc.entities.query({ gameId }).then((result) => {
-      setEntities(result.items);
-      setPlayerRoomId(result.playerRoomId);
-    });
-  }, [revision, gameId]);
+  useEffect(
+    () =>
+      subscribeQuery(trpc.entities.query({ gameId }), {
+        label: "EntityViewer.entities",
+        onResult: (result) => {
+          setEntities(result.items);
+          setPlayerRoomId(result.playerRoomId);
+        },
+      }),
+    [revision, gameId],
+  );
 
   useEffect(() => {
     if (!selectedId) return;
-    trpc.entity.query({ gameId, id: selectedId }).then((result) => {
-      if (result) {
-        setDetails((prev) => new Map(prev).set(selectedId, result));
-      }
+    return subscribeQuery(trpc.entity.query({ gameId, id: selectedId }), {
+      label: "EntityViewer.entity",
+      onResult: (result) => {
+        if (result) {
+          setDetails((prev) => new Map(prev).set(selectedId, result));
+        }
+      },
     });
   }, [selectedId, revision, gameId]);
 
@@ -225,75 +235,6 @@ function EntityRow({
       ) : null}
     </div>
   );
-}
-
-function PropertyTable({
-  current,
-  initial,
-  showDiff,
-}: {
-  current: Record<string, unknown>;
-  initial: Record<string, unknown> | null;
-  showDiff: boolean;
-}) {
-  const allKeys = new Set([...Object.keys(current), ...(initial ? Object.keys(initial) : [])]);
-  const sortedKeys = Array.from(allKeys).toSorted();
-
-  const rows: Array<{
-    key: string;
-    value: unknown;
-    changed: boolean;
-    added: boolean;
-    removed: boolean;
-  }> = [];
-  for (const key of sortedKeys) {
-    const curVal = current[key];
-    const initVal = initial ? initial[key] : undefined;
-    const changed = initial !== null && JSON.stringify(curVal) !== JSON.stringify(initVal);
-    const added = initial !== null && initVal === undefined && curVal !== undefined;
-    const removed = initial !== null && curVal === undefined && initVal !== undefined;
-
-    if (showDiff && !changed) continue;
-
-    rows.push({ key, value: removed ? initVal : curVal, changed, added, removed });
-  }
-
-  if (rows.length === 0) {
-    return (
-      <div className="text-content/25 italic">{showDiff ? "No changes" : "No properties"}</div>
-    );
-  }
-
-  return (
-    <table className="w-full">
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.key} className={row.changed ? "bg-caution/10" : ""}>
-            <td
-              className={`pr-2 align-top font-bold ${
-                row.removed
-                  ? "text-removed line-through"
-                  : row.added
-                    ? "text-added"
-                    : "text-content/50"
-              }`}
-            >
-              {row.key}
-            </td>
-            <td className="text-content/70">{formatValue(row.value)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function formatValue(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "number") return String(value);
-  if (Array.isArray(value)) return value.join(", ");
-  return JSON.stringify(value);
 }
 
 function groupByTag(entities: EntityListItem[]): Record<string, EntityListItem[]> {

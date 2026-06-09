@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useContext, useCallback } from "react";
 import { trpc } from "./trpc.js";
 import { useStickyState } from "./use-sticky-state.js";
 import { streamCommand } from "./stream-command.js";
+import { subscribeQuery } from "./query-subscribe.js";
 import type { AgentProgressPayload } from "./stream-command.js";
 import { AuthContext } from "./auth.js";
 import { ThinkingIndicator } from "./ThinkingIndicator.js";
@@ -84,17 +85,61 @@ function fetchImageStatus(
 ): void {
   const ids = extractImageIds(params.text);
   if (ids.length === 0) return;
-  trpc.entityImageStatus.query({ gameId: params.gameId, entityIds: ids }).then((status) => {
-    const s = status as Record<string, { exists: boolean; prompt: string | null }>;
-    const statusMap: Record<string, boolean> = {};
-    const promptMap: Record<string, string> = {};
-    for (const [id, info] of Object.entries(s)) {
-      statusMap[id] = info.exists;
-      if (info.prompt) promptMap[id] = info.prompt;
-    }
-    cb.setStatus((prev) => ({ ...prev, ...statusMap }));
-    cb.setPrompts((prev) => ({ ...prev, ...promptMap }));
-  });
+  trpc.entityImageStatus
+    .query({ gameId: params.gameId, entityIds: ids })
+    .then((status) => {
+      const s = status as Record<string, { exists: boolean; prompt: string | null }>;
+      const statusMap: Record<string, boolean> = {};
+      const promptMap: Record<string, string> = {};
+      for (const [id, info] of Object.entries(s)) {
+        statusMap[id] = info.exists;
+        if (info.prompt) promptMap[id] = info.prompt;
+      }
+      cb.setStatus((prev) => ({ ...prev, ...statusMap }));
+      cb.setPrompts((prev) => ({ ...prev, ...promptMap }));
+    })
+    .catch((err: unknown) => {
+      console.error("[WorldShell] image status query failed:", err);
+    });
+}
+
+/** Entity image state: which entities have images, prompts, and generation progress. */
+function useEntityImages(gameId: string) {
+  const [imageStatus, setImageStatus] = useState<Record<string, boolean>>({});
+  const [imagePrompts, setImagePrompts] = useState<Record<string, string>>({});
+  const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
+  const [imageVersions, setImageVersions] = useState<Record<string, number>>({});
+
+  const refreshImageStatus = useCallback(
+    (text: string) =>
+      fetchImageStatus(
+        { gameId, text },
+        { setStatus: setImageStatus, setPrompts: setImagePrompts },
+      ),
+    [gameId],
+  );
+
+  const handleGenerateImage = useCallback(
+    (entityId: string) =>
+      triggerImageGeneration(
+        { gameId, entityId },
+        {
+          setGenerating: setGeneratingImages,
+          setStatus: setImageStatus,
+          setVersions: setImageVersions,
+        },
+      ),
+    [gameId],
+  );
+
+  return {
+    imageStatus,
+    imagePrompts,
+    generatingImages,
+    imageVersions,
+    refreshImageStatus,
+    handleGenerateImage,
+  };
 }
 
 export function WorldShell({
@@ -120,28 +165,28 @@ export function WorldShell({
   const isAdmin = roles.includes("admin");
   const [debugMode, setDebugMode] = useStickyState("extenso:debugMode", false);
   const [conversationMode, setConversationMode] = useState<ConversationModeState | null>(null);
-  const [imageStatus, setImageStatus] = useState<Record<string, boolean>>({});
-  const [imagePrompts, setImagePrompts] = useState<Record<string, string>>({});
-  const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
-  const [imageVersions, setImageVersions] = useState<Record<string, number>>({});
+  const {
+    imageStatus,
+    imagePrompts,
+    generatingImages,
+    imageVersions,
+    refreshImageStatus,
+    handleGenerateImage,
+  } = useEntityImages(gameId);
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const refreshImageStatus = useCallback(
-    (text: string) =>
-      fetchImageStatus(
-        { gameId, text },
-        { setStatus: setImageStatus, setPrompts: setImagePrompts },
-      ),
-    [gameId],
+  useEffect(
+    () =>
+      subscribeQuery(trpc.look.query({ gameId }), {
+        label: "WorldShell.look",
+        onResult: (result) => {
+          setLog([{ type: "output", text: result.output }]);
+          refreshImageStatus(result.output);
+        },
+      }),
+    [gameId, refreshImageStatus],
   );
-
-  useEffect(() => {
-    trpc.look.query({ gameId }).then((result) => {
-      setLog([{ type: "output", text: result.output }]);
-      refreshImageStatus(result.output);
-    });
-  }, [gameId, refreshImageStatus]);
 
   useEffect(() => {
     if (logEndRef.current) logEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -183,19 +228,6 @@ export function WorldShell({
       if (inputRef.current) inputRef.current.focus();
     },
     [input, loading, gameId, debugMode, refreshImageStatus, onCommandComplete],
-  );
-
-  const handleGenerateImage = useCallback(
-    (entityId: string) =>
-      triggerImageGeneration(
-        { gameId, entityId },
-        {
-          setGenerating: setGeneratingImages,
-          setStatus: setImageStatus,
-          setVersions: setImageVersions,
-        },
-      ),
-    [gameId],
   );
 
   return (
