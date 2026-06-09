@@ -197,6 +197,16 @@ When working on bugs as an AI agent, follow this workflow:
 - **Environment variables** — secrets (API keys) go via `wrangler secret put <NAME>`; local dev uses `.env`
 - **API_KEY** — shared secret for CLI/agent API access. Set via `wrangler secret put API_KEY` (production) and in `.env` (local)
 
+### LLM model selection
+
+The default model is **`gemini-2.5-flash`** (provider `google`) — chosen via the agent-loop evals (`npm run eval`) as the best cost/reliability point (~$0.01 per agent session). Configured in three places:
+
+- **Production**: `LLM_PROVIDER` / `LLM_MODEL` wrangler secrets (`wrangler secret put LLM_MODEL`). Takes effect on the next request; no redeploy needed.
+- **Local dev & evals**: `LLM_PROVIDER` / `LLM_MODEL` in `.env`.
+- **Fallback**: `llm-config.json` (used when the env vars are unset; Node only).
+
+Providers: `google`, `anthropic`, `openrouter` (the latter needs `OPENROUTER_API_KEY`; model ids look like `deepseek/deepseek-chat`). To trial a different model without touching config: `npm run eval -- lever-puzzle --provider openrouter --model <id>`. Add pricing for new model ids in `src/server/agent-pricing.ts` so session costs display.
+
 ## Authentication
 
 Wrangler requires Cloudflare authentication. Run `wrangler login` to authenticate via browser. The `domains` subcommand does not exist in current wrangler; custom domains must be configured in the Cloudflare dashboard.
