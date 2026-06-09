@@ -1,12 +1,18 @@
-import type { Entity } from "./entity.js";
 import { applySingleEvent } from "./apply-event.js";
+import {
+  getCommandPrep,
+  getDirectObject,
+  getIndirectObject,
+  involvesEntity,
+  involvesTag,
+  meetsRequirements,
+} from "./command-matching.js";
 import type {
   ResolvedCommand,
   WorldEvent,
   VerbHandler,
   VerbContext,
   VerbPattern,
-  EntityRequirements,
   DispatchResult,
 } from "./verb-types.js";
 import { resolvePrep } from "./command-parser.js";
@@ -189,7 +195,7 @@ export class VerbRegistry {
     if (!verbMatches) return false;
     if (pattern.form !== command.form) return false;
     if (pattern.prep) {
-      const commandPrep = this.getCommandPrep(command);
+      const commandPrep = getCommandPrep(command);
       if (!commandPrep) return false;
       const commandGroup = resolvePrep(commandPrep);
       if (pattern.prep !== commandPrep && pattern.prep !== commandGroup) {
@@ -199,74 +205,23 @@ export class VerbRegistry {
     return true;
   }
 
-  private getCommandPrep(command: ResolvedCommand): string | null {
-    if (command.form === "ditransitive") return command.prep;
-    if (command.form === "prepositional") return command.prep;
-    return null;
-  }
-
   private specificityMatches(handler: VerbHandler, context: VerbContext): boolean {
     if (handler.entityId) {
-      if (!this.involvesEntity(context.command, handler.entityId)) return false;
+      if (!involvesEntity(context.command, handler.entityId)) return false;
     }
     if (handler.tag) {
-      if (!this.involvesTag(context.command, handler.tag)) return false;
+      if (!involvesTag(context.command, handler.tag)) return false;
     }
     if (handler.objectRequirements) {
-      const obj = this.getDirectObject(context.command);
+      const obj = getDirectObject(context.command);
       if (!obj) return false;
-      if (!this.meetsRequirements(obj, handler.objectRequirements)) return false;
+      if (!meetsRequirements(obj, handler.objectRequirements)) return false;
     }
     if (handler.indirectRequirements) {
-      const indirect = this.getIndirectObject(context.command);
+      const indirect = getIndirectObject(context.command);
       if (!indirect) return false;
-      if (!this.meetsRequirements(indirect, handler.indirectRequirements)) return false;
+      if (!meetsRequirements(indirect, handler.indirectRequirements)) return false;
     }
     return true;
-  }
-
-  private meetsRequirements(entity: Entity, reqs: EntityRequirements): boolean {
-    if (reqs.tags) {
-      for (const tag of reqs.tags) {
-        if (!entity.tags.includes(tag)) return false;
-      }
-    }
-    if (reqs.properties) {
-      for (const [key, expected] of Object.entries(reqs.properties)) {
-        if (entity.properties[key] !== expected) return false;
-      }
-    }
-    return true;
-  }
-
-  private getDirectObject(command: ResolvedCommand): Entity | null {
-    if (command.form === "transitive" || command.form === "prepositional") return command.object;
-    if (command.form === "ditransitive") return command.object;
-    return null;
-  }
-
-  private getIndirectObject(command: ResolvedCommand): Entity | null {
-    if (command.form === "ditransitive") return command.indirect;
-    return null;
-  }
-
-  private involvesEntity(command: ResolvedCommand, entityId: string): boolean {
-    if (command.form === "transitive" || command.form === "prepositional") {
-      return command.object.id === entityId;
-    }
-    if (command.form === "ditransitive") {
-      return command.object.id === entityId || command.indirect.id === entityId;
-    }
-    return false;
-  }
-
-  private involvesTag(command: ResolvedCommand, tag: string): boolean {
-    if (command.form === "transitive" || command.form === "prepositional") {
-      return command.object.tags.includes(tag);
-    }
-    if (command.form === "ditransitive") {
-      return command.object.tags.includes(tag) || command.indirect.tags.includes(tag);
-    }
-    return false;
   }
 }

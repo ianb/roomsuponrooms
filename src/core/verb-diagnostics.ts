@@ -6,6 +6,14 @@ import type {
 } from "./verb-types.js";
 import type { VerbRegistry } from "./verbs.js";
 import { resolvePrep } from "./command-parser.js";
+import {
+  getCommandPrep,
+  getDirectObject,
+  getIndirectObject,
+  involvesEntity,
+  involvesTag,
+  meetsRequirements,
+} from "./command-matching.js";
 
 /**
  * Explain why no handler matched a command. Returns up to `limit` candidate
@@ -83,68 +91,6 @@ function rejectionReason(handler: VerbHandler, context: VerbContext): string | n
   // Either it did and we shouldn't be in diagnoseUnhandled, or another
   // handler with the same priority took precedence.
   return null;
-}
-
-// --- Small helpers, duplicated from VerbRegistry private methods. They are
-// trivial and tightly coupled to the ResolvedCommand shape; pulling the class
-// internals out just to share three lines isn't worth the complexity.
-
-function getCommandPrep(command: ResolvedCommand): string | null {
-  if (command.form === "ditransitive") return command.prep;
-  if (command.form === "prepositional") return command.prep;
-  return null;
-}
-
-function getDirectObject(
-  command: ResolvedCommand,
-): { id: string; tags: string[]; properties: Record<string, unknown> } | null {
-  if (command.form === "transitive" || command.form === "prepositional") return command.object;
-  if (command.form === "ditransitive") return command.object;
-  return null;
-}
-
-function getIndirectObject(
-  command: ResolvedCommand,
-): { id: string; tags: string[]; properties: Record<string, unknown> } | null {
-  if (command.form === "ditransitive") return command.indirect;
-  return null;
-}
-
-function involvesEntity(command: ResolvedCommand, entityId: string): boolean {
-  if (command.form === "transitive" || command.form === "prepositional") {
-    return command.object.id === entityId;
-  }
-  if (command.form === "ditransitive") {
-    return command.object.id === entityId || command.indirect.id === entityId;
-  }
-  return false;
-}
-
-function involvesTag(command: ResolvedCommand, tag: string): boolean {
-  if (command.form === "transitive" || command.form === "prepositional") {
-    return command.object.tags.includes(tag);
-  }
-  if (command.form === "ditransitive") {
-    return command.object.tags.includes(tag) || command.indirect.tags.includes(tag);
-  }
-  return false;
-}
-
-function meetsRequirements(
-  entity: { tags: string[]; properties: Record<string, unknown> },
-  reqs: EntityRequirements,
-): boolean {
-  if (reqs.tags) {
-    for (const tag of reqs.tags) {
-      if (!entity.tags.includes(tag)) return false;
-    }
-  }
-  if (reqs.properties) {
-    for (const [key, expected] of Object.entries(reqs.properties)) {
-      if (entity.properties[key] !== expected) return false;
-    }
-  }
-  return true;
 }
 
 function describeInvolvedIds(command: ResolvedCommand): string {
