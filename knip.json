@@ -1,21 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "entry": [
-    "src/index.ts"
-  ],
-  "ignoreDependencies": [
-    "@ianbicking/personal-vibe-check"
-  ],
-  "ignoreBinaries": [
-    "tsc"
-  ],
-  "project": [
-    "src/**/*.{ts,tsx}"
-  ],
-  "exclude": [
-    "enumMembers",
-    "duplicates",
-    "types",
-    "exports"
-  ]
+  "entry": ["src/index.ts", "src/worker.ts", "test/**/*.test.ts", "test/helpers.ts"],
+  "ignoreDependencies": ["@ianbicking/personal-vibe-check", "agent-doctest"],
+  "ignoreBinaries": ["tsc", "wrangler"],
+  "project": ["src/**/*.{ts,tsx}", "test/**/*.ts"],
+  "exclude": ["enumMembers", "duplicates", "types", "exports"]
 }
