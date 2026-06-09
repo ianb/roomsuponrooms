@@ -77,6 +77,17 @@ Runs the Worker locally on port 8787 with local D1 SQLite. Apply migrations firs
 wrangler d1 migrations apply rooms-upon-rooms --local
 ```
 
+Note: migrations are never applied automatically — `wrangler deploy` does not run them. Apply them explicitly (`--local` for local dev, `--remote` for production).
+
+#### Resetting local D1
+
+To start over with a clean local database, delete wrangler's local state and re-apply migrations:
+
+```bash
+rm -rf .wrangler/state/v3
+wrangler d1 migrations apply rooms-upon-rooms --local
+```
+
 ### Database operations
 
 ```bash
@@ -138,12 +149,12 @@ Requires `API_KEY` in `.env`. Hits the production API by default; set `BUG_API_U
 
 ### API
 
-All bug endpoints use tRPC and require `Authorization: Bearer <API_KEY>`:
+All bug endpoints use tRPC. Reading and updating reports requires the "admin" role — either `Authorization: Bearer <API_KEY>` or an admin login session. `submitBug` only requires a logged-in player:
 
-- `bugs` (query) — list reports, optional `{ status, gameId }` filter
-- `bug` (query) — get single report by `{ id }`
-- `submitBug` (mutation) — create a new report (used by the game client)
-- `updateBug` (mutation) — update `{ id, status, fixCommit, duplicateOf }`
+- `bugs` (query, admin) — list reports, optional `{ status, gameId }` filter
+- `bug` (query, admin) — get single report by `{ id }`
+- `submitBug` (mutation, any logged-in user) — create a new report (used by the game client)
+- `updateBug` (mutation, admin) — update `{ id, status, fixCommit, duplicateOf }`
 
 ### Statuses
 

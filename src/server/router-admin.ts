@@ -1,19 +1,11 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { router, authedProcedure } from "./trpc.js";
+import { router, adminProcedure } from "./trpc.js";
 import { getStorage } from "./storage-instance.js";
 import { getImageStorage } from "./image-storage-instance.js";
 import { generateImage } from "./image-gen.js";
 import { getGame } from "../games/registry.js";
 import { BUILD_COMMIT, BUILD_TIME } from "../../generated/build-version.js";
 import { computeCost } from "./agent-pricing.js";
-
-const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
-  if (!ctx.roles.includes("admin")) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
-  return next({ ctx });
-});
 
 export const adminRouter = router({
   adminDashboard: adminProcedure.query(async () => {

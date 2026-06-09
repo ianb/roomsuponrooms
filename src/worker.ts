@@ -19,7 +19,7 @@ import { handleImageRequest } from "./server/image-routes.js";
 import type { R2Bucket } from "./server/r2-types.js";
 import { handleAuthRoute } from "./server/auth/routes.js";
 import type { AuthEnv } from "./server/auth/routes.js";
-import { verifyJwt, parseCookie } from "./server/auth/jwt.js";
+import { verifyJwt, parseCookie, bearerApiKeyMatches } from "./server/auth/jwt.js";
 import { logErrorObj } from "./server/error-log.js";
 
 interface Env {
@@ -53,8 +53,11 @@ async function extractUser(
   // API key auth: treat as admin
   if (apiKey) {
     const authHeader = request.headers.get("Authorization");
-    if (authHeader && authHeader === `Bearer ${apiKey}`) {
-      return { userId: "api", userName: "API", roles: ["admin", "ai", "debug"] };
+    if (authHeader) {
+      if (await bearerApiKeyMatches(authHeader, apiKey)) {
+        return { userId: "api", userName: "API", roles: ["admin", "ai", "debug"] };
+      }
+      console.error("[auth] Rejected Authorization header: API key mismatch");
     }
   }
   // JWT cookie auth

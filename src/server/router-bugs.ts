@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure, authedProcedure } from "./trpc.js";
+import { router, authedProcedure, adminProcedure } from "./trpc.js";
 import { getStorage } from "./storage-instance.js";
 import { submitBugReport } from "./bug-commands.js";
 import type { BugPreview } from "./bug-commands.js";
@@ -40,7 +40,10 @@ export const bugRouter = router({
       return { id: report.id, url: `/bugs/${report.id}` };
     }),
 
-  bugs: publicProcedure
+  // Bug reports include players' recent commands and entity changes, so
+  // reading and updating them is admin-only (DEPLOYMENT.md documents these
+  // endpoints as API-key access).
+  bugs: adminProcedure
     .input(
       z
         .object({
@@ -53,11 +56,11 @@ export const bugRouter = router({
       return getStorage().listBugReports(input || undefined);
     }),
 
-  bug: publicProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+  bug: adminProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
     return getStorage().getBugReport(input.id);
   }),
 
-  updateBug: authedProcedure
+  updateBug: adminProcedure
     .input(
       z.object({
         id: z.string(),

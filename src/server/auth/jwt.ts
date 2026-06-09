@@ -3,6 +3,34 @@
  * Works in both Cloudflare Workers and Node.js 20+.
  */
 
+/**
+ * Check a "Bearer <key>" Authorization header against the expected API key
+ * without leaking match-prefix timing: both sides are hashed with SHA-256 and
+ * the digests compared in full, so comparison time is independent of where
+ * the strings differ. Returns false (never throws) on a missing or
+ * non-Bearer header.
+ */
+export async function bearerApiKeyMatches(
+  authHeader: string | null | undefined,
+  apiKey: string,
+): Promise<boolean> {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return false;
+  const presented = authHeader.slice("Bearer ".length);
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(presented)),
+    crypto.subtle.digest("SHA-256", encoder.encode(apiKey)),
+  ]);
+  const av = new Uint8Array(a);
+  const bv = new Uint8Array(b);
+  let diff = 0;
+  for (const [i, byte] of av.entries()) {
+    const expected = bv[i];
+    diff |= expected === undefined ? 0xff : byte ^ expected;
+  }
+  return diff === 0;
+}
+
 export interface JwtPayload {
   sub: string;
   name: string;

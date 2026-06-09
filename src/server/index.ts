@@ -10,7 +10,7 @@ import { appRouter } from "./router.js";
 import { handleCommandStreamNode } from "./command-stream.js";
 import { handleAuthRoute } from "./auth/routes.js";
 import type { AuthEnv } from "./auth/routes.js";
-import { verifyJwt, parseCookie } from "./auth/jwt.js";
+import { verifyJwt, parseCookie, bearerApiKeyMatches } from "./auth/jwt.js";
 import { logErrorObj } from "./error-log.js";
 
 // Register games from disk (fs-based)
@@ -46,8 +46,11 @@ async function extractUser(
 ): Promise<{ userId: string; userName: string; roles: string[] } | null> {
   // API key auth
   const apiKey = process.env["API_KEY"];
-  if (apiKey && authHeader && authHeader === `Bearer ${apiKey}`) {
-    return { userId: "api", userName: "API", roles: ["admin", "ai", "debug"] };
+  if (apiKey && authHeader) {
+    if (await bearerApiKeyMatches(authHeader, apiKey)) {
+      return { userId: "api", userName: "API", roles: ["admin", "ai", "debug"] };
+    }
+    console.error("[auth] Rejected Authorization header: API key mismatch");
   }
   if (!cookieHeader) return null;
   const token = parseCookie(cookieHeader, "session");

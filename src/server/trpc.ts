@@ -33,3 +33,11 @@ export const aiRoleProcedure = authedProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+/** Procedure that requires the "admin" role (granted to API-key callers). */
+export const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
+  if (!ctx.roles.includes("admin")) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+  return next({ ctx });
+});
