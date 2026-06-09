@@ -88,7 +88,7 @@ export class D1Storage implements RuntimeStorage {
       .prepare("DELETE FROM ai_entities WHERE game_id = ? AND id = ?")
       .bind(gameId, entityId)
       .run();
-    return (result as unknown as { changes: number }).changes > 0;
+    return result.meta !== undefined && result.meta.changes > 0;
   }
 
   // --- AI Handlers ---
@@ -135,7 +135,7 @@ export class D1Storage implements RuntimeStorage {
       .prepare("DELETE FROM ai_handlers WHERE game_id = ? AND name = ?")
       .bind(gameId, name)
       .run();
-    return (result as unknown as { changes: number }).changes > 0;
+    return result.meta !== undefined && result.meta.changes > 0;
   }
 
   // --- Event Log (per-user) ---

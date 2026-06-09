@@ -48,6 +48,24 @@ interface WorldEditRow {
   created_at: string;
 }
 
+/**
+ * Parse a JSON column, tolerating corruption: a single bad cell logs an error
+ * and falls back rather than making the whole record unloadable.
+ */
+function parseJsonColumn<T>(
+  raw: string | null,
+  { context, fallback }: { context: string; fallback: T },
+): T {
+  if (raw === null) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(`[storage-d1-agent] Corrupt JSON in ${context}: ${message}`);
+    return fallback;
+  }
+}
+
 function rowToAgentSession(row: AgentSessionRow): AgentSessionRecord {
   return {
     id: row.id,
@@ -55,8 +73,14 @@ function rowToAgentSession(row: AgentSessionRow): AgentSessionRecord {
     userId: row.user_id,
     request: row.request,
     status: row.status as AgentSessionStatus,
-    messages: JSON.parse(row.messages) as unknown[],
-    savedVars: JSON.parse(row.saved_vars) as Record<string, unknown>,
+    messages: parseJsonColumn<unknown[]>(row.messages, {
+      context: `agent_sessions.messages (id=${row.id})`,
+      fallback: [],
+    }),
+    savedVars: parseJsonColumn<Record<string, unknown>>(row.saved_vars, {
+      context: `agent_sessions.saved_vars (id=${row.id})`,
+      fallback: {},
+    }),
     turnCount: row.turn_count,
     turnLimit: row.turn_limit,
     summary: row.summary,
@@ -85,8 +109,14 @@ export function rowToWorldEdit(row: WorldEditRow): WorldEditRecord {
     targetKind: row.target_kind as WorldEditTargetKind,
     targetId: row.target_id,
     op: row.op as WorldEditOp,
-    payload: row.payload === null ? null : (JSON.parse(row.payload) as unknown),
-    priorState: row.prior_state === null ? null : (JSON.parse(row.prior_state) as unknown),
+    payload: parseJsonColumn<unknown>(row.payload, {
+      context: `world_edits.payload (seq=${row.seq})`,
+      fallback: null,
+    }),
+    priorState: parseJsonColumn<unknown>(row.prior_state, {
+      context: `world_edits.prior_state (seq=${row.seq})`,
+      fallback: null,
+    }),
     applied: row.applied !== 0,
     createdAt: row.created_at,
   };

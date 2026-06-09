@@ -20,6 +20,7 @@ export interface D1PreparedStatement {
 export interface D1Result<T> {
   results: T[];
   success: boolean;
+  meta?: { changes: number };
 }
 
 export interface D1ExecResult {
