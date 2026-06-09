@@ -149,6 +149,12 @@ export async function tickSession(
       messages,
       tools,
       providerOptions: getLlmProviderOptions(),
+      // The loop's only exit is the finish/bail tools — a text-only response
+      // would end generateText with the session still "running", and models
+      // (observed with gemini-2.5-flash) then re-emit the same prose summary
+      // every tick until the turn limit kills the session. Forcing tool
+      // choice makes "done" expressible only as finish().
+      toolChoice: "required",
       stopWhen: [stepCountIs(stepLimit), hasToolCall("finish"), hasToolCall("bail")],
       onStepFinish: (step) => {
         stepIndex += 1;
@@ -176,6 +182,19 @@ export async function tickSession(
 
   // Append new response messages onto the persistent session messages.
   const newMessages: unknown[] = [...messages, ...lastResult.response.messages];
+  // Fallback for providers that ignore toolChoice "required": if the model
+  // ended with a text-only response (no finish/bail, no tool call), the next
+  // tick would replay the identical context and stall the same way. Nudge it.
+  const lastStep = lastResult.steps.at(-1);
+  if (!context.terminate && lastStep && lastStep.toolCalls.length === 0) {
+    newMessages.push({
+      role: "user",
+      content:
+        "Respond ONLY with tool calls. If the work is complete and playtested, call " +
+        "finish(summary); if you are stuck, call bail(reason). Otherwise keep working " +
+        "with the tools.",
+    });
+  }
   const newTurnCount = session.turnCount + turnsRun;
   // Accumulate token usage from this generateText call into the session's
   // running total. totalUsage spans every step inside the call.
