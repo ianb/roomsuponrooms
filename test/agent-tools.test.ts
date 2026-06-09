@@ -30,6 +30,7 @@ async function makeContext(): Promise<{
     pendingEdits: [],
     savedVars: {},
     terminate: null,
+    editsSinceLastPlaytest: false,
   };
   await storage.createAgentSession({
     id: "s-test",

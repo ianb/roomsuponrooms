@@ -1,5 +1,6 @@
-import { generateText, stepCountIs, hasToolCall } from "ai";
+import { generateText, stepCountIs, InvalidToolInputError } from "ai";
 import type { LanguageModel, ModelMessage } from "ai";
+import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
 import { getStorage } from "./storage-instance.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
@@ -10,6 +11,53 @@ import { loadAgentGameInstance } from "./agent-game-loader.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import type { AgentSessionStatus } from "./storage.js";
 import { mergeTokenUsage } from "./agent-token-usage.js";
+
+/**
+ * Repair a tool call whose arguments arrived as a JSON-encoded STRING instead
+ * of an object — i.e. the model wrapped its argument object in one extra
+ * layer of JSON encoding (observed with kimi-k2; a common weak-model tic).
+ * Unwrapping one level turns `"{\"edits\":...}"` back into `{"edits":...}`.
+ * Returns null (no repair) for anything else.
+ */
+async function repairDoubleEncodedToolCall({
+  toolCall,
+  error,
+}: {
+  toolCall: LanguageModelV3ToolCall;
+  error: unknown;
+}): Promise<LanguageModelV3ToolCall | null> {
+  if (!InvalidToolInputError.isInstance(error)) return null;
+  try {
+    const once: unknown = JSON.parse(toolCall.input);
+    if (typeof once !== "string") return null;
+    const twice: unknown = JSON.parse(once);
+    if (twice === null || typeof twice !== "object") return null;
+    console.log(`[agent] repaired double-encoded arguments for tool ${toolCall.toolName}`);
+    return { ...toolCall, input: once };
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
+ * Did the conversation apply edits more recently than it ran a playtest?
+ * Used to re-initialize ToolContext.editsSinceLastPlaytest when a session
+ * resumes on a new tick.
+ */
+function hasEditsSinceLastPlaytest(messages: ModelMessage[]): boolean {
+  let lastEdit = -1;
+  let lastPlaytest = -1;
+  for (const [i, m] of messages.entries()) {
+    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
+    for (const part of m.content) {
+      const p = part as { type?: string; toolName?: string };
+      if (p.type !== "tool-call") continue;
+      if (p.toolName === "apply_edits") lastEdit = i;
+      if (p.toolName === "playtest") lastPlaytest = i;
+    }
+  }
+  return lastEdit > lastPlaytest;
+}
 
 class SessionNotFoundError extends Error {
   override name = "SessionNotFoundError";
@@ -100,6 +148,7 @@ export async function tickSession(
     pendingEdits: await storage.getSessionEdits(sessionId),
     savedVars: { ...session.savedVars },
     terminate: null,
+    editsSinceLastPlaytest: hasEditsSinceLastPlaytest(session.messages as ModelMessage[]),
   };
 
   // Apply already-emitted pending edits to the agent's view (in case this is
@@ -155,7 +204,11 @@ export async function tickSession(
       // every tick until the turn limit kills the session. Forcing tool
       // choice makes "done" expressible only as finish().
       toolChoice: "required",
-      stopWhen: [stepCountIs(stepLimit), hasToolCall("finish"), hasToolCall("bail")],
+      experimental_repairToolCall: repairDoubleEncodedToolCall,
+      // Stop on terminate (set by an ACCEPTED finish/bail) rather than on the
+      // finish tool call itself — finish() can be rejected (e.g. edits not
+      // playtested) and the loop should continue so the model can comply.
+      stopWhen: [stepCountIs(stepLimit), () => context.terminate !== null],
       onStepFinish: (step) => {
         stepIndex += 1;
         const calls = step.toolCalls.map((call) => ({

@@ -208,6 +208,8 @@ So a handler for "put lever in turnstile" or "insert lever into socket" must hav
   { pattern: { verb: "put", form: "ditransitive", prep: "in" } }
 not form: "prepositional".
 
+Preps match by GROUP: in/into/inside are interchangeable, as are on/onto, to/toward, with/using, from/"out of", under/beneath/below. A handler with prep "in" matches "put X into Y" automatically. VERBS DO NOT have groups — "put" does not match "insert" unless you list it in verbAliases. Always cover the synonyms a player would plausibly type (put/insert/place/stick, etc.), and ALWAYS include the exact verb used in the request.
+
 Inside a ditransitive handler's perform/check body, 'object' is the direct object (the lever) and 'indirect' is the indirect object (the turnstile).
 
 ==== Properties ====
@@ -261,13 +263,13 @@ Create a new verb handler. Pattern needs verb + form (one of "intransitive", "tr
     ]
   }
 
-A handler bound to a specific entity (only fires when that entity is the direct object). Note the form is "ditransitive" — the player will type "insert lever into turnstile", which has TWO noun phrases with "into" between them:
+A handler bound to a specific entity (only fires when that entity is the direct object). Note the form is "ditransitive" — the player will type "insert lever into turnstile" or "put lever in turnstile", which has TWO noun phrases with the prep between them. verbAliases cover the synonyms a player would try:
   {
     "edits": [
       {
         "target": "ai-insert-lever-turnstile",
         "handlerCreate": {
-          "pattern": { "verb": "insert", "form": "ditransitive", "prep": "into" },
+          "pattern": { "verb": "put", "verbAliases": ["insert", "place", "stick", "jam"], "form": "ditransitive", "prep": "in" },
           "entityId": "item:rusty-lever",
           "perform": "if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; const exit = store.get('exit:gate:north'); exit.properties.locked = false; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };"
         }
@@ -336,6 +338,7 @@ export const RULES_SECTION = `<rules>
 5. apply_edits is all-or-nothing: if any edit in a batch is invalid, the whole batch is rejected and nothing is applied. Read the failure messages and try again.
 6. ALWAYS PLAYTEST BEFORE FINISH. Whenever your edits add or change verb handlers — or whenever you've changed how an interaction is supposed to work — run the playtest tool with a sequence of commands that exercises the change. Verify the outcomes match what you expected. A handler that throws, falls through to "unhandled", or produces the wrong output is broken; fix it before commit. Do not call finish() until playtest confirms the change works.
 6b. PLAYTEST THE NEGATIVE CASES TOO. If something is supposed to be blocked, locked, or hidden until a condition is met, run a playtest that verifies it actually IS blocked beforehand (e.g. "go north" fails before the puzzle is solved), not just that the solve path works. A gate that never gates is a broken puzzle.
+6c. PLAYTEST THE EXACT PHRASING FROM THE REQUEST. If the designer wrote 'the player does "put lever in turnstile"', test that literal command — not a paraphrase that happens to match your handler. Players will type the requested phrasing.
 7. Read the playtest 'parse' field to confirm noun phrases bound to the entity ids you intended. If a command comes back 'unhandled', read the 'candidates' list — it tells you which handlers were considered and why each was rejected (wrong form, wrong prep, missing tag, failed objectRequirements, etc.). Don't iterate on a handler without first understanding WHY dispatch isn't matching. Bumping priority and renaming handlers will not fix a form-mismatch or a wrong-tag bug.
 8. The parser refuses to disambiguate when more than one in-scope entity matches a noun phrase — you'll see an "unresolved" outcome with a 'Which "X" do you mean?' message. Do not paper over this by adding common nouns ("lever", "key", "box") as aliases on the wrong entity; that just creates persistent ambiguity. Either fix the entity that should match (give it a better name/alias) or accept that the player must say more.
 9. When the request is complete AND you've verified it with playtest, call finish(summary). When the request is impossible or you're stuck, call bail(reason). Either ends the loop.

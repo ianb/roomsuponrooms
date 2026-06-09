@@ -29,6 +29,7 @@ async function makeContext(): Promise<{
     pendingEdits: [],
     savedVars: {},
     terminate: null,
+    editsSinceLastPlaytest: false,
   };
   return {
     context,
@@ -157,23 +158,26 @@ t.test("playtest captures finalState after multiple commands", async (t) => {
   }
 });
 
-t.test("playtest step includes a parse string with entity ids for performed commands", async (t) => {
-  const { context, cleanup } = await makeContext();
-  t.teardown(cleanup);
+t.test(
+  "playtest step includes a parse string with entity ids for performed commands",
+  async (t) => {
+    const { context, cleanup } = await makeContext();
+    t.teardown(cleanup);
 
-  const result = await runPlaytest(context, {
-    setup: [{ entityId: "player:1", property: "location", value: "room:clearing" }],
-    commands: ["examine lantern"],
-  });
-  t.equal(result.ok, true);
-  if (result.ok) {
-    const step = result.steps[0]!;
-    t.ok(step.parse, "step has parse field");
-    // describeResolved renders as 'verb name [id]'. For 'examine lantern' we
-    // expect the lantern entity id to appear in the parse string.
-    t.match(step.parse || "", /item:lantern/, "parse string names the resolved entity id");
-  }
-});
+    const result = await runPlaytest(context, {
+      setup: [{ entityId: "player:1", property: "location", value: "room:clearing" }],
+      commands: ["examine lantern"],
+    });
+    t.equal(result.ok, true);
+    if (result.ok) {
+      const step = result.steps[0]!;
+      t.ok(step.parse, "step has parse field");
+      // describeResolved renders as 'verb name [id]'. For 'examine lantern' we
+      // expect the lantern entity id to appear in the parse string.
+      t.match(step.parse || "", /item:lantern/, "parse string names the resolved entity id");
+    }
+  },
+);
 
 t.test("playtest survives a partial handler update (no-data crash)", async (t) => {
   // Regression: session s-jGwDamNWSZ deadlocked because a handlerUpdate with

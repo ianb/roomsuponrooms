@@ -104,6 +104,10 @@ t.test("loop creates an entity then finishes; entity is committed", async (t) =>
         },
       },
     ],
+    // finish() before playtesting is rejected — the loop should feed the
+    // rejection back and accept the finish after a playtest runs.
+    [{ toolName: "finish", input: { summary: "Premature finish" } }],
+    [{ toolName: "playtest", input: { commands: ["look"] } }],
     [{ toolName: "finish", input: { summary: "Added the lantern" } }],
   ]);
 
@@ -228,6 +232,7 @@ t.test("loop validation failure feeds error back; agent retries successfully", a
         },
       },
     ],
+    [{ toolName: "playtest", input: { commands: ["look"] } }],
     [{ toolName: "finish", input: { summary: "Recovered after a bad batch" } }],
   ]);
 

@@ -5,7 +5,6 @@ import type {
   VerbHandler,
 } from "./verb-types.js";
 import type { VerbRegistry } from "./verbs.js";
-import { resolvePrep } from "./command-parser.js";
 import {
   getCommandPrep,
   getDirectObject,
@@ -13,6 +12,7 @@ import {
   involvesEntity,
   involvesTag,
   meetsRequirements,
+  prepMatches,
 } from "./command-matching.js";
 
 /**
@@ -54,8 +54,7 @@ function rejectionReason(handler: VerbHandler, context: VerbContext): string | n
     if (!cmdPrep) {
       return `requires prep "${handler.pattern.prep}", command has none`;
     }
-    const cmdGroup = resolvePrep(cmdPrep);
-    if (handler.pattern.prep !== cmdPrep && handler.pattern.prep !== cmdGroup) {
+    if (!prepMatches(handler.pattern.prep, cmdPrep)) {
       return `wrong prep: handler wants "${handler.pattern.prep}", command has "${cmdPrep}"`;
     }
   }

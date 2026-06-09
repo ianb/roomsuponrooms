@@ -1,5 +1,6 @@
 import type { Entity } from "./entity.js";
 import type { ResolvedCommand, EntityRequirements } from "./verb-types.js";
+import { resolvePrep } from "./command-parser.js";
 
 /**
  * Shared command-shape helpers used by verb dispatch (verbs.ts) and
@@ -10,6 +11,17 @@ export function getCommandPrep(command: ResolvedCommand): string | null {
   if (command.form === "ditransitive") return command.prep;
   if (command.form === "prepositional") return command.prep;
   return null;
+}
+
+/**
+ * Does a handler's prep accept the command's prep? Matches exactly, or when
+ * both resolve to the same PREP_GROUP — so a handler written with "into"
+ * accepts "put X in Y" and vice versa, and a handler may use the group name
+ * ("containment") directly.
+ */
+export function prepMatches(patternPrep: string, commandPrep: string): boolean {
+  if (patternPrep === commandPrep) return true;
+  return resolvePrep(patternPrep) === resolvePrep(commandPrep);
 }
 
 export function getDirectObject(command: ResolvedCommand): Entity | null {

@@ -31,7 +31,11 @@ export function buildAgentTools(context: ToolContext) {
       description:
         "Apply a batch of structural edits to the world. Each edit either creates an entity (full data), updates an existing entity (partial overlay; properties: { key: null } erases that property), deletes an entity, or does any of these to a verb handler. The whole batch is rejected if any edit fails validation; nothing is half-applied. After acceptance, the edits become visible to subsequent query calls within this session, but only commit to the live world when finish() is called.",
       inputSchema: editBatchSchema,
-      execute: async (input) => applyEditBatch(context, input),
+      execute: async (input) => {
+        const result = await applyEditBatch(context, input);
+        if (result.ok) context.editsSinceLastPlaytest = true;
+        return result;
+      },
     }),
 
     query: tool({
@@ -52,7 +56,11 @@ export function buildAgentTools(context: ToolContext) {
       description:
         "Simulate a sequence of player commands in a sandboxed copy of the world. The sandbox starts from the live world plus this session's pending edits, then applies any setup mutations, then runs each command through the verb dispatcher (with AI fallback DISABLED — unhandled commands surface as outcome:'unhandled' instead of triggering the verb-fallback LLM). Returns per-command outcome, output text, the WorldEvents that fired, and which handler ran. Also returns a finalState summary (player location, inventory, current room). Use this to test verb handlers you just wrote, verify a puzzle is solvable, or shortcut the player into a specific state to check a specific interaction. The simulation is hermetic — it does not affect the agent's view, the live world, or the event log.",
       inputSchema: playtestInputSchema,
-      execute: async (input) => runPlaytest(context, input),
+      execute: async (input) => {
+        const result = await runPlaytest(context, input);
+        if (result.ok) context.editsSinceLastPlaytest = false;
+        return result;
+      },
     }),
 
     save_var: tool({
@@ -67,9 +75,18 @@ export function buildAgentTools(context: ToolContext) {
 
     finish: tool({
       description:
-        "Commit all pending edits in this session and end the loop. Only call when the requested work is genuinely complete AND you've verified it with the playtest tool. If your edits added or changed any verb handlers, you MUST playtest the new behavior before calling finish — a handler that throws or produces the wrong outcome is a regression you should fix before commit.",
+        "Commit all pending edits in this session and end the loop. Only call when the requested work is genuinely complete AND you've verified it with the playtest tool. finish() is REJECTED if you have applied edits since your last playtest — run playtest first, using the exact words a player would type, and check the outcomes before committing.",
       inputSchema: finishSchema,
       execute: async (input) => {
+        if (context.editsSinceLastPlaytest) {
+          return {
+            ok: false as const,
+            error:
+              "finish() rejected: you have applied edits since your last playtest. Run the " +
+              "playtest tool to verify your changes in action (use the exact commands a " +
+              "player would type), then call finish again.",
+          };
+        }
         context.terminate = { kind: "finish", summary: input.summary };
         return { ok: true as const };
       },

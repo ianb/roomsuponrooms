@@ -12,6 +12,7 @@ function fakeContext(savedVars: Record<string, unknown> = {}): ToolContext {
     pendingEdits: [],
     savedVars,
     terminate: null,
+    editsSinceLastPlaytest: false,
   };
 }
 

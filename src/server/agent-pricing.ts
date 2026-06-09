@@ -33,6 +33,26 @@ const PRICING: Record<string, ModelPricing> = {
     cacheWrite: 0,
     output: 0.3,
   },
+  // OpenRouter models (rates from openrouter.ai/api/v1/models, 2026-06-09;
+  // cacheRead 0 = no cache discount reported).
+  "deepseek/deepseek-chat": {
+    input: 0.2,
+    cacheRead: 0,
+    cacheWrite: 0,
+    output: 0.8,
+  },
+  "openai/gpt-oss-120b": {
+    input: 0.039,
+    cacheRead: 0,
+    cacheWrite: 0,
+    output: 0.18,
+  },
+  "moonshotai/kimi-k2": {
+    input: 0.57,
+    cacheRead: 0,
+    cacheWrite: 0,
+    output: 2.3,
+  },
 };
 
 /** Look up pricing for a model id, or null if unknown. */

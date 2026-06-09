@@ -118,6 +118,7 @@ async function runVerifyScript(
     pendingEdits: [],
     savedVars: {},
     terminate: null,
+    editsSinceLastPlaytest: false,
   };
   const result = await runPlaytest(toolContext, {
     setup: script.setup,

@@ -6,6 +6,7 @@ import {
   involvesEntity,
   involvesTag,
   meetsRequirements,
+  prepMatches,
 } from "./command-matching.js";
 import type {
   ResolvedCommand,
@@ -15,7 +16,6 @@ import type {
   VerbPattern,
   DispatchResult,
 } from "./verb-types.js";
-import { resolvePrep } from "./command-parser.js";
 
 export type {
   ParsedCommand,
@@ -197,10 +197,7 @@ export class VerbRegistry {
     if (pattern.prep) {
       const commandPrep = getCommandPrep(command);
       if (!commandPrep) return false;
-      const commandGroup = resolvePrep(commandPrep);
-      if (pattern.prep !== commandPrep && pattern.prep !== commandGroup) {
-        return false;
-      }
+      if (!prepMatches(pattern.prep, commandPrep)) return false;
     }
     return true;
   }

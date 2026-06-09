@@ -24,4 +24,11 @@ export interface ToolContext {
   pendingEdits: WorldEditRecord[];
   savedVars: Record<string, unknown>;
   terminate: { kind: "finish" | "bail"; summary: string } | null;
+  /**
+   * True when apply_edits has succeeded more recently than the last
+   * successful playtest. finish() refuses to commit while this is set —
+   * models otherwise skip verification and commit broken changes.
+   * Initialized from the message history on each tick.
+   */
+  editsSinceLastPlaytest: boolean;
 }
