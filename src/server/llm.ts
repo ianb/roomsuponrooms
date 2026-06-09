@@ -1,6 +1,7 @@
 import type { LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 class UnknownLlmProviderError extends Error {
   override name = "UnknownLlmProviderError";
@@ -17,8 +18,27 @@ class LlmNotConfiguredError extends Error {
 }
 
 interface LlmConfig {
-  provider: "google" | "anthropic";
+  provider: "google" | "anthropic" | "openrouter";
   model: string;
+}
+
+/**
+ * Construct a LanguageModel for an explicit provider/model pair. Used by
+ * getLlm() for the configured default and by the eval harness to test
+ * arbitrary models without touching global config. OpenRouter needs
+ * OPENROUTER_API_KEY; google/anthropic use their usual env keys.
+ */
+export function createModel({ provider, model }: LlmConfig): LanguageModel {
+  if (provider === "google") {
+    return createGoogleGenerativeAI()(model);
+  }
+  if (provider === "anthropic") {
+    return createAnthropic()(model);
+  }
+  if (provider === "openrouter") {
+    return createOpenRouter()(model);
+  }
+  throw new UnknownLlmProviderError(provider);
 }
 
 let cachedModel: LanguageModel | null = null;
@@ -47,15 +67,7 @@ export function getLlm(): LanguageModel {
   if (cachedModel) return cachedModel;
   const config = loadConfig();
   cachedConfig = config;
-  if (config.provider === "google") {
-    const google = createGoogleGenerativeAI();
-    cachedModel = google(config.model);
-  } else if (config.provider === "anthropic") {
-    const anthropic = createAnthropic();
-    cachedModel = anthropic(config.model);
-  } else {
-    throw new UnknownLlmProviderError(config.provider);
-  }
+  cachedModel = createModel(config);
   return cachedModel;
 }
 
