@@ -3,6 +3,7 @@ import { getOrCreateGame, reinitGame } from "./router.js";
 import { executeCommand } from "./execute-command.js";
 import type { CommandResult } from "./execute-command.js";
 import { logErrorObj } from "./error-log.js";
+import { withSessionLock } from "./session-lock.js";
 
 interface AgentProgressPayload {
   turn: number;
@@ -35,39 +36,62 @@ export async function handleCommandStream(
   const session = { gameId, userId: user.userId };
   const encoder = new TextEncoder();
 
+  // Once the client disconnects (cancel) or an enqueue fails, the controller
+  // is unusable — further sends and the final close() would throw, turning a
+  // routine disconnect into an unhandled rejection that kills the Worker.
+  let closed = false;
+
   const readable = new ReadableStream({
     start(controller) {
       function send(event: StreamEvent): void {
-        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        } catch (e) {
+          closed = true;
+          const message = e instanceof Error ? e.message : String(e);
+          console.error(`[command-stream] enqueue failed (client disconnected?): ${message}`);
+        }
       }
 
-      const commandPromise = (async () => {
+      void (async () => {
         try {
-          const game = await getOrCreateGame(session);
-          const result = await executeCommand(
-            { gameId, userId: user.userId, text, debug, roles: user.roles },
-            {
-              game,
-              reinitGame: (s) => reinitGame(s),
-              onAiStart() {
-                send({ phase: "ai" });
+          const result = await withSessionLock(session, async () => {
+            const game = await getOrCreateGame(session);
+            return executeCommand(
+              { gameId, userId: user.userId, text, debug, roles: user.roles },
+              {
+                game,
+                reinitGame: (s) => reinitGame(s),
+                onAiStart() {
+                  send({ phase: "ai" });
+                },
+                onAgentProgress(progress) {
+                  send({ phase: "agent-progress", progress });
+                },
               },
-              onAgentProgress(progress) {
-                send({ phase: "agent-progress", progress });
-              },
-            },
-          );
+            );
+          });
           send({ phase: "done", result });
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
           await logErrorObj("command-stream", { error: err, userId: user.userId, gameId });
           send({ phase: "error", error: message });
         } finally {
-          controller.close();
+          if (!closed) {
+            closed = true;
+            try {
+              controller.close();
+            } catch (e) {
+              const message = e instanceof Error ? e.message : String(e);
+              console.error(`[command-stream] close failed: ${message}`);
+            }
+          }
         }
       })();
-
-      void commandPromise;
+    },
+    cancel() {
+      closed = true;
     },
   });
 
@@ -95,24 +119,27 @@ export async function handleCommandStreamNode(
   const session = { gameId, userId: user.userId };
 
   function send(event: StreamEvent): void {
+    if (res.writableEnded) return;
     res.write(JSON.stringify(event) + "\n");
   }
 
   try {
-    const game = await getOrCreateGame(session);
-    const result = await executeCommand(
-      { gameId, userId: user.userId, text, debug, roles: user.roles },
-      {
-        game,
-        reinitGame: (s) => reinitGame(s),
-        onAiStart() {
-          send({ phase: "ai" });
+    const result = await withSessionLock(session, async () => {
+      const game = await getOrCreateGame(session);
+      return executeCommand(
+        { gameId, userId: user.userId, text, debug, roles: user.roles },
+        {
+          game,
+          reinitGame: (s) => reinitGame(s),
+          onAiStart() {
+            send({ phase: "ai" });
+          },
+          onAgentProgress(progress) {
+            send({ phase: "agent-progress", progress });
+          },
         },
-        onAgentProgress(progress) {
-          send({ phase: "agent-progress", progress });
-        },
-      },
-    );
+      );
+    });
     send({ phase: "done", result });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

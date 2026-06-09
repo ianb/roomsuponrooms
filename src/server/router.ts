@@ -13,6 +13,7 @@ import { executeCommand } from "./execute-command.js";
 import { restoreConversationState } from "./conversation-commands.js";
 import type { SessionKey } from "./storage.js";
 import { logErrorObj } from "./error-log.js";
+import { withSessionLock } from "./session-lock.js";
 import { bugRouter } from "./router-bugs.js";
 import { adminRouter } from "./router-admin.js";
 import { imageRouter } from "./router-images.js";
@@ -129,18 +130,20 @@ const gameRouter = router({
     .input(z.object({ gameId: validGameId, text: z.string(), debug: z.boolean().optional() }))
     .mutation(async ({ input, ctx }) => {
       const session = { gameId: input.gameId, userId: ctx.userId };
-      const game = await getOrCreateGame(session);
       try {
-        return await executeCommand(
-          {
-            gameId: input.gameId,
-            userId: ctx.userId,
-            text: input.text,
-            debug: input.debug,
-            roles: ctx.roles,
-          },
-          { game, reinitGame: (s: SessionKey) => reinitGame(s) },
-        );
+        return await withSessionLock(session, async () => {
+          const game = await getOrCreateGame(session);
+          return executeCommand(
+            {
+              gameId: input.gameId,
+              userId: ctx.userId,
+              text: input.text,
+              debug: input.debug,
+              roles: ctx.roles,
+            },
+            { game, reinitGame: (s: SessionKey) => reinitGame(s) },
+          );
+        });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         await logErrorObj("command", {
@@ -155,7 +158,7 @@ const gameRouter = router({
 
   reset: authedProcedure.input(gameInput).mutation(async ({ input, ctx }) => {
     const session = { gameId: input.gameId, userId: ctx.userId };
-    const instance = await reinitGame(session);
+    const instance = await withSessionLock(session, () => reinitGame(session));
     return { output: describeCurrentRoom(instance.store) };
   }),
 
