@@ -8,6 +8,7 @@ import type {
 } from "./storage.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
+import { validateHandlerCode } from "./handler-code-validate.js";
 import type { EditBatchInput, EditInput } from "./agent-tool-schemas.js";
 
 /**
@@ -18,6 +19,8 @@ export interface EditBatchResult {
   applied: number;
   /** A short per-edit description for the agent's working memory. */
   edits: Array<{ kind: WorldEditTargetKind; id: string; op: WorldEditOp }>;
+  /** Warnings about auto-repairs (e.g. over-escaped handler code). */
+  notes?: string[];
 }
 
 /**
@@ -59,11 +62,27 @@ export async function applyEditBatch(
     }
   }
 
+  const notes: string[] = [];
   if (failures.length === 0) {
-    // Second pass: validate against the world view (existence checks).
+    // Second pass: validate against the world view (existence checks) and
+    // syntax-check handler code bodies (repairing over-escaping in place).
+    // Entities created earlier in this same batch count as existing, so a
+    // batch can create a container and put new items inside it in one call.
+    const createdInBatch = new Set<string>();
     for (const [i, edit] of normalized.entries()) {
-      const reason = validateEditAgainstWorld(edit, context);
-      if (reason) failures.push({ index: i, reason });
+      const reason = validateEditAgainstWorld(edit, { context, createdInBatch });
+      if (edit.kind === "entity" && edit.op === "create") createdInBatch.add(edit.id);
+      if (reason) {
+        failures.push({ index: i, reason });
+        continue;
+      }
+      if (edit.kind === "handler" && (edit.op === "create" || edit.op === "update")) {
+        const payload = edit.payload as Partial<HandlerData>;
+        const form = resolveHandlerForm(context, { name: edit.id, payload });
+        const check = validateHandlerCode(payload, { name: edit.id, form });
+        notes.push(...check.notes);
+        if (check.error) failures.push({ index: i, reason: check.error });
+      }
     }
   }
 
@@ -137,7 +156,7 @@ export async function applyEditBatch(
     context.pendingEdits.push(stored);
   }
 
-  return {
+  const result: EditBatchResult = {
     ok: true,
     applied: appended.length,
     edits: appended.map((e) => ({
@@ -146,6 +165,22 @@ export async function applyEditBatch(
       op: e.op,
     })),
   };
+  if (notes.length > 0) result.notes = notes;
+  return result;
+}
+
+/**
+ * Effective pattern form for a handler edit: the payload's own pattern wins;
+ * for updates without a pattern, fall back to the existing handler (the
+ * context registry already includes this session's pending edits).
+ */
+function resolveHandlerForm(
+  context: ToolContext,
+  { name, payload }: { name: string; payload: Partial<HandlerData> },
+): string | undefined {
+  if (payload.pattern && payload.pattern.form) return payload.pattern.form;
+  const existing = context.verbs.getByName(name);
+  return existing ? existing.pattern.form : undefined;
 }
 
 /**
@@ -190,9 +225,12 @@ function normalizeEdit(item: EditInput, index: number): NormalizedEdit | { error
   return { kind: chosen.kind, id: item.target, op: chosen.op, payload };
 }
 
-function validateEditAgainstWorld(edit: NormalizedEdit, context: ToolContext): string | null {
+function validateEditAgainstWorld(
+  edit: NormalizedEdit,
+  { context, createdInBatch }: { context: ToolContext; createdInBatch: Set<string> },
+): string | null {
   if (edit.kind === "entity") {
-    const exists = context.store.has(edit.id);
+    const exists = context.store.has(edit.id) || createdInBatch.has(edit.id);
     if (edit.op === "create" && exists) {
       return `Entity "${edit.id}" already exists; use entityUpdate to modify or pick a different id.`;
     }
@@ -201,7 +239,7 @@ function validateEditAgainstWorld(edit: NormalizedEdit, context: ToolContext): s
     }
     if (edit.op === "create") {
       const data = edit.payload as EntityData;
-      if (!context.store.has(data.location)) {
+      if (!context.store.has(data.location) && !createdInBatch.has(data.location)) {
         return `Entity "${edit.id}" create payload references unknown location "${data.location}".`;
       }
     }

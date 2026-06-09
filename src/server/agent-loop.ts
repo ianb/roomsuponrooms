@@ -114,6 +114,7 @@ export async function tickSession(
   const systemPrompt = buildAgentSystemPrompt({
     store: game.store,
     prompts: game.prompts,
+    libClass: game.libClass,
   });
 
   const messages: ModelMessage[] =

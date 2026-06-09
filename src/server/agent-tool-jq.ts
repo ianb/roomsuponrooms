@@ -34,13 +34,28 @@ class JqVarNotFoundError extends Error {
 
 export async function runJq(context: ToolContext, input: JqInput): Promise<JqResult | JqError> {
   let value: unknown;
-  if ("json" in input.source) {
-    value = input.source.json;
-  } else {
+  const savedNames = Object.keys(context.savedVars);
+  const savedList = savedNames.length > 0 ? savedNames.join(", ") : "(none saved yet)";
+  if ("var" in input.source && typeof input.source.var === "string") {
     if (!(input.source.var in context.savedVars)) {
-      return { ok: false, error: new JqVarNotFoundError(input.source.var).message };
+      return {
+        ok: false,
+        error: `${new JqVarNotFoundError(input.source.var).message} Saved variables: ${savedList}.`,
+      };
     }
     value = context.savedVars[input.source.var];
+  } else if ("json" in input.source && input.source.json !== undefined) {
+    value = input.source.json;
+  } else {
+    // An empty source object ({}) parses as {json: undefined} — a common
+    // model mistake. Spell out the expected shapes instead of failing with
+    // a confusing "variable named 'undefined'" error.
+    return {
+      ok: false,
+      error:
+        'jq \'source\' must be {"json": <inline value>} or {"var": "<saved name>"}. ' +
+        `Saved variables: ${savedList}.`,
+    };
   }
 
   const inputJson = JSON.stringify(value);

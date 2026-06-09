@@ -39,6 +39,8 @@ export interface UnhandledContext {
   command: ResolvedCommand;
   player: Entity;
   room: Entity;
+  /** Set when an AI handler threw during dispatch and was auto-removed. */
+  removedBroken?: { handler: string; error: string };
 }
 
 export interface CommandResult {
@@ -148,7 +150,15 @@ export function processCommand(
     return {
       output: parts.join("\n"),
       events: allEvents,
-      debug: debug ? { parse: `go ${movement.direction}`, outcome: "movement" } : undefined,
+      // "movement-blocked": the movement system handled the command but the
+      // player did not move (e.g. locked exit). Distinct from "movement" so
+      // tooling can tell a successful move from a refusal.
+      debug: debug
+        ? {
+            parse: `go ${movement.direction}`,
+            outcome: movement.moved ? "movement" : "movement-blocked",
+          }
+        : undefined,
     };
   }
 
@@ -232,6 +242,11 @@ export function processCommand(
     output: `{!I don't know how to "${input}". ${FORMS_HINT}!}`,
     events: [],
     debug: debug ? { parse: describeParsed(parsed), outcome: "unhandled" } : undefined,
-    unhandled: { command: resolved, player, room },
+    unhandled: {
+      command: resolved,
+      player,
+      room,
+      removedBroken: result.outcome === "unhandled" ? result.removedBroken : undefined,
+    },
   };
 }

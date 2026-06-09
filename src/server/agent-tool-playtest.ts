@@ -46,7 +46,14 @@ export type PlaytestInput = z.infer<typeof playtestInputSchema>;
 
 export interface PlaytestStep {
   command: string;
-  outcome: "performed" | "vetoed" | "unhandled" | "unresolved" | "movement" | "error";
+  outcome:
+    | "performed"
+    | "vetoed"
+    | "unhandled"
+    | "unresolved"
+    | "movement"
+    | "movement-blocked"
+    | "error";
   output: string;
   /**
    * How the parser/resolver interpreted the command. For resolved commands,
@@ -204,6 +211,33 @@ function applySetupItem(
   store.setProperty(item.entityId, { name: item.property, value: item.value });
 }
 
+function classifyOutcome(
+  result: CommandResult,
+  debug: { outcome?: string } | undefined,
+): { outcome: PlaytestStep["outcome"]; handlerError?: string } {
+  if (result.unresolvedExit || result.unresolvedObject) {
+    return { outcome: "unresolved" };
+  }
+  if (result.unhandled && result.unhandled.removedBroken) {
+    // A handler matched but its code threw; the registry auto-removed it.
+    // Report the actual error — a bare "unhandled" here sends the agent
+    // chasing dispatch problems when the real bug is in its handler code.
+    const broken = result.unhandled.removedBroken;
+    return {
+      outcome: "error",
+      handlerError:
+        `Handler "${broken.handler}" threw: ${broken.error}. ` +
+        "The broken handler was automatically removed from the registry — " +
+        "fix the code and re-apply it (handlerCreate) before playtesting again.",
+    };
+  }
+  if (result.unhandled) return { outcome: "unhandled" };
+  if (debug && debug.outcome === "vetoed") return { outcome: "vetoed" };
+  if (debug && debug.outcome === "movement") return { outcome: "movement" };
+  if (debug && debug.outcome === "movement-blocked") return { outcome: "movement-blocked" };
+  return { outcome: "performed" };
+}
+
 function runOneCommand({
   store,
   verbs,
@@ -244,24 +278,14 @@ function runOneCommand({
     if (resolved) return resolved;
   }
 
-  let outcome: PlaytestStep["outcome"];
-  if (result.unresolvedExit || result.unresolvedObject) {
-    outcome = "unresolved";
-  } else if (result.unhandled) {
-    outcome = "unhandled";
-  } else if (debug && debug.outcome === "vetoed") {
-    outcome = "vetoed";
-  } else if (debug && debug.outcome === "movement") {
-    outcome = "movement";
-  } else {
-    outcome = "performed";
-  }
+  const { outcome, handlerError } = classifyOutcome(result, debug);
   const step: PlaytestStep = {
     command,
     outcome,
     output: result.output,
     events,
   };
+  if (handlerError) step.error = handlerError;
   if (debug && debug.handler) step.handler = debug.handler;
   // Build a parse string. For unhandled commands the resolver succeeded —
   // re-derive the parse with entity ids from result.unhandled.command so the

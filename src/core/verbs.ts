@@ -98,7 +98,7 @@ export class VerbRegistry {
       if (performer.name.startsWith("ai-")) {
         this.removeByName(performer.name);
         console.log(`[verbs] Removed broken handler: ${performer.name}`);
-        return { outcome: "unhandled" };
+        return { outcome: "unhandled", removedBroken: { handler: performer.name, error: msg } };
       }
       // Non-AI handler errors still surface
       throw err as Error;

@@ -107,4 +107,9 @@ export type DispatchResult =
       freeTurn: boolean;
     }
   | { outcome: "vetoed"; output: string; vetoedBy: string }
-  | { outcome: "unhandled" };
+  | {
+      outcome: "unhandled";
+      /** Set when an AI handler threw and was removed from the registry —
+       *  lets tooling (playtest) report the error instead of a bare miss. */
+      removedBroken?: { handler: string; error: string };
+    };
