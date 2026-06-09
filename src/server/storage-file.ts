@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import type {
   RuntimeStorage,
   AiEntityRecord,
@@ -22,25 +22,7 @@ import type {
 } from "./storage.js";
 import { FileAgentStorage } from "./storage-file-agent.js";
 import { FileAiCallLog } from "./storage-file-ai-calls.js";
-
-function ensureDir(filePath: string): void {
-  const dir = dirname(filePath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-}
-
-function readJsonl<T>(filePath: string): T[] {
-  if (!existsSync(filePath)) return [];
-  const content = readFileSync(filePath, "utf-8").trim();
-  if (!content) return [];
-  return content.split("\n").map((line) => JSON.parse(line) as T);
-}
-
-function appendJsonl(filePath: string, record: unknown): void {
-  ensureDir(filePath);
-  appendFileSync(filePath, JSON.stringify(record) + "\n");
-}
+import { readJsonl, appendJsonl, writeJsonl, ensureDirFor } from "./jsonl.js";
 
 export class FileStorage implements RuntimeStorage {
   private dataDir: string;
@@ -80,14 +62,10 @@ export class FileStorage implements RuntimeStorage {
 
   async removeAiEntity(gameId: string, entityId: string): Promise<boolean> {
     const filePath = this.path(`${gameId}/entities.jsonl`);
-    if (!existsSync(filePath)) return false;
-    const lines = readFileSync(filePath, "utf-8").trim().split("\n");
-    const filtered = lines.filter((line) => {
-      const record = JSON.parse(line) as AiEntityRecord;
-      return record.id !== entityId;
-    });
-    if (filtered.length === lines.length) return false;
-    writeFileSync(filePath, filtered.length > 0 ? filtered.join("\n") + "\n" : "");
+    const records = readJsonl<AiEntityRecord>(filePath);
+    const filtered = records.filter((record) => record.id !== entityId);
+    if (filtered.length === records.length) return false;
+    writeJsonl(filePath, filtered);
     return true;
   }
 
@@ -107,14 +85,10 @@ export class FileStorage implements RuntimeStorage {
 
   async removeHandler(gameId: string, name: string): Promise<boolean> {
     const filePath = this.path(`${gameId}/handlers.jsonl`);
-    if (!existsSync(filePath)) return false;
-    const lines = readFileSync(filePath, "utf-8").trim().split("\n");
-    const filtered = lines.filter((line) => {
-      const record = JSON.parse(line) as AiHandlerRecord;
-      return record.name !== name;
-    });
-    if (filtered.length === lines.length) return false;
-    writeFileSync(filePath, filtered.length > 0 ? filtered.join("\n") + "\n" : "");
+    const records = readJsonl<AiHandlerRecord>(filePath);
+    const filtered = records.filter((record) => record.name !== name);
+    if (filtered.length === records.length) return false;
+    writeJsonl(filePath, filtered);
     return true;
   }
 
@@ -141,13 +115,7 @@ export class FileStorage implements RuntimeStorage {
     const entries = await this.loadEvents(session);
     if (entries.length === 0) return null;
     const popped = entries.pop()!;
-    const filePath = this.userPath(`event-log-${session.gameId}-${session.userId}.jsonl`);
-    ensureDir(filePath);
-    if (entries.length === 0) {
-      writeFileSync(filePath, "");
-    } else {
-      writeFileSync(filePath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n");
-    }
+    writeJsonl(this.userPath(`event-log-${session.gameId}-${session.userId}.jsonl`), entries);
     return popped;
   }
 
@@ -191,16 +159,12 @@ export class FileStorage implements RuntimeStorage {
 
   async updateLastLogin(userId: string): Promise<void> {
     const filePath = this.userPath("users.jsonl");
-    if (!existsSync(filePath)) return;
-    const lines = readFileSync(filePath, "utf-8").trim().split("\n");
-    const updated = lines.map((line) => {
-      const record = JSON.parse(line) as UserRecord;
-      if (record.id === userId) {
-        return JSON.stringify({ ...record, lastLoginAt: new Date().toISOString() });
-      }
-      return line;
-    });
-    writeFileSync(filePath, updated.join("\n") + "\n");
+    const users = readJsonl<UserRecord>(filePath);
+    if (users.length === 0) return;
+    const updated = users.map((record) =>
+      record.id === userId ? { ...record, lastLoginAt: new Date().toISOString() } : record,
+    );
+    writeJsonl(filePath, updated);
   }
 
   // --- Bug Reports (no-op for local dev) ---
@@ -241,7 +205,7 @@ export class FileStorage implements RuntimeStorage {
 
   async saveImageSettings(settings: ImageSettingsInput): Promise<void> {
     const path = this.imageSettingsPath(settings.gameId);
-    ensureDir(path);
+    ensureDirFor(path);
     const record: ImageSettings = { ...settings, updatedAt: new Date().toISOString() };
     writeFileSync(path, JSON.stringify(record, null, 2));
   }
@@ -259,7 +223,7 @@ export class FileStorage implements RuntimeStorage {
     const filtered = images.filter((i) => i.imageType !== record.imageType);
     filtered.push(record);
     const path = this.worldImagesPath(record.gameId);
-    ensureDir(path);
+    ensureDirFor(path);
     writeFileSync(path, JSON.stringify(filtered, null, 2));
   }
 
@@ -267,7 +231,7 @@ export class FileStorage implements RuntimeStorage {
     const images = await this.listWorldImages(query.gameId);
     const filtered = images.filter((i) => i.imageType !== query.imageType);
     const path = this.worldImagesPath(query.gameId);
-    ensureDir(path);
+    ensureDirFor(path);
     writeFileSync(path, JSON.stringify(filtered, null, 2));
   }
 

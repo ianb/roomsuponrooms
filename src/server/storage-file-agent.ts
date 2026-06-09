@@ -1,12 +1,5 @@
-import {
-  readFileSync,
-  writeFileSync,
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-} from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import type {
   AgentSessionRecord,
   AgentSessionStatus,
@@ -18,6 +11,7 @@ import type {
 import { emptyAgentTokenUsage } from "./storage.js";
 import type { EntityData, HandlerData } from "../core/game-data.js";
 import { playSessionEdits } from "./agent-edit-merge.js";
+import { readJsonl, appendJsonl, writeJsonl, ensureDirFor } from "./jsonl.js";
 
 /**
  * Backfill optional fields on session records loaded from disk so older
@@ -33,10 +27,17 @@ function normalizeSession(raw: unknown): AgentSessionRecord {
   };
 }
 
-function ensureDir(filePath: string): void {
-  const dir = dirname(filePath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+/**
+ * Read and parse a session file, tolerating corruption: a bad file logs an
+ * error and returns null rather than making every session listing crash.
+ */
+function readSessionFile(path: string): AgentSessionRecord | null {
+  try {
+    return normalizeSession(JSON.parse(readFileSync(path, "utf-8")));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(`[storage-file-agent] Corrupt session file ${path}: ${message}`);
+    return null;
   }
 }
 
@@ -67,7 +68,7 @@ export class FileAgentStorage {
 
   async createAgentSession(record: AgentSessionRecord): Promise<void> {
     const path = this.sessionFile(record.gameId, record.id);
-    ensureDir(path);
+    ensureDirFor(path);
     writeFileSync(path, JSON.stringify(record, null, 2));
   }
 
@@ -78,7 +79,7 @@ export class FileAgentStorage {
       if (!gameDir.isDirectory()) continue;
       const path = this.sessionFile(gameDir.name, id);
       if (existsSync(path)) {
-        return normalizeSession(JSON.parse(readFileSync(path, "utf-8")));
+        return readSessionFile(path);
       }
     }
     return null;
@@ -108,7 +109,8 @@ export class FileAgentStorage {
       if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir)) {
         if (!file.endsWith(".json")) continue;
-        const record = normalizeSession(JSON.parse(readFileSync(resolve(dir, file), "utf-8")));
+        const record = readSessionFile(resolve(dir, file));
+        if (!record) continue;
         if (filter && filter.status && record.status !== filter.status) continue;
         records.push(record);
       }
@@ -128,7 +130,6 @@ export class FileAgentStorage {
 
   async appendWorldEdit(record: NewWorldEditRecord): Promise<WorldEditRecord> {
     const path = this.editsFile(record.gameId);
-    ensureDir(path);
     const all = this.loadEditsFile(path);
     const seq = all.length > 0 ? Math.max(...all.map((e) => e.seq)) + 1 : 1;
     const stored: WorldEditRecord = {
@@ -137,7 +138,7 @@ export class FileAgentStorage {
       priorState: null,
       applied: false,
     };
-    appendFileSync(path, JSON.stringify(stored) + "\n");
+    appendJsonl(path, stored);
     return stored;
   }
 
@@ -156,18 +157,7 @@ export class FileAgentStorage {
   }
 
   private loadEditsFile(path: string): WorldEditRecord[] {
-    if (!existsSync(path)) return [];
-    const content = readFileSync(path, "utf-8").trim();
-    if (!content) return [];
-    return content.split("\n").map((line) => JSON.parse(line) as WorldEditRecord);
-  }
-
-  private rewriteEditsFile(path: string, edits: WorldEditRecord[]): void {
-    if (edits.length === 0) {
-      writeFileSync(path, "");
-      return;
-    }
-    writeFileSync(path, edits.map((e) => JSON.stringify(e)).join("\n") + "\n");
+    return readJsonl<WorldEditRecord>(path);
   }
 
   async commitSession(sessionId: string, summary: string): Promise<void> {
@@ -211,26 +201,19 @@ export class FileAgentStorage {
     }
     const startEntities = new Map<string, EntityData | null>();
     const startHandlers = new Map<string, HandlerData | null>();
-    const entityRecords = this.loadJsonl<AiEntityRecord>(this.entitiesFile(gameId));
+    const entityRecords = readJsonl<AiEntityRecord>(this.entitiesFile(gameId));
     const latestEntity = new Map<string, AiEntityRecord>();
     for (const r of entityRecords) latestEntity.set(r.id, r);
     for (const id of entityIds) {
       startEntities.set(id, latestEntity.get(id) || null);
     }
-    const handlerRecords = this.loadJsonl<AiHandlerRecord>(this.handlersFile(gameId));
+    const handlerRecords = readJsonl<AiHandlerRecord>(this.handlersFile(gameId));
     const latestHandler = new Map<string, AiHandlerRecord>();
     for (const r of handlerRecords) latestHandler.set(r.name, r);
     for (const name of handlerNames) {
       startHandlers.set(name, latestHandler.get(name) || null);
     }
     return { startEntities, startHandlers };
-  }
-
-  private loadJsonl<T>(path: string): T[] {
-    if (!existsSync(path)) return [];
-    const content = readFileSync(path, "utf-8").trim();
-    if (!content) return [];
-    return content.split("\n").map((line) => JSON.parse(line) as T);
   }
 
   private applyPlayedEdits(
@@ -245,7 +228,7 @@ export class FileAgentStorage {
     };
     // Entities: rewrite the JSONL with merged state.
     const entitiesPath = this.entitiesFile(session.gameId);
-    const entityRecords = this.loadJsonl<AiEntityRecord>(entitiesPath);
+    const entityRecords = readJsonl<AiEntityRecord>(entitiesPath);
     const filtered = entityRecords.filter((r) => !played.finalEntityState.has(r.id));
     for (const [id, finalState] of played.finalEntityState) {
       if (finalState === null) continue;
@@ -257,14 +240,10 @@ export class FileAgentStorage {
         authoring,
       });
     }
-    ensureDir(entitiesPath);
-    writeFileSync(
-      entitiesPath,
-      filtered.length > 0 ? filtered.map((r) => JSON.stringify(r)).join("\n") + "\n" : "",
-    );
+    writeJsonl(entitiesPath, filtered);
     // Handlers: same.
     const handlersPath = this.handlersFile(session.gameId);
-    const handlerRecords = this.loadJsonl<AiHandlerRecord>(handlersPath);
+    const handlerRecords = readJsonl<AiHandlerRecord>(handlersPath);
     const filteredH = handlerRecords.filter((r) => !played.finalHandlerState.has(r.name));
     for (const [name, finalState] of played.finalHandlerState) {
       if (finalState === null) continue;
@@ -276,11 +255,7 @@ export class FileAgentStorage {
         authoring,
       });
     }
-    ensureDir(handlersPath);
-    writeFileSync(
-      handlersPath,
-      filteredH.length > 0 ? filteredH.map((r) => JSON.stringify(r)).join("\n") + "\n" : "",
-    );
+    writeJsonl(handlersPath, filteredH);
   }
 
   private markEditsApplied(
@@ -296,6 +271,6 @@ export class FileAgentStorage {
       if (!u) return edit;
       return { ...edit, priorState: u.priorState, applied: true };
     });
-    this.rewriteEditsFile(path, next);
+    writeJsonl(path, next);
   }
 }

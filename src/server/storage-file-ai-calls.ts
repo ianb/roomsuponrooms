@@ -1,13 +1,7 @@
-import {
-  readFileSync,
-  writeFileSync,
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-} from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import type { AiCallRecord, AiCallSummary } from "./storage.js";
+import { readJsonl, appendJsonl, writeJsonl } from "./jsonl.js";
 
 /**
  * File-backed AI call log. One JSONL per game at
@@ -21,13 +15,6 @@ import type { AiCallRecord, AiCallSummary } from "./storage.js";
 
 const RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const PRUNE_PROBABILITY = 0.05;
-
-function ensureDir(filePath: string): void {
-  const dir = dirname(filePath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-}
 
 export class FileAiCallLog {
   constructor(private dataDir: string) {}
@@ -44,17 +31,11 @@ export class FileAiCallLog {
   }
 
   private readAll(gameId: string): AiCallRecord[] {
-    const path = this.filePath(gameId);
-    if (!existsSync(path)) return [];
-    const content = readFileSync(path, "utf-8").trim();
-    if (!content) return [];
-    return content.split("\n").map((line) => JSON.parse(line) as AiCallRecord);
+    return readJsonl<AiCallRecord>(this.filePath(gameId));
   }
 
   async logAiCall(record: AiCallRecord): Promise<void> {
-    const path = this.filePath(record.gameId);
-    ensureDir(path);
-    appendFileSync(path, JSON.stringify(record) + "\n");
+    appendJsonl(this.filePath(record.gameId), record);
     if (Math.random() < PRUNE_PROBABILITY) {
       this.prune();
     }
@@ -90,8 +71,7 @@ export class FileAiCallLog {
       const records = this.readAll(gameId);
       const kept = records.filter((r) => r.timestamp >= cutoff);
       if (kept.length === records.length) continue;
-      const body = kept.map((r) => JSON.stringify(r)).join("\n");
-      writeFileSync(path, body.length > 0 ? body + "\n" : "");
+      writeJsonl(path, kept);
     }
   }
 }
