@@ -36,7 +36,11 @@ export function renderTemplate(
 
   try {
     return evalTemplate(template, { self, entity: entityLookup, has, contents });
-  } catch (_e) {
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(
+      `[templates] Template eval failed for entity ${entity.id}: ${message} (template: ${JSON.stringify(template)})`,
+    );
     return template;
   }
 }
