@@ -31,6 +31,7 @@ async function makeContext(): Promise<{
     savedVars: {},
     terminate: null,
     editsSinceLastPlaytest: false,
+    hasQueriedWorld: true,
   };
   await storage.createAgentSession({
     id: "s-test",
@@ -567,4 +568,117 @@ t.test("bail sets terminate flag", async (t) => {
 
   await tools.bail.execute!({ reason: "stuck" }, { toolCallId: "1", messages: [] });
   t.same(context.terminate, { kind: "bail", summary: "stuck" });
+});
+
+t.test("apply_edits is rejected until the agent has queried the world", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  context.hasQueriedWorld = false;
+  const tools = buildAgentTools(context);
+
+  const edit = {
+    edits: [
+      {
+        target: "item:guard-test",
+        entityCreate: {
+          tags: ["portable"],
+          name: "Guard Test",
+          description: "Should not apply yet.",
+          location: "room:clearing",
+        },
+      },
+    ],
+  };
+  const rejected = (await tools.apply_edits.execute!(edit, {
+    toolCallId: "1",
+    messages: [],
+  })) as { ok: boolean; error?: string };
+  t.equal(rejected.ok, false);
+  t.match(rejected.error, /look before you edit/i);
+
+  await tools.query.execute!(
+    { kind: "get", id: "room:clearing" },
+    { toolCallId: "2", messages: [] },
+  );
+  t.equal(context.hasQueriedWorld, true, "query sets the flag");
+
+  const accepted = (await tools.apply_edits.execute!(edit, {
+    toolCallId: "3",
+    messages: [],
+  })) as { ok: boolean };
+  t.equal(accepted.ok, true, "same batch applies after a query");
+});
+
+t.test("array query results are summarized; detail:'full' opts out", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const longText = "x".repeat(400);
+  context.store.create("item:verbose", {
+    tags: ["portable"],
+    name: "Verbose Thing",
+    description: longText,
+    location: "room:clearing",
+  });
+
+  const summary = await runQuery(context, { kind: "get", id: "item:verbose*" });
+  t.equal(summary.ok, true);
+  if (summary.ok) {
+    const items = summary.result as Array<{ description: string }>;
+    t.ok(items[0]!.description.length < 200, "description truncated in list view");
+    t.match(items[0]!.description, /400 chars/, "truncation names the full length");
+  }
+
+  const full = await runQuery(context, { kind: "get", id: "item:verbose*", detail: "full" });
+  t.equal(full.ok, true);
+  if (full.ok) {
+    const items = full.result as Array<{ description: string }>;
+    t.equal(items[0]!.description, longText, "detail:'full' returns complete text");
+  }
+
+  const single = await runQuery(context, { kind: "get", id: "item:verbose" });
+  t.equal(single.ok, true);
+  if (single.ok) {
+    t.equal(
+      (single.result as { description: string }).description,
+      longText,
+      "single get is always full",
+    );
+  }
+});
+
+t.test("handler create → delete → recreate validates correctly", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  const tools = buildAgentTools(context);
+  const handlerEdit = (perform: string) => ({
+    edits: [
+      {
+        target: "ai-cycle-test",
+        handlerCreate: {
+          pattern: { verb: "wave", form: "intransitive" as const },
+          perform,
+        },
+      },
+    ],
+  });
+  const opts = { toolCallId: "1", messages: [] };
+
+  const first = (await tools.apply_edits.execute!(
+    handlerEdit("return { output: 'v1', events: [] };"),
+    opts,
+  )) as { ok: boolean };
+  t.equal(first.ok, true, "initial create accepted");
+
+  const del = (await tools.apply_edits.execute!(
+    { edits: [{ target: "ai-cycle-test", handlerDelete: true }] },
+    opts,
+  )) as { ok: boolean };
+  t.equal(del.ok, true, "delete accepted");
+
+  const recreate = (await tools.apply_edits.execute!(
+    handlerEdit("return { output: 'v2', events: [] };"),
+    opts,
+  )) as { ok: boolean; error?: string };
+  t.equal(recreate.ok, true, "recreate after delete accepted");
 });

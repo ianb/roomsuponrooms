@@ -86,6 +86,7 @@ t.test("loop creates an entity then finishes; entity is committed", async (t) =>
   await makeSession("s-loop1", "Add a lantern to the clearing");
 
   const model = makeSequentialMock([
+    [{ toolName: "query", input: { kind: "get", id: "room:clearing" } }],
     [
       {
         toolName: "apply_edits",
@@ -129,6 +130,7 @@ t.test("loop bail() leaves session bailed and edits unapplied", async (t) => {
   await makeSession("s-loop2", "Try then give up");
 
   const model = makeSequentialMock([
+    [{ toolName: "query", input: { kind: "get", id: "room:clearing" } }],
     [
       {
         toolName: "apply_edits",
@@ -196,6 +198,7 @@ t.test("loop validation failure feeds error back; agent retries successfully", a
   await makeSession("s-loop4", "Create with retry");
 
   const model = makeSequentialMock([
+    [{ toolName: "query", input: { kind: "get", id: "room:clearing" } }],
     [
       {
         toolName: "apply_edits",

@@ -31,4 +31,11 @@ export interface ToolContext {
    * Initialized from the message history on each tick.
    */
   editsSinceLastPlaytest: boolean;
+  /**
+   * True once the agent has run at least one query this session. The first
+   * apply_edits is rejected until then — edits should be grounded in the
+   * actual world (existing ids, names, aliases), not guessed. Initialized
+   * from the message history on each tick.
+   */
+  hasQueriedWorld: boolean;
 }

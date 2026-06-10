@@ -159,7 +159,10 @@ Idioms over the handlers corpus (kind: "handlers"):
 
 ==== Result paging ====
 
-Array results are trimmed to a default of 5 items. The response includes
+Array results are trimmed to a default of 5 items, and each item is a
+SUMMARY: description/secret truncated to 120 chars, scenery and ai replaced
+with presence markers. Single-id gets are always full; pass "detail": "full"
+if you genuinely need complete objects in a list. The response includes
 "totalMatched" and "omittedCount" so you can tell when results were dropped.
 Knobs:
   - Pass an explicit "limit": N to see more (max 200).
@@ -331,7 +334,7 @@ When writing scenery:
 </scenery>`;
 
 export const RULES_SECTION = `<rules>
-1. Use the query tool to learn the world before making structural changes. Don't guess at ids — look them up.
+1. GROUND YOUR EDITS IN THE WORLD. The session context gives you a world map (rooms, exits, NPCs, tag census), but before editing a room or entity, query it — typically query({kind:"get", id:"<target>", withChildren:true}) — to see existing names, aliases, scenery, and properties your changes must fit. The first apply_edits of a session is mechanically rejected until you have run at least one query. Don't guess at ids — look them up.
 2. Edits are sandboxed until you call finish(). Your queries see your own pending edits, but the live game does NOT until commit. Use this freedom to experiment.
 3. Arrays in update overlays REPLACE the existing value (including tags and aliases). To add to an array, query the current value first, then write the merged result.
 4. Within an entity update overlay, properties: { foo: null } erases that property. Top-level fields you omit are left untouched.

@@ -119,6 +119,7 @@ async function runVerifyScript(
     savedVars: {},
     terminate: null,
     editsSinceLastPlaytest: false,
+    hasQueriedWorld: true,
   };
   const result = await runPlaytest(toolContext, {
     setup: script.setup,

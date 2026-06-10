@@ -59,6 +59,18 @@ function hasEditsSinceLastPlaytest(messages: ModelMessage[]): boolean {
   return lastEdit > lastPlaytest;
 }
 
+/** Has any query tool call happened in the conversation so far? */
+function hasQueriedWorld(messages: ModelMessage[]): boolean {
+  for (const m of messages) {
+    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
+    for (const part of m.content) {
+      const p = part as { type?: string; toolName?: string };
+      if (p.type === "tool-call" && p.toolName === "query") return true;
+    }
+  }
+  return false;
+}
+
 class SessionNotFoundError extends Error {
   override name = "SessionNotFoundError";
   constructor(id: string) {
@@ -149,6 +161,7 @@ export async function tickSession(
     savedVars: { ...session.savedVars },
     terminate: null,
     editsSinceLastPlaytest: hasEditsSinceLastPlaytest(session.messages as ModelMessage[]),
+    hasQueriedWorld: hasQueriedWorld(session.messages as ModelMessage[]),
   };
 
   // Apply already-emitted pending edits to the agent's view (in case this is
@@ -198,12 +211,13 @@ export async function tickSession(
       messages,
       tools,
       providerOptions: getLlmProviderOptions(),
-      // The loop's only exit is the finish/bail tools — a text-only response
-      // would end generateText with the session still "running", and models
-      // (observed with gemini-2.5-flash) then re-emit the same prose summary
-      // every tick until the turn limit kills the session. Forcing tool
-      // choice makes "done" expressible only as finish().
-      toolChoice: "required",
+      // NOTE: do NOT set toolChoice: "required" here. Gemini's forced
+      // function-calling mode uses constrained decoding that cannot emit
+      // free-form object keys, so every entityUpdate "properties" payload
+      // arrives as {} and agents can't write entity state at all. The
+      // prose-stall problem that toolChoice was meant to fix (model
+      // announcing completion in text instead of calling finish()) is
+      // handled by the corrective nudge below instead.
       experimental_repairToolCall: repairDoubleEncodedToolCall,
       // Stop on terminate (set by an ACCEPTED finish/bail) rather than on the
       // finish tool call itself — finish() can be rejected (e.g. edits not

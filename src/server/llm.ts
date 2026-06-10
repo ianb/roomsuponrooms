@@ -112,5 +112,11 @@ export function getLlmProviderOptions(): ProviderOpts {
   if (config.provider === "anthropic") {
     return { anthropic: { thinking: { type: "enabled", budgetTokens: 2048 } } };
   }
+  if (config.provider === "openrouter") {
+    // Same reasoning budget as the native providers — without this,
+    // reasoning-capable models run handicapped through OpenRouter and
+    // benchmark much worse than the same model hit directly.
+    return { openrouter: { reasoning: { max_tokens: 2048 } } };
+  }
   return {};
 }

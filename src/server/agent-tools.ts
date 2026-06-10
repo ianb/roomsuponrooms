@@ -32,6 +32,16 @@ export function buildAgentTools(context: ToolContext) {
         "Apply a batch of structural edits to the world. Each edit either creates an entity (full data), updates an existing entity (partial overlay; properties: { key: null } erases that property), deletes an entity, or does any of these to a verb handler. The whole batch is rejected if any edit fails validation; nothing is half-applied. After acceptance, the edits become visible to subsequent query calls within this session, but only commit to the live world when finish() is called.",
       inputSchema: editBatchSchema,
       execute: async (input) => {
+        if (!context.hasQueriedWorld) {
+          return {
+            ok: false as const,
+            error:
+              "apply_edits rejected: look before you edit. Run at least one query first — " +
+              'typically query({kind:"get", id:"<target room>", withChildren:true}) on the ' +
+              "room or entity you're changing, so your edits fit the existing ids, names, " +
+              "and aliases. Then re-apply.",
+          };
+        }
         const result = await applyEditBatch(context, input);
         if (result.ok) context.editsSinceLastPlaytest = true;
         return result;
@@ -42,7 +52,11 @@ export function buildAgentTools(context: ToolContext) {
       description:
         "Read the world. Returns entities or handlers from the agent's view (live world ⊕ pending edits in this session). Hard-limited; the agent should pass a tag/id filter rather than expecting unbounded lists. Result objects can be passed to jq or saved to a variable.",
       inputSchema: queryInputSchema,
-      execute: async (input) => runQuery(context, input),
+      execute: async (input) => {
+        const result = await runQuery(context, input);
+        if (result.ok) context.hasQueriedWorld = true;
+        return result;
+      },
     }),
 
     jq: tool({

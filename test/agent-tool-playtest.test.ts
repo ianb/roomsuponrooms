@@ -30,6 +30,7 @@ async function makeContext(): Promise<{
     savedVars: {},
     terminate: null,
     editsSinceLastPlaytest: false,
+    hasQueriedWorld: true,
   };
   return {
     context,

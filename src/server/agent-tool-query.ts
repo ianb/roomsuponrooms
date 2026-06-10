@@ -85,6 +85,12 @@ export const queryInputSchema = z.object({
     .describe(
       "Optional postprocess. A name to save the (possibly filtered) result under in the session scratchpad. When set, the response does NOT echo the value back — it returns just savedAs + a brief summary (count or shape). Read the saved value later with query({kind:'var', name:'...'}). The scratchpad gets the FULL untruncated result regardless of any limit.",
     ),
+  detail: z
+    .enum(["summary", "full"])
+    .optional()
+    .describe(
+      "Optional. ARRAY results default to 'summary': long text fields (description/secret) are truncated and scenery/ai bodies are replaced with presence markers, keeping lists cheap to read. Pass 'full' for complete objects, or fetch a single id with kind:'get' (single results are always full).",
+    ),
 });
 
 export type QueryInput = z.infer<typeof queryInputSchema>;
@@ -185,6 +191,13 @@ export async function runQuery(
     return result;
   }
 
+  // Compact array items unless full detail was requested. This runs AFTER
+  // jq so the documented filter idioms see complete objects; it only trims
+  // what gets echoed into the conversation.
+  if (Array.isArray(value) && input.detail !== "full") {
+    value = value.map((item) => compactListItem(item));
+  }
+
   // Trim top-level arrays to the requested limit (default 5) so big result
   // sets always come back as a manageable sample with omittedCount metadata.
   const limit = input.limit || DEFAULT_LIMIT;
@@ -233,6 +246,42 @@ export async function runQuery(
     } of ${totalMatched}). Pass 'limit' for more, 'contains' or 'jq' to filter, or 'saveAs' to capture the full set in the scratchpad.`;
   }
   return result;
+}
+
+const SUMMARY_TEXT_LIMIT = 120;
+
+/**
+ * Compact one item of an array result for echoing into the conversation.
+ * Long prose fields dominate list payloads (a full `entities` dump of the
+ * base tinkermarket world is ~12k tokens, a third of it descriptions), and
+ * the agent rarely needs full text for every list item — it can `get` the
+ * one it cares about. Non-object items and unfamiliar shapes (e.g. after a
+ * jq projection) pass through untouched.
+ */
+function compactListItem(item: unknown): unknown {
+  if (item === null || typeof item !== "object" || Array.isArray(item)) return item;
+  const obj = item as Record<string, unknown>;
+  // Only compact things that look like entity views; jq projections and
+  // handler views (no description) stay as-is.
+  if (typeof obj["id"] !== "string" || typeof obj["description"] !== "string") return item;
+  const out: Record<string, unknown> = { ...obj };
+  for (const field of ["description", "secret"]) {
+    const text = out[field];
+    if (typeof text === "string" && text.length > SUMMARY_TEXT_LIMIT) {
+      out[field] =
+        `${text.slice(0, SUMMARY_TEXT_LIMIT)}… (${text.length} chars; get "${obj["id"]}" for full text)`;
+    }
+  }
+  if (Array.isArray(out["scenery"]) && out["scenery"].length > 0) {
+    const words = (out["scenery"] as Array<{ word?: string }>)
+      .map((s) => s.word)
+      .filter((w): w is string => typeof w === "string");
+    out["scenery"] = `(${words.length} entries: ${words.join(", ")}; get "${obj["id"]}" for full)`;
+  }
+  if (out["ai"] !== undefined && out["ai"] !== null) {
+    out["ai"] = `(present; get "${obj["id"]}" for full)`;
+  }
+  return out;
 }
 
 /**

@@ -13,6 +13,7 @@ function fakeContext(savedVars: Record<string, unknown> = {}): ToolContext {
     savedVars,
     terminate: null,
     editsSinceLastPlaytest: false,
+    hasQueriedWorld: true,
   };
 }
 
