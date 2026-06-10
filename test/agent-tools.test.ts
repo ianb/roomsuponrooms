@@ -682,3 +682,118 @@ t.test("handler create → delete → recreate validates correctly", async (t) =
   )) as { ok: boolean; error?: string };
   t.equal(recreate.ok, true, "recreate after delete accepted");
 });
+
+t.test("simple filters: tag, locatedIn, nameContains, verb", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  context.store.create("item:filter-chest", {
+    tags: ["container"],
+    name: "Old Chest",
+    description: "A chest.",
+    location: "room:clearing",
+  });
+  context.store.create("item:filter-coin", {
+    tags: ["portable"],
+    name: "Gold Coin",
+    description: "A coin.",
+    location: "item:filter-chest",
+    aliases: ["doubloon"],
+  });
+
+  const byTag = await runQuery(context, { kind: "entities", tag: "container" });
+  t.equal(byTag.ok, true);
+  if (byTag.ok) {
+    const ids = (byTag.result as Array<{ id: string }>).map((e) => e.id);
+    t.ok(ids.includes("item:filter-chest"));
+    t.notOk(ids.includes("item:filter-coin"));
+  }
+
+  // locatedIn is transitive: the coin is inside the chest inside the room.
+  const inRoom = await runQuery(context, {
+    kind: "entities",
+    locatedIn: "room:clearing",
+    limit: 50,
+  });
+  t.equal(inRoom.ok, true);
+  if (inRoom.ok) {
+    const ids = (inRoom.result as Array<{ id: string }>).map((e) => e.id);
+    t.ok(ids.includes("item:filter-coin"), "transitively contained entity included");
+  }
+
+  const byName = await runQuery(context, { kind: "entities", nameContains: "doubloon" });
+  t.equal(byName.ok, true);
+  if (byName.ok) {
+    t.equal((byName.result as Array<{ id: string }>)[0]!.id, "item:filter-coin", "alias matched");
+  }
+
+  const byVerb = await runQuery(context, { kind: "handlers", verb: "take" });
+  t.equal(byVerb.ok, true);
+  if (byVerb.ok) {
+    const verbs = byVerb.result as Array<{ verb: string; verbAliases?: string[] }>;
+    t.ok(verbs.length > 0, "found take handlers");
+    t.ok(
+      verbs.every((h) => h.verb === "take" || (h.verbAliases || []).includes("take")),
+      "all results match the verb",
+    );
+  }
+});
+
+t.test("get by handler name returns the handler with its code", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  const tools = buildAgentTools(context);
+
+  await tools.apply_edits.execute!(
+    {
+      edits: [
+        {
+          target: "ai-code-readback",
+          handlerCreate: {
+            pattern: { verb: "hum", form: "intransitive" as const },
+            perform: "return { output: 'You hum a tune.', events: [] };",
+          },
+        },
+      ],
+    },
+    { toolCallId: "1", messages: [] },
+  );
+
+  const result = await runQuery(context, { kind: "get", id: "ai-code-readback" });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const view = result.result as { name: string; perform?: string };
+    t.equal(view.name, "ai-code-readback");
+    t.match(view.perform, /hum a tune/, "perform code body is readable");
+  }
+});
+
+t.test("single get keeps own fields full but summarizes children", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+
+  const longText = "y".repeat(300);
+  context.store.create("item:wordy-child", {
+    tags: ["portable"],
+    name: "Wordy",
+    description: longText,
+    location: "room:clearing",
+  });
+  const roomDesc = context.store.get("room:clearing").description;
+
+  const result = await runQuery(context, {
+    kind: "get",
+    id: "room:clearing",
+    withChildren: true,
+  });
+  t.equal(result.ok, true);
+  if (result.ok) {
+    const view = result.result as {
+      description: string;
+      children: Array<{ id: string; description: string }>;
+    };
+    t.equal(view.description, roomDesc, "room's own description untruncated");
+    const child = view.children.find((c) => c.id === "item:wordy-child");
+    t.ok(child!.description.length < 200, "child description summarized");
+  }
+});

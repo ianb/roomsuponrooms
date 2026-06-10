@@ -9,6 +9,7 @@ import {
   runGet,
   runHandlers,
 } from "./agent-query-runners.js";
+import { applySimpleFilters, compactListItem, compactNested } from "./agent-query-filters.js";
 
 const MAX_OUTPUT_BYTES = 10_000;
 
@@ -58,6 +59,30 @@ export const queryInputSchema = z.object({
     .max(3)
     .optional()
     .describe("Optional for get with withNeighborhood: how many exit-hops to walk. Default 1."),
+  tag: z
+    .string()
+    .optional()
+    .describe(
+      'Simple filter for array results: keep entities carrying this tag. E.g. {kind:"entities", tag:"portable"}.',
+    ),
+  locatedIn: z
+    .string()
+    .optional()
+    .describe(
+      'Simple filter for array results: keep entities directly OR transitively inside this location id. E.g. {kind:"entities", locatedIn:"room:gate"}.',
+    ),
+  nameContains: z
+    .string()
+    .optional()
+    .describe(
+      "Simple filter for array results: keep entities whose name or aliases contain this substring (case-insensitive).",
+    ),
+  verb: z
+    .string()
+    .optional()
+    .describe(
+      'Simple filter for handler arrays: keep handlers whose verb or verbAliases match this word. E.g. {kind:"handlers", verb:"put"}.',
+    ),
   contains: z
     .string()
     .optional()
@@ -151,6 +176,8 @@ export async function runQuery(
     return { ok: false, error: formatRunnerError(e) };
   }
 
+  value = applySimpleFilters(value, input);
+
   if (input.contains !== undefined) {
     value = applyContainsFilter(value, input.contains);
   }
@@ -191,11 +218,17 @@ export async function runQuery(
     return result;
   }
 
-  // Compact array items unless full detail was requested. This runs AFTER
-  // jq so the documented filter idioms see complete objects; it only trims
-  // what gets echoed into the conversation.
-  if (Array.isArray(value) && input.detail !== "full") {
-    value = value.map((item) => compactListItem(item));
+  // Compact unless full detail was requested. This runs AFTER jq so the
+  // documented filter idioms see complete objects; it only trims what gets
+  // echoed into the conversation. Array items are summarized; a single
+  // GetView keeps its own full text but its nested children/neighbors are
+  // summarized (they dominate the payload of `get withChildren`).
+  if (input.detail !== "full") {
+    if (Array.isArray(value)) {
+      value = value.map((item) => compactListItem(item));
+    } else {
+      value = compactNested(value);
+    }
   }
 
   // Trim top-level arrays to the requested limit (default 5) so big result
@@ -246,42 +279,6 @@ export async function runQuery(
     } of ${totalMatched}). Pass 'limit' for more, 'contains' or 'jq' to filter, or 'saveAs' to capture the full set in the scratchpad.`;
   }
   return result;
-}
-
-const SUMMARY_TEXT_LIMIT = 120;
-
-/**
- * Compact one item of an array result for echoing into the conversation.
- * Long prose fields dominate list payloads (a full `entities` dump of the
- * base tinkermarket world is ~12k tokens, a third of it descriptions), and
- * the agent rarely needs full text for every list item — it can `get` the
- * one it cares about. Non-object items and unfamiliar shapes (e.g. after a
- * jq projection) pass through untouched.
- */
-function compactListItem(item: unknown): unknown {
-  if (item === null || typeof item !== "object" || Array.isArray(item)) return item;
-  const obj = item as Record<string, unknown>;
-  // Only compact things that look like entity views; jq projections and
-  // handler views (no description) stay as-is.
-  if (typeof obj["id"] !== "string" || typeof obj["description"] !== "string") return item;
-  const out: Record<string, unknown> = { ...obj };
-  for (const field of ["description", "secret"]) {
-    const text = out[field];
-    if (typeof text === "string" && text.length > SUMMARY_TEXT_LIMIT) {
-      out[field] =
-        `${text.slice(0, SUMMARY_TEXT_LIMIT)}… (${text.length} chars; get "${obj["id"]}" for full text)`;
-    }
-  }
-  if (Array.isArray(out["scenery"]) && out["scenery"].length > 0) {
-    const words = (out["scenery"] as Array<{ word?: string }>)
-      .map((s) => s.word)
-      .filter((w): w is string => typeof w === "string");
-    out["scenery"] = `(${words.length} entries: ${words.join(", ")}; get "${obj["id"]}" for full)`;
-  }
-  if (out["ai"] !== undefined && out["ai"] !== null) {
-    out["ai"] = `(present; get "${obj["id"]}" for full)`;
-  }
-  return out;
 }
 
 /**

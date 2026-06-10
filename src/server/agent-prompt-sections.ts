@@ -28,13 +28,30 @@ Movement commands ("go north", "n", "enter") are handled by the ENGINE, not by v
 export const QUERY_SECTION = `<query-tool-and-data-shapes>
 The query tool has FIVE kinds. Pick one via the required "kind" field.
 
-  { "kind": "get", "id": "..." }              — fetch one entity (or many, see wildcards)
+  { "kind": "get", "id": "..." }              — one entity by id, OR one verb handler by name (with its code)
   { "kind": "entities" }                       — every entity in the world
   { "kind": "handlers" }                       — every registered verb handler
   { "kind": "events" }                         — the per-user player command log
   { "kind": "var", "name": "..." }            — read a previously-saved scratchpad variable
 
-Plus four OPTIONAL postprocess fields, applied in order, on every kind:
+==== Typical opening moves ====
+
+Start a task by reading what you're about to touch:
+  { "kind": "get", "id": "room:gate", "withChildren": true }   — the target room and everything in it
+  { "kind": "handlers", "verb": "put" }                         — handlers that already react to a verb
+  { "kind": "get", "id": "ai-put-lever-in-turnstile" }          — a handler BY NAME, including its check/veto/perform code
+  { "kind": "entities", "locatedIn": "room:gate" }              — everything transitively inside a location
+
+==== Simple filters (use these before reaching for jq) ====
+
+Optional fields that filter ARRAY results:
+  "tag": "portable"           keep entities carrying this tag
+  "locatedIn": "room:gate"    keep entities directly or transitively inside this id
+  "nameContains": "lever"     keep entities whose name or aliases contain this (case-insensitive)
+  "verb": "put"               keep handlers whose verb or verbAliases match this word
+They combine (AND), and cover most lookups. Reach for "jq" only when these can't express the filter.
+
+Further OPTIONAL postprocess fields, applied in order after the simple filters:
   "contains": "needle"   case-insensitive substring filter against the JSON-stringified result. For arrays, keeps elements that match. For single objects, keeps the object iff it matches.
   "jq": ".[] | select(...)"   a jq filter applied after contains. Use for projection, joins, slicing, more complex filters.
   "limit": N             cap the number of array items echoed back (default 5; full set still goes to the scratchpad if saveAs is set).
@@ -48,16 +65,16 @@ Plus four OPTIONAL postprocess fields, applied in order, on every kind:
   { "kind": "get", "id": "room:gate", "withChildren": true, "withNeighborhood": true }
     → room with its direct contents AND its reachable neighbor rooms nested in
 
+  { "kind": "get", "id": "ai-shout" }
+    → when the id matches a verb handler name instead of an entity, returns the full
+      handler INCLUDING its check/veto/perform code bodies. Read a handler's code
+      before updating it, and read it when dispatch isn't doing what you expect.
+
 The id supports glob wildcards via "*". When the id contains a wildcard, the result is an ARRAY of matching entities (possibly empty), not a single object:
   { "kind": "get", "id": "room:*" }            → all rooms
   { "kind": "get", "id": "exit:gate:*" }       → all exits leaving "room:gate"
-  { "kind": "get", "id": "*" }                 → every entity (same as kind: "entities")
 
-withChildren and withNeighborhood flags apply to each match:
-  { "kind": "get", "id": "room:*", "withChildren": true }
-    → every room with its direct contents
-
-depth (default 1, max 3) controls how far withNeighborhood walks via exits.
+withChildren and withNeighborhood flags apply to each match. depth (default 1, max 3) controls how far withNeighborhood walks via exits.
 
 ==== Data shapes ====
 
@@ -101,6 +118,8 @@ HandlerView (returned by handlers):
     "hasCheck": true, "hasVeto": false,       // does the handler define these phases
     "source": "..."                            // origin file or "ai-handler-store"
   }
+  (the handlers LIST shows patterns only; to read a handler's code, get it by name:
+   { "kind": "get", "id": "ai-insert-lever-turnstile" })
 
 EventEntry (returned by events; entries are oldest first):
   {
@@ -112,57 +131,29 @@ EventEntry (returned by events; entries are oldest first):
     ]
   }
 
-==== jq cheat sheet ====
+==== Advanced: jq ====
 
-Idioms over the entities corpus (kind: "entities"):
+For anything the simple filters can't express. A few useful idioms:
 
-  Filter by tag:
-    [.[] | select(.tags | index("room"))]
+  Project to less data:           map({id, name, tags})
+  Slice events to the last 10:    .[-10:]
+  Group entities by first tag:    group_by(.tags[0]) | map({tag: .[0].tags[0], items: map(.id)})
+  Handlers bound to an entity:    [.[] | select(.entityId == "item:rusty-lever")]
+  Handlers matching by tag:       [.[] | select(.tag == "container")]
 
-  Filter by direct location:
-    [.[] | select(.location == "room:gate")]
+If a jq filter errors, do NOT retry the same string — simplify it or switch to the simple filter fields.
 
-  Filter transitively contained (uses the containedBy chain):
-    [.[] | select(.containedBy | index("room:gate"))]
+==== Summaries vs full detail ====
 
-  Substring match on name (use 'contains' postprocess instead if simpler):
-    [.[] | select(.name | ascii_downcase | contains("lever"))]
-
-  Project to summaries:
-    map({id, name, tags})
-
-  O(1) id lookups (build an index, then look up):
-    INDEX(.id) as $i | $i["room:gate"]
-
-  Group entities by their first tag:
-    group_by(.tags[0]) | map({tag: .[0].tags[0], items: map(.id)})
-
-  Slice the events array to the last 10:
-    .[-10:]
-
-Idioms over the handlers corpus (kind: "handlers"):
-
-  Filter by verb:
-    [.[] | select(.verb == "take")]
-
-  Filter by an entity-specific binding:
-    [.[] | select(.entityId == "item:rusty-lever")]
-
-  Filter by a tag the handler matches against:
-    [.[] | select(.tag == "container")]
-
-  Find handlers that COULD apply to a target entity (you have its tags via 'get'):
-    Run kind: "get" first, then kind: "handlers" with jq: '[.[] | select(.entityId == $id or (.tag != null and ($entityTags | index(.tag))))]' and feed it via the saved scratchpad.
-
-  Combine 'contains' postprocess with 'jq' for compound filters:
-    contains: "lever", jq: "[.[] | select(.tags | index(\\"portable\\"))]"
+Array results — and the children/neighbors nested inside a get — are
+SUMMARIES: description/secret truncated to 120 chars, scenery and ai
+replaced with presence markers, each with a pointer to the full text. A
+single get's own fields are always full. Pass "detail": "full" only when
+you genuinely need every byte of a list.
 
 ==== Result paging ====
 
-Array results are trimmed to a default of 5 items, and each item is a
-SUMMARY: description/secret truncated to 120 chars, scenery and ai replaced
-with presence markers. Single-id gets are always full; pass "detail": "full"
-if you genuinely need complete objects in a list. The response includes
+Array results are trimmed to a default of 5 items. The response includes
 "totalMatched" and "omittedCount" so you can tell when results were dropped.
 Knobs:
   - Pass an explicit "limit": N to see more (max 200).

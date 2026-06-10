@@ -118,6 +118,36 @@ export function handlerPatternView(handler: VerbHandler): HandlerView {
   };
 }
 
+export interface HandlerFullView extends HandlerView {
+  check?: string;
+  veto?: string;
+  perform?: string;
+  objectRequirements?: VerbHandler["objectRequirements"];
+  indirectRequirements?: VerbHandler["indirectRequirements"];
+  note?: string;
+}
+
+/**
+ * A handler with its actual code bodies — what `get(<handler name>)`
+ * returns. Reading the code is essential for debugging dispatch problems and
+ * for updating an existing handler without clobbering its behavior. Source
+ * code lives on handler.data (stashed at registration); handlers registered
+ * without it get a note instead.
+ */
+export function handlerFullView(handler: VerbHandler): HandlerFullView {
+  const view: HandlerFullView = handlerPatternView(handler);
+  if (handler.objectRequirements) view.objectRequirements = handler.objectRequirements;
+  if (handler.indirectRequirements) view.indirectRequirements = handler.indirectRequirements;
+  if (handler.data) {
+    if (handler.data.check) view.check = handler.data.check;
+    if (handler.data.veto) view.veto = handler.data.veto;
+    view.perform = handler.data.perform;
+  } else {
+    view.note = "(code bodies not available for this handler)";
+  }
+  return view;
+}
+
 /**
  * Build the result of `get(id, withChildren?, withNeighborhood?, depth?)`.
  *

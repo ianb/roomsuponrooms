@@ -1,6 +1,11 @@
 import type { EntityStore } from "../core/entity.js";
 import type { ToolContext } from "./agent-tool-context.js";
-import { buildGetView, entityToView, handlerPatternView } from "./agent-query-views.js";
+import {
+  buildGetView,
+  entityToView,
+  handlerPatternView,
+  handlerFullView,
+} from "./agent-query-views.js";
 import type { EntityView } from "./agent-query-views.js";
 
 export class EntityNotFoundError extends Error {
@@ -49,8 +54,13 @@ export function runGet(
     return matches;
   }
   const view = buildGetView(context.store, { id: args.id, ...flags });
-  if (!view) throw new EntityNotFoundError(args.id);
-  return view;
+  if (view) return view;
+  // Not an entity — maybe it's a verb handler name. Models reach for
+  // get("ai-some-handler") naturally, and it's the only way to read a
+  // handler's code bodies.
+  const handler = context.verbs.getByName(args.id);
+  if (handler) return handlerFullView(handler);
+  throw new EntityNotFoundError(args.id);
 }
 
 function globToRegex(glob: string): RegExp {
