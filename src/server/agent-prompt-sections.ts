@@ -304,6 +304,8 @@ The result also includes a finalState block (player location, inventory, current
 
 AI fallback is DISABLED inside playtest. If a command would have triggered the verb-fallback LLM in real play, it surfaces as outcome:"unhandled" — that's a signal to either write the missing handler or accept that the player can't do it.
 
+CONVERSATIONS work in playtest: "talk to <npc>" (the NPC needs the "talkable" tag) starts a conversation using the NPC's STORED word entries; the step gains a "conversation" field with the npc and known topic words, and while it's present every subsequent command is a conversation word, exactly like real play ("help" lists topics, "bye" exits). Word steps come back as outcome:"conversation" with any world-changing effects in 'events'. The conversation AI is disabled like the other fallbacks: an unknown word surfaces as outcome:"unresolved" with a diagnostic listing the stored words — in real play the AI would improvise a reply there, so an unmatched word is only a bug if a STORED behavior should have matched. An NPC with no stored entries reports "has nothing to say" (in real play the AI would greet); you cannot author conversation entries with apply_edits, so dialogue-driven behavior must come from stored entries or be implemented as verb handlers (give/show/etc.).
+
 If a verb handler throws (e.g. accesses a missing entity, references an undefined property), the step's outcome is "error" with the message in 'error'. Treat that as a bug in the handler you wrote.
 </playtest>`;
 

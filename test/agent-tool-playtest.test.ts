@@ -311,3 +311,134 @@ t.test("playtest aborts the command loop on unhandled", async (t) => {
     }
   }
 });
+
+async function makeGuideNpc(context: ToolContext, withChestEntry: boolean): Promise<void> {
+  const { applyEditBatch } = await import("../src/server/agent-tool-edits.js");
+  const created = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:guide",
+        entityCreate: {
+          tags: ["npc", "talkable"],
+          name: "Old Guide",
+          description: "A weathered guide leaning on a staff.",
+          location: "room:clearing",
+          aliases: ["guide"],
+        },
+      },
+    ],
+  });
+  if (!created.ok) throw new Error("guide create failed: " + JSON.stringify(created));
+  const authoring = { createdBy: "test", creationSource: "test" };
+  await context.storage.saveWordEntry({
+    word: "hello",
+    conditions: { first: true },
+    narration: "You greet the guide.",
+    response: '"Welcome, traveler. Ask me about the chest sometime."',
+    highlights: ["chest"],
+    createdAt: "2026-01-01T00:00:00Z",
+    gameId: "test",
+    npcId: "npc:guide",
+    authoring,
+  });
+  if (withChestEntry) {
+    await context.storage.saveWordEntry({
+      word: "chest",
+      aliases: ["box"],
+      narration: "You ask about the old chest.",
+      response: '"That old thing? Here — I\'ll unlock it for you."',
+      effects: [
+        {
+          type: "set-property",
+          entityId: "item:chest",
+          property: "locked",
+          value: false,
+          description: "Guide unlocked the chest",
+        },
+      ],
+      createdAt: "2026-01-01T00:00:01Z",
+      gameId: "test",
+      npcId: "npc:guide",
+      authoring,
+    });
+  }
+}
+
+t.test("playtest conversation: talk, word with world effect, bye", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  await makeGuideNpc(context, true);
+
+  const result = await runPlaytest(context, {
+    commands: ["talk to guide", "chest", "bye", "look"],
+  });
+  t.equal(result.ok, true);
+  if (!result.ok) return;
+  t.equal(result.steps.length, 4);
+  const [talk, chest, bye, look] = result.steps;
+
+  t.ok(talk!.conversation, "talk step enters conversation mode");
+  t.match(talk!.output, /Welcome, traveler/, "greeting replaces the step output");
+  t.same(talk!.conversation!.npcId, "npc:guide");
+
+  t.equal(chest!.outcome, "conversation");
+  t.ok(
+    chest!.events.some(
+      (e) => e.entityId === "item:chest" && e.property === "locked" && e.value === false,
+    ),
+    "conversation effect changed the world",
+  );
+
+  t.equal(bye!.outcome, "conversation");
+  t.notOk(bye!.conversation, "conversation closed after bye");
+
+  t.equal(look!.outcome, "performed", "post-bye input goes through the parser again");
+  t.notOk(result.finalState.activeConversation, "no conversation left open");
+});
+
+t.test("playtest conversation: unknown word gets diagnostic and aborts", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  await makeGuideNpc(context, false);
+
+  const result = await runPlaytest(context, {
+    commands: ["talk to guide", "treasure", "chest"],
+  });
+  t.equal(result.ok, true);
+  if (!result.ok) return;
+
+  const word = result.steps[1]!;
+  t.equal(word.outcome, "unresolved", "unmatched word surfaces as unresolved");
+  t.match(word.output, /DISABLED in playtest/, "diagnostic explains AI fallback is off");
+  t.match(word.output, /Stored words/, "diagnostic lists stored words");
+  t.same(result.abortedAt, { stepIndex: 1, reason: "unresolved" }, "sequence aborts");
+  t.ok(result.finalState.activeConversation, "conversation reported still open");
+  t.equal(result.finalState.activeConversation!.npcId, "npc:guide");
+});
+
+t.test("playtest conversation: NPC with no entries has nothing to say", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  const { applyEditBatch } = await import("../src/server/agent-tool-edits.js");
+  await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:mute",
+        entityCreate: {
+          tags: ["npc", "talkable"],
+          name: "Mute Hermit",
+          description: "Says nothing.",
+          location: "room:clearing",
+          aliases: ["hermit"],
+        },
+      },
+    ],
+  });
+
+  const result = await runPlaytest(context, { commands: ["talk to hermit", "look"] });
+  t.equal(result.ok, true);
+  if (!result.ok) return;
+  t.match(result.steps[0]!.output, /nothing to say/);
+  t.notOk(result.steps[0]!.conversation, "no conversation opened");
+  t.equal(result.steps[1]!.outcome, "performed", "next command parses normally");
+});

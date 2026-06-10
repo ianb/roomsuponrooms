@@ -10,6 +10,13 @@ import type { ToolContext } from "./agent-tool-context.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
 import { loadAgentGameInstance } from "./agent-game-loader.js";
 import { trySceneryResolve, describeSceneryGap } from "./agent-tool-playtest-scenery.js";
+import {
+  startSandboxConversation,
+  sandboxConversationWord,
+  conversationStep,
+  toStepEvents,
+} from "./agent-tool-playtest-convo.js";
+import type { GameInstance } from "../games/registry.js";
 
 const MAX_OUTPUT_BYTES = 10_000;
 
@@ -53,6 +60,7 @@ export interface PlaytestStep {
     | "unresolved"
     | "movement"
     | "movement-blocked"
+    | "conversation"
     | "error";
   output: string;
   /**
@@ -81,6 +89,12 @@ export interface PlaytestStep {
   }>;
   /** Error message if a verb handler threw. */
   error?: string;
+  /**
+   * Set while a conversation is active after this step: who the player is
+   * talking to and the topic words discovered so far. While present,
+   * subsequent commands are treated as conversation words ("bye" exits).
+   */
+  conversation?: { npcId: string; npcName: string; knownWords: string[] };
 }
 
 export interface PlaytestResult {
@@ -90,6 +104,8 @@ export interface PlaytestResult {
     playerLocation: string;
     playerInventory: Array<{ id: string; name: string; tags: string[] }>;
     currentRoom: { id: string; name: string };
+    /** Set when the playtest ended with a conversation still open. */
+    activeConversation?: { npcId: string; npcName: string };
   };
   /**
    * Set when the command loop was aborted before running the rest of the
@@ -172,7 +188,7 @@ export async function runPlaytest(
   const steps: PlaytestStep[] = [];
   let abortedAt: PlaytestResult["abortedAt"] | undefined;
   for (const command of input.commands) {
-    const step = runOneCommand({ store: game.store, verbs: game.verbs, command });
+    const step = await runPlaytestStep(game, { gameId: context.gameId, command });
     steps.push(step);
     if (step.outcome === "unhandled" || step.outcome === "unresolved" || step.outcome === "error") {
       abortedAt = { stepIndex: steps.length - 1, reason: step.outcome };
@@ -183,6 +199,11 @@ export async function runPlaytest(
   // Build the final state summary so the agent doesn't have to follow up
   // with another query.
   const finalState = buildFinalState(game.store);
+  if (game.conversationState) {
+    const npcId = game.conversationState.npcId;
+    const npcName = game.store.has(npcId) ? game.store.get(npcId).name : npcId;
+    finalState.activeConversation = { npcId, npcName };
+  }
 
   // Apply size cap. Drop trailing steps if needed so the agent at least
   // sees the early ones.
@@ -209,6 +230,37 @@ function applySetupItem(
 ): void {
   if (!store.has(item.entityId)) throw new SetupTargetMissingError(item.entityId);
   store.setProperty(item.entityId, { name: item.property, value: item.value });
+}
+
+/**
+ * Run one playtest input. While a conversation is active the whole input is
+ * a conversation word (exactly like live play); otherwise it goes through
+ * the normal parser/dispatch path, and a resulting start-conversation event
+ * opens a sandbox conversation whose greeting replaces the step output.
+ */
+async function runPlaytestStep(
+  game: GameInstance,
+  { gameId, command }: { gameId: string; command: string },
+): Promise<PlaytestStep> {
+  if (game.conversationState) {
+    const convo = await sandboxConversationWord(game, { gameId, word: command });
+    return conversationStep(command, convo);
+  }
+  const step = runOneCommand({ store: game.store, verbs: game.verbs, command });
+  const startEvent = step.events.find((e) => e.type === "start-conversation");
+  if (startEvent) {
+    const convo = await startSandboxConversation(game, { gameId, npcId: startEvent.entityId });
+    step.output = convo.output;
+    step.events = [...step.events, ...toStepEvents(convo.events)];
+    if (convo.active) {
+      step.conversation = {
+        npcId: convo.npcId,
+        npcName: convo.npcName || "",
+        knownWords: convo.knownWords || [],
+      };
+    }
+  }
+  return step;
 }
 
 function classifyOutcome(
