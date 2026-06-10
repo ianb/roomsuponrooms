@@ -23,6 +23,8 @@ export interface VerifyScript {
   steps: VerifyStep[];
   /** If set, the player must end at this room id. */
   finalLocation?: string;
+  /** If set, the player's inventory must contain these entity ids at the end. */
+  finalInventoryIncludes?: string[];
 }
 
 export interface EvalScenario {
@@ -170,6 +172,33 @@ export const SCENARIOS: EvalScenario[] = [
         label: "the storeroom is a functioning room",
         setup: [{ entityId: "player:1", property: "location", value: "room:hidden-storeroom" }],
         steps: [{ command: "look", expectOutcome: ["performed"] }],
+      },
+    ],
+  },
+  {
+    // Authored NPC dialogue with a world effect: saying a word makes the NPC
+    // hand over an item. Exercises conversationSet authoring, greeting +
+    // topic highlights, conversation playtesting, and a move effect.
+    name: "npc-dialogue",
+    gameId: "tinkermarket",
+    turnLimit: 30,
+    request:
+      'Create a talkative nut-cart regular: NPC "npc:old-soren" (the player must be able to refer ' +
+      'to them as "soren") at "room:nut-cart". Author their dialogue with conversationSet: a ' +
+      'greeting (conditions.first) that mentions the roasted nuts and reveals "nuts" as a topic, ' +
+      'and a "nuts" entry where Soren insists the player take the roasted nuts — the entry\'s ' +
+      'effects must MOVE "item:roasted-nuts" into the player\'s inventory. Conversation word ' +
+      "matching is exact, so playtest the actual words: talk to soren, nuts, bye.",
+    verify: [
+      {
+        label: "saying 'nuts' to Soren puts the nuts in inventory",
+        setup: [{ entityId: "player:1", property: "location", value: "room:nut-cart" }],
+        steps: [
+          { command: "talk to soren", notOutcome: ["unresolved", "unhandled", "error"] },
+          { command: "nuts", expectOutcome: ["conversation"] },
+          { command: "bye", expectOutcome: ["conversation"] },
+        ],
+        finalInventoryIncludes: ["item:roasted-nuts"],
       },
     ],
   },

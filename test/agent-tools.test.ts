@@ -27,6 +27,7 @@ async function makeContext(): Promise<{
     sessionId: "s-test",
     store: game.store,
     verbs: game.verbs,
+    conversations: game.conversations || {},
     pendingEdits: [],
     savedVars: {},
     terminate: null,

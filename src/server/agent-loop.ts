@@ -1,6 +1,14 @@
-import { generateText, stepCountIs, InvalidToolInputError, APICallError, RetryError } from "ai";
+import { generateText, stepCountIs } from "ai";
 import type { LanguageModel, ModelMessage } from "ai";
-import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
+import {
+  repairDoubleEncodedToolCall,
+  stallDisposition,
+  NUDGE,
+  hasEditsSinceLastPlaytest,
+  hasQueriedWorld,
+  isRateLimitError,
+  summarizeToolCall,
+} from "./agent-loop-support.js";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
 import { getStorage } from "./storage-instance.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
@@ -11,65 +19,6 @@ import { loadAgentGameInstance } from "./agent-game-loader.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import type { AgentSessionStatus } from "./storage.js";
 import { mergeTokenUsage } from "./agent-token-usage.js";
-
-/**
- * Repair a tool call whose arguments arrived as a JSON-encoded STRING instead
- * of an object — i.e. the model wrapped its argument object in one extra
- * layer of JSON encoding (observed with kimi-k2; a common weak-model tic).
- * Unwrapping one level turns `"{\"edits\":...}"` back into `{"edits":...}`.
- * Returns null (no repair) for anything else.
- */
-async function repairDoubleEncodedToolCall({
-  toolCall,
-  error,
-}: {
-  toolCall: LanguageModelV3ToolCall;
-  error: unknown;
-}): Promise<LanguageModelV3ToolCall | null> {
-  if (!InvalidToolInputError.isInstance(error)) return null;
-  try {
-    const once: unknown = JSON.parse(toolCall.input);
-    if (typeof once !== "string") return null;
-    const twice: unknown = JSON.parse(once);
-    if (twice === null || typeof twice !== "object") return null;
-    console.log(`[agent] repaired double-encoded arguments for tool ${toolCall.toolName}`);
-    return { ...toolCall, input: once };
-  } catch (_e) {
-    return null;
-  }
-}
-
-/**
- * Did the conversation apply edits more recently than it ran a playtest?
- * Used to re-initialize ToolContext.editsSinceLastPlaytest when a session
- * resumes on a new tick.
- */
-function hasEditsSinceLastPlaytest(messages: ModelMessage[]): boolean {
-  let lastEdit = -1;
-  let lastPlaytest = -1;
-  for (const [i, m] of messages.entries()) {
-    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
-    for (const part of m.content) {
-      const p = part as { type?: string; toolName?: string };
-      if (p.type !== "tool-call") continue;
-      if (p.toolName === "apply_edits") lastEdit = i;
-      if (p.toolName === "playtest") lastPlaytest = i;
-    }
-  }
-  return lastEdit > lastPlaytest;
-}
-
-/** Has any query tool call happened in the conversation so far? */
-function hasQueriedWorld(messages: ModelMessage[]): boolean {
-  for (const m of messages) {
-    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
-    for (const part of m.content) {
-      const p = part as { type?: string; toolName?: string };
-      if (p.type === "tool-call" && p.toolName === "query") return true;
-    }
-  }
-  return false;
-}
 
 class SessionNotFoundError extends Error {
   override name = "SessionNotFoundError";
@@ -99,19 +48,6 @@ export interface TickResult {
 }
 
 /**
- * Is this a rate-limit / transient provider error that the caller should
- * back off and retry, rather than a real failure? The SDK wraps the last
- * error in a RetryError after its own retries are exhausted.
- */
-function isRateLimitError(e: unknown): boolean {
-  const candidate = RetryError.isInstance(e) ? e.lastError : e;
-  if (APICallError.isInstance(candidate)) {
-    return candidate.statusCode === 429 || candidate.isRetryable === true;
-  }
-  return false;
-}
-
-/**
  * Per-step progress event emitted as the agent works. Useful for streaming
  * status to the player UI so an `ai agent` command shows what the agent is
  * actually doing instead of just hanging on a "...".
@@ -122,26 +58,6 @@ export interface AgentProgressEvent {
 }
 
 export type AgentProgressCallback = (event: AgentProgressEvent) => void;
-
-function summarizeToolCall(name: string, input: unknown): string {
-  if (input === null || typeof input !== "object") return name;
-  const obj = input as Record<string, unknown>;
-  if (name === "apply_edits") {
-    const edits = obj["edits"] as Array<Record<string, unknown>> | undefined;
-    if (!edits) return "apply_edits";
-    return `apply_edits (${edits.length} edits)`;
-  }
-  if (name === "query") {
-    return `query ${String(obj["kind"] || "")} ${String(obj["tag"] || obj["id"] || "")}`.trim();
-  }
-  if (name === "jq") {
-    return `jq ${String(obj["filter"] || "")}`;
-  }
-  if (name === "save_var") return `save_var ${String(obj["name"] || "")}`;
-  if (name === "finish") return `finish: ${String(obj["summary"] || "")}`;
-  if (name === "bail") return `bail: ${String(obj["reason"] || "")}`;
-  return name;
-}
 
 /**
  * Run a single tick of the agent loop. Loads the session, drives generateText
@@ -169,6 +85,7 @@ export async function tickSession(
   }
 
   const game = await loadAgentGameInstance(session.gameId);
+  game.conversations = game.conversations || {};
 
   const context: ToolContext = {
     storage,
@@ -177,6 +94,7 @@ export async function tickSession(
     sessionId: session.id,
     store: game.store,
     verbs: game.verbs,
+    conversations: game.conversations,
     pendingEdits: await storage.getSessionEdits(sessionId),
     savedVars: { ...session.savedVars },
     terminate: null,
@@ -190,6 +108,7 @@ export async function tickSession(
     store: game.store,
     verbs: game.verbs,
     gameId: session.gameId,
+    conversations: game.conversations,
   });
 
   const tools = buildAgentTools(context);
@@ -276,19 +195,11 @@ export async function tickSession(
 
   // Append new response messages onto the persistent session messages.
   const newMessages: unknown[] = [...messages, ...lastResult.response.messages];
-  // Fallback for providers that ignore toolChoice "required": if the model
-  // ended with a text-only response (no finish/bail, no tool call), the next
-  // tick would replay the identical context and stall the same way. Nudge it.
-  const lastStep = lastResult.steps.at(-1);
-  if (!context.terminate && lastStep && lastStep.toolCalls.length === 0) {
-    newMessages.push({
-      role: "user",
-      content:
-        "Respond ONLY with tool calls. If the work is complete and playtested, call " +
-        "finish(summary); if you are stuck, call bail(reason). Otherwise keep working " +
-        "with the tools.",
-    });
-  }
+  const stall = stallDisposition(lastResult.steps, {
+    terminated: context.terminate !== null,
+    priorMessages: session.messages,
+  });
+  if (stall === "nudge") newMessages.push({ role: "user", content: NUDGE });
   const newTurnCount = session.turnCount + turnsRun;
   // Accumulate token usage from this generateText call into the session's
   // running total. totalUsage spans every step inside the call.
@@ -311,26 +222,42 @@ export async function tickSession(
     systemPrompt: persistedSystemPrompt,
   };
 
-  if (context.terminate && context.terminate.kind === "finish") {
-    await storage.commitSession(sessionId, context.terminate.summary);
-    await storage.updateAgentSession(sessionId, tickPatch);
-    return { status: "finished", turnsRun, summary: context.terminate.summary };
-  }
+  return settleTick({
+    storage,
+    sessionId,
+    tickPatch,
+    terminate: context.terminate,
+    stall,
+    turnsRun,
+    newTurnCount,
+    turnLimit: session.turnLimit,
+  });
+}
 
-  if (context.terminate && context.terminate.kind === "bail") {
-    await storage.updateAgentSession(sessionId, {
-      ...tickPatch,
-      status: "bailed",
-      summary: context.terminate.summary,
-      finishedAt: new Date().toISOString(),
-    });
-    return { status: "bailed", turnsRun, summary: context.terminate.summary };
-  }
-
-  // Either we hit the step budget or the model decided not to call another tool.
-  // If we ran out of turns relative to turnLimit, mark as failed.
-  if (newTurnCount >= session.turnLimit) {
-    const summary = `Turn limit (${session.turnLimit}) reached without finish().`;
+/**
+ * Persist the tick's outcome and produce the TickResult: commit on finish,
+ * mark bailed/failed terminal states, or leave the session running.
+ */
+async function settleTick({
+  storage,
+  sessionId,
+  tickPatch,
+  terminate,
+  stall,
+  turnsRun,
+  newTurnCount,
+  turnLimit,
+}: {
+  storage: ReturnType<typeof getStorage>;
+  sessionId: string;
+  tickPatch: Record<string, unknown>;
+  terminate: ToolContext["terminate"];
+  stall: "nudge" | "give-up" | null;
+  turnsRun: number;
+  newTurnCount: number;
+  turnLimit: number;
+}): Promise<TickResult> {
+  const failWith = async (summary: string): Promise<TickResult> => {
     await storage.updateAgentSession(sessionId, {
       ...tickPatch,
       status: "failed",
@@ -338,6 +265,34 @@ export async function tickSession(
       finishedAt: new Date().toISOString(),
     });
     return { status: "failed", turnsRun, summary };
+  };
+
+  if (stall === "give-up") {
+    return failWith(
+      "Model stopped producing tool calls (empty or text-only responses after repeated nudges).",
+    );
+  }
+
+  if (terminate && terminate.kind === "finish") {
+    await storage.commitSession(sessionId, terminate.summary);
+    await storage.updateAgentSession(sessionId, tickPatch);
+    return { status: "finished", turnsRun, summary: terminate.summary };
+  }
+
+  if (terminate && terminate.kind === "bail") {
+    await storage.updateAgentSession(sessionId, {
+      ...tickPatch,
+      status: "bailed",
+      summary: terminate.summary,
+      finishedAt: new Date().toISOString(),
+    });
+    return { status: "bailed", turnsRun, summary: terminate.summary };
+  }
+
+  // Either we hit the step budget or the model decided not to call another
+  // tool. If we ran out of turns relative to turnLimit, mark as failed.
+  if (newTurnCount >= turnLimit) {
+    return failWith(`Turn limit (${turnLimit}) reached without finish().`);
   }
 
   // Persist progress; status remains 'running' so a future tick can resume.

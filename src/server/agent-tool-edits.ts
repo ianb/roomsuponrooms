@@ -1,4 +1,4 @@
-import type { EntityData, HandlerData } from "../core/game-data.js";
+import type { HandlerData } from "../core/game-data.js";
 import { UndefinedPropertyError } from "../core/entity-errors.js";
 import type {
   NewWorldEditRecord,
@@ -9,7 +9,9 @@ import type {
 import type { ToolContext } from "./agent-tool-context.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
 import { validateHandlerCode } from "./handler-code-validate.js";
-import type { EditBatchInput, EditInput } from "./agent-tool-schemas.js";
+import type { EditBatchInput, EditInput, ConversationSetInput } from "./agent-tool-schemas.js";
+import { validateEditAgainstWorld } from "./agent-tool-edit-validate.js";
+import type { NormalizedEdit } from "./agent-tool-edit-validate.js";
 
 /**
  * Result returned to the agent when an apply_edits batch succeeds.
@@ -31,13 +33,6 @@ export interface EditBatchError {
   ok: false;
   error: string;
   failures: Array<{ index: number; reason: string }>;
-}
-
-interface NormalizedEdit {
-  kind: WorldEditTargetKind;
-  id: string;
-  op: WorldEditOp;
-  payload: unknown;
 }
 
 /**
@@ -83,6 +78,18 @@ export async function applyEditBatch(
         notes.push(...check.notes);
         if (check.error) failures.push({ index: i, reason: check.error });
       }
+      if (edit.kind === "conversation") {
+        const entry = edit.payload as ConversationSetInput;
+        // Conversation perform code runs in the same sandbox family — reuse
+        // the syntax check and over-escape repair (form "ditransitive" skips
+        // the indirect-reference heuristic, which doesn't apply here).
+        const check = validateHandlerCode(entry as { perform?: string }, {
+          name: `${edit.id} word "${entry.word}"`,
+          form: "ditransitive",
+        });
+        notes.push(...check.notes);
+        if (check.error) failures.push({ index: i, reason: check.error });
+      }
     }
   }
 
@@ -119,6 +126,7 @@ export async function applyEditBatch(
       store: context.store,
       verbs: context.verbs,
       gameId: context.gameId,
+      conversations: context.conversations,
     });
   } catch (e: unknown) {
     context.store.restoreState(snapshot);
@@ -191,7 +199,7 @@ function resolveHandlerForm(
 function normalizeEdit(item: EditInput, index: number): NormalizedEdit | { error: string } {
   const opFields: Array<{
     key: keyof EditInput;
-    kind: "entity" | "handler";
+    kind: "entity" | "handler" | "conversation";
     op: "create" | "update" | "delete";
     isPayload: boolean;
   }> = [
@@ -201,6 +209,9 @@ function normalizeEdit(item: EditInput, index: number): NormalizedEdit | { error
     { key: "handlerCreate", kind: "handler", op: "create", isPayload: true },
     { key: "handlerUpdate", kind: "handler", op: "update", isPayload: true },
     { key: "handlerDelete", kind: "handler", op: "delete", isPayload: false },
+    // conversationSet is an upsert keyed by (npc, word) — op "create" with
+    // replace semantics, so there is no separate update/delete.
+    { key: "conversationSet", kind: "conversation", op: "create", isPayload: true },
   ];
   const set = opFields.filter((f) => {
     const v = (item as Record<string, unknown>)[f.key];
@@ -209,7 +220,7 @@ function normalizeEdit(item: EditInput, index: number): NormalizedEdit | { error
   });
   if (set.length === 0) {
     return {
-      error: `Edit ${index}: must set exactly one of entityCreate, entityUpdate, entityDelete, handlerCreate, handlerUpdate, or handlerDelete.`,
+      error: `Edit ${index}: must set exactly one of entityCreate, entityUpdate, entityDelete, handlerCreate, handlerUpdate, handlerDelete, or conversationSet.`,
     };
   }
   if (set.length > 1) {
@@ -223,98 +234,4 @@ function normalizeEdit(item: EditInput, index: number): NormalizedEdit | { error
   const chosen = set[0]!;
   const payload = chosen.isPayload ? (item as Record<string, unknown>)[chosen.key] : null;
   return { kind: chosen.kind, id: item.target, op: chosen.op, payload };
-}
-
-function validateEditAgainstWorld(
-  edit: NormalizedEdit,
-  { context, createdInBatch }: { context: ToolContext; createdInBatch: Set<string> },
-): string | null {
-  if (edit.kind === "entity") {
-    const exists = context.store.has(edit.id) || createdInBatch.has(edit.id);
-    if (edit.op === "create" && exists) {
-      return `Entity "${edit.id}" already exists; use entityUpdate to modify or pick a different id.`;
-    }
-    if ((edit.op === "update" || edit.op === "delete") && !exists) {
-      return `Entity "${edit.id}" does not exist.`;
-    }
-    if (edit.op === "update" && context.store.has(edit.id)) {
-      const reason = validateEntityUpdateOverlay(context, edit);
-      if (reason) return reason;
-    }
-    if (edit.op === "create") {
-      const data = edit.payload as EntityData;
-      if (!context.store.has(data.location) && !createdInBatch.has(data.location)) {
-        return `Entity "${edit.id}" create payload references unknown location "${data.location}".`;
-      }
-    }
-    return null;
-  }
-  // handler
-  const existing = handlerExists(context, edit.id);
-  if (edit.op === "create" && existing) {
-    return `Handler "${edit.id}" already exists; use handlerUpdate to modify or pick a different name.`;
-  }
-  if ((edit.op === "update" || edit.op === "delete") && !existing) {
-    return `Handler "${edit.id}" does not exist.`;
-  }
-  if (edit.op === "create") {
-    const data = edit.payload as HandlerData;
-    if (!data.perform) {
-      return `Handler "${edit.id}" create payload must include a 'perform' code body.`;
-    }
-  }
-  return null;
-}
-
-/**
- * Sanity-check an entityUpdate overlay for two observed foot-guns: an empty
- * properties object (a silent no-op — usually means the provider stripped
- * the model's free-form keys), and a tags array that drops a structural tag
- * (tag overlays REPLACE; losing "exit"/"room" breaks the entity).
- */
-function validateEntityUpdateOverlay(context: ToolContext, edit: NormalizedEdit): string | null {
-  const overlay = edit.payload as Partial<EntityData>;
-  if (
-    overlay.properties !== undefined &&
-    overlay.properties !== null &&
-    Object.keys(overlay.properties).length === 0
-  ) {
-    return (
-      `Entity "${edit.id}" update has an EMPTY properties object — this does nothing. ` +
-      'If you wrote specific keys (e.g. {"locked": true}) and they aren\'t arriving, ' +
-      "your provider may be stripping free-form object keys from tool arguments; " +
-      "try again, and mention each property as its own key. Omit 'properties' entirely " +
-      "if you didn't mean to change any."
-    );
-  }
-  if (Array.isArray(overlay.tags)) {
-    const existing = context.store.get(edit.id).tags;
-    for (const structural of ["exit", "room"]) {
-      if (existing.includes(structural) && !overlay.tags.includes(structural)) {
-        return (
-          `Entity "${edit.id}" update sets tags=[${overlay.tags.join(", ")}], which would ` +
-          `remove the structural tag "${structural}" — tag arrays REPLACE the existing ` +
-          `value, and stripping "${structural}" breaks the entity (exits stop being ` +
-          "traversable, rooms stop being rooms). Include the current tags " +
-          `(${existing.join(", ")}) plus your additions, or omit 'tags' entirely.`
-        );
-      }
-    }
-  }
-  return null;
-}
-
-function handlerExists(context: ToolContext, name: string): boolean {
-  // Check the live verb registry first (covers built-in handlers and any
-  // committed AI handlers from previous sessions; accepted session edits are
-  // applied to it immediately). Then check this session's pending edits,
-  // MOST RECENT FIRST — the latest create/delete for a name wins, so a
-  // create→delete→create rewrite cycle validates correctly.
-  if (context.verbs.getByName(name)) return true;
-  for (let i = context.pendingEdits.length - 1; i >= 0; i--) {
-    const edit = context.pendingEdits[i]!;
-    if (edit.targetKind !== "handler" || edit.targetId !== name) continue;
-    return edit.op !== "delete";
-  }
-  return false;
 }

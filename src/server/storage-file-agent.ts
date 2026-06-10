@@ -7,10 +7,12 @@ import type {
   NewWorldEditRecord,
   AiEntityRecord,
   AiHandlerRecord,
+  WordEntryRecord,
 } from "./storage.js";
 import { emptyAgentTokenUsage } from "./storage.js";
 import type { EntityData, HandlerData } from "../core/game-data.js";
-import { playSessionEdits } from "./agent-edit-merge.js";
+import type { WordEntry } from "../core/conversation.js";
+import { playSessionEdits, conversationKey } from "./agent-edit-merge.js";
 import { readJsonl, appendJsonl, writeJsonl, ensureDirFor } from "./jsonl.js";
 
 /**
@@ -62,6 +64,12 @@ export class FileAgentStorage {
 
   private handlersFile(gameId: string): string {
     return resolve(this.dataDir, gameId, "handlers.jsonl");
+  }
+
+  private npcConversationFile(gameId: string, npcId: string): string {
+    // Mirrors FileStorage.loadConversationEntries' path convention.
+    const safeId = npcId.replace(/:/g, "_");
+    return resolve(this.dataDir, "npc", gameId, `${safeId}.jsonl`);
   }
 
   // --- Sessions ---
@@ -174,8 +182,11 @@ export class FileAgentStorage {
       return;
     }
 
-    const { startEntities, startHandlers } = this.loadStartStates(session.gameId, pending);
-    const played = playSessionEdits(pending, { startEntities, startHandlers });
+    const { startEntities, startHandlers, startConversations } = this.loadStartStates(
+      session.gameId,
+      pending,
+    );
+    const played = playSessionEdits(pending, { startEntities, startHandlers, startConversations });
     this.applyPlayedEdits(session, played);
     this.markEditsApplied(session.gameId, played.resolved);
 
@@ -192,12 +203,18 @@ export class FileAgentStorage {
   ): {
     startEntities: Map<string, EntityData | null>;
     startHandlers: Map<string, HandlerData | null>;
+    startConversations: Map<string, WordEntry | null>;
   } {
     const entityIds = new Set<string>();
     const handlerNames = new Set<string>();
+    const conversationTargets: Array<{ npcId: string; word: string }> = [];
     for (const edit of pending) {
       if (edit.targetKind === "entity") entityIds.add(edit.targetId);
-      else handlerNames.add(edit.targetId);
+      else if (edit.targetKind === "handler") handlerNames.add(edit.targetId);
+      else {
+        const entry = edit.payload as WordEntry;
+        conversationTargets.push({ npcId: edit.targetId, word: entry.word });
+      }
     }
     const startEntities = new Map<string, EntityData | null>();
     const startHandlers = new Map<string, HandlerData | null>();
@@ -213,7 +230,13 @@ export class FileAgentStorage {
     for (const name of handlerNames) {
       startHandlers.set(name, latestHandler.get(name) || null);
     }
-    return { startEntities, startHandlers };
+    const startConversations = new Map<string, WordEntry | null>();
+    for (const { npcId, word } of conversationTargets) {
+      const stored = readJsonl<WordEntryRecord>(this.npcConversationFile(gameId, npcId));
+      const existing = stored.find((w) => w.word.toLowerCase() === word.toLowerCase()) || null;
+      startConversations.set(conversationKey(npcId, word), existing);
+    }
+    return { startEntities, startHandlers, startConversations };
   }
 
   private applyPlayedEdits(
@@ -256,6 +279,29 @@ export class FileAgentStorage {
       });
     }
     writeJsonl(handlersPath, filteredH);
+    // Conversations: rewrite each touched NPC's entry file, replacing any
+    // stored entry with the same word (file storage has no upsert, so the
+    // rewrite IS the upsert).
+    const byNpc = new Map<string, WordEntry[]>();
+    for (const { npcId, entry } of played.finalConversationState.values()) {
+      const list = byNpc.get(npcId) || [];
+      list.push(entry);
+      byNpc.set(npcId, list);
+    }
+    for (const [npcId, entries] of byNpc) {
+      const path = this.npcConversationFile(session.gameId, npcId);
+      const existing = readJsonl<WordEntryRecord>(path);
+      const replacedWords = new Set(entries.map((e) => e.word.toLowerCase()));
+      const kept = existing.filter((w) => !replacedWords.has(w.word.toLowerCase()));
+      const records: WordEntryRecord[] = entries.map((entry) => ({
+        ...entry,
+        createdAt: now,
+        gameId: session.gameId,
+        npcId,
+        authoring,
+      }));
+      writeJsonl(path, [...kept, ...records]);
+    }
   }
 
   private markEditsApplied(

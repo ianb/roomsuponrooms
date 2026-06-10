@@ -1,5 +1,6 @@
 import type { EntityStore } from "../core/entity.js";
 import type { VerbRegistry } from "../core/verbs.js";
+import type { ConversationFileData } from "../core/game-data.js";
 import type { RuntimeStorage, WorldEditRecord } from "./storage.js";
 
 /**
@@ -21,6 +22,12 @@ export interface ToolContext {
   sessionId: string;
   store: EntityStore;
   verbs: VerbRegistry;
+  /**
+   * The game's initial conversation data (per npcId), with this session's
+   * pending conversationSet edits overlaid. Shared by reference with the
+   * agent's GameInstance so tools and queries see one consistent view.
+   */
+  conversations: Record<string, ConversationFileData>;
   pendingEdits: WorldEditRecord[];
   savedVars: Record<string, unknown>;
   terminate: { kind: "finish" | "bail"; summary: string } | null;

@@ -26,6 +26,7 @@ async function makeContext(): Promise<{
     sessionId: "s-test",
     store: game.store,
     verbs: game.verbs,
+    conversations: game.conversations || {},
     pendingEdits: [],
     savedVars: {},
     terminate: null,
@@ -441,4 +442,172 @@ t.test("playtest conversation: NPC with no entries has nothing to say", async (t
   t.match(result.steps[0]!.output, /nothing to say/);
   t.notOk(result.steps[0]!.conversation, "no conversation opened");
   t.equal(result.steps[1]!.outcome, "performed", "next command parses normally");
+});
+
+t.test("conversationSet: author dialogue, playtest it, commit it", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  const { applyEditBatch } = await import("../src/server/agent-tool-edits.js");
+  const { emptyAgentTokenUsage } = await import("../src/server/storage.js");
+  const now = "2026-06-10T00:00:00Z";
+  await context.storage.createAgentSession({
+    id: "s-test",
+    gameId: "test",
+    userId: "u-1",
+    request: "Author warden dialogue",
+    status: "running",
+    messages: [],
+    savedVars: {},
+    turnCount: 0,
+    turnLimit: 10,
+    summary: null,
+    revertOf: null,
+    model: null,
+    systemPrompt: null,
+    tokenUsage: emptyAgentTokenUsage(),
+    createdAt: now,
+    updatedAt: now,
+    finishedAt: null,
+  });
+
+  const created = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:warden",
+        entityCreate: {
+          tags: ["npc", "talkable"],
+          name: "Warden",
+          description: "A stern warden.",
+          location: "room:clearing",
+          aliases: ["warden"],
+        },
+      },
+      {
+        target: "npc:warden",
+        conversationSet: {
+          word: "hello",
+          conditions: { first: true },
+          narration: "You greet the warden.",
+          response: '"State your business. Ask about the chest if you must."',
+          highlights: ["chest"],
+        },
+      },
+      {
+        target: "npc:warden",
+        conversationSet: {
+          word: "chest",
+          narration: "You ask about the chest.",
+          response: '"Fine. I will unlock it."',
+          effects: [
+            {
+              type: "set-property",
+              entityId: "item:chest",
+              property: "locked",
+              value: false,
+              description: "Warden unlocked the chest",
+            },
+          ],
+        },
+      },
+    ],
+  });
+  t.equal(created.ok, true, "batch with entity + dialogue accepted");
+
+  // Pending (uncommitted) dialogue is visible to playtest.
+  const result = await runPlaytest(context, {
+    commands: ["talk to warden", "chest", "bye"],
+  });
+  t.equal(result.ok, true);
+  if (!result.ok) return;
+  t.match(result.steps[0]!.output, /State your business/, "authored greeting plays");
+  t.equal(result.steps[1]!.outcome, "conversation");
+  t.ok(
+    result.steps[1]!.events.some((e) => e.entityId === "item:chest" && e.value === false),
+    "authored effect fires in playtest",
+  );
+
+  // Commit and confirm the entries materialize to storage.
+  await context.storage.commitSession("s-test", "Added warden dialogue");
+  const stored = await context.storage.loadConversationEntries("test", "npc:warden");
+  t.equal(stored.length, 2, "both entries committed");
+  const chest = stored.find((w) => w.word === "chest");
+  t.ok(chest, "chest entry stored");
+  t.equal(chest!.effects![0]!.property, "locked");
+
+  // Replacing a word: conversationSet upserts by word.
+  const replaced = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:warden",
+        conversationSet: {
+          word: "chest",
+          narration: "You ask again.",
+          response: '"Already unlocked it, didn\'t I?"',
+        },
+      },
+    ],
+  });
+  t.equal(replaced.ok, true);
+  const view = await runPlaytest(context, { commands: ["talk to warden", "chest"] });
+  if (view.ok) {
+    t.match(view.steps[1]!.output, /Already unlocked/, "pending entry shadows committed one");
+  }
+});
+
+t.test("conversationSet validation rejects bad targets and effects", async (t) => {
+  const { context, cleanup } = await makeContext();
+  t.teardown(cleanup);
+  const { applyEditBatch } = await import("../src/server/agent-tool-edits.js");
+
+  const missing = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:ghost",
+        conversationSet: { word: "boo", narration: "x", response: "y" },
+      },
+    ],
+  });
+  t.equal(missing.ok, false, "unknown npc rejected");
+
+  const notTalkable = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "item:lantern",
+        conversationSet: { word: "shine", narration: "x", response: "y" },
+      },
+    ],
+  });
+  t.equal(notTalkable.ok, false);
+  if (!notTalkable.ok) t.match(notTalkable.failures[0]!.reason, /talkable/);
+
+  await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:chatty",
+        entityCreate: {
+          tags: ["npc", "talkable"],
+          name: "Chatty",
+          description: "Talks.",
+          location: "room:clearing",
+        },
+      },
+    ],
+  });
+  const badProp = await applyEditBatch(context, {
+    edits: [
+      {
+        target: "npc:chatty",
+        conversationSet: {
+          word: "magic",
+          narration: "x",
+          response: "y",
+          effects: [
+            { type: "set-property", entityId: "item:chest", property: "sparkliness", value: 9 },
+          ],
+        },
+      },
+    ],
+  });
+  t.equal(badProp.ok, false);
+  if (!badProp.ok) t.match(badProp.failures[0]!.reason, /unregistered property/);
 });

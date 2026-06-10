@@ -4,12 +4,19 @@ import type { ToolContext } from "./agent-tool-context.js";
 import {
   EntityNotFoundError,
   applyContainsFilter,
+  runConversation,
   runEntities,
   runEvents,
   runGet,
   runHandlers,
 } from "./agent-query-runners.js";
-import { applySimpleFilters, compactListItem, compactNested } from "./agent-query-filters.js";
+import {
+  applySimpleFilters,
+  compactListItem,
+  compactNested,
+  summarizeForSave,
+  trimArrayToFit,
+} from "./agent-query-filters.js";
 
 const MAX_OUTPUT_BYTES = 10_000;
 
@@ -21,7 +28,7 @@ const MAX_OUTPUT_BYTES = 10_000;
 // or per-user events. Anything else (filter by tag, find by name, get
 // contents, list rooms, etc.) is a jq filter over the bulk results.
 
-const queryKindEnum = z.enum(["get", "entities", "handlers", "events", "var"]);
+const queryKindEnum = z.enum(["get", "entities", "handlers", "events", "var", "conversation"]);
 
 export const queryInputSchema = z.object({
   kind: queryKindEnum.describe(
@@ -35,9 +42,13 @@ export const queryInputSchema = z.object({
       "  - handlers: {} — every registered verb handler with its pattern.",
       "  - events: {}   — the per-user player command log, oldest first.",
       "  - var: { name } — read a previously-saved scratchpad variable. Combine with contains/jq/limit to slice it without re-running the original query.",
+      "  - conversation: { id: <npcId> } — every conversation word entry the NPC responds to (incl. this session's pending conversationSet edits).",
     ].join("\n"),
   ),
-  id: z.string().optional().describe("Required by: get. The entity id to fetch."),
+  id: z
+    .string()
+    .optional()
+    .describe("Required by: get (entity id or handler name) and conversation (npc id)."),
   name: z
     .string()
     .optional()
@@ -281,45 +292,6 @@ export async function runQuery(
   return result;
 }
 
-/**
- * Build a one-line description of a value the agent just stashed in the
- * scratchpad — type and approximate size, no contents. The agent can re-read
- * the actual data via kind:"var" if it needs more.
- */
-function summarizeForSave(value: unknown): string {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return `array of ${value.length} item${value.length === 1 ? "" : "s"}`;
-  if (typeof value === "object") {
-    const keys = Object.keys(value as object);
-    return `object with ${keys.length} key${keys.length === 1 ? "" : "s"}${
-      keys.length > 0 && keys.length <= 6 ? `: ${keys.join(", ")}` : ""
-    }`;
-  }
-  if (typeof value === "string") return `string (${value.length} chars)`;
-  return typeof value;
-}
-
-/** Slice an array down until its serialized form fits within `maxBytes`. */
-function trimArrayToFit(
-  items: unknown[],
-  maxBytes: number,
-): { items: unknown[]; serialized: string } {
-  let lo = 0;
-  let hi = items.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    const candidate = items.slice(0, mid);
-    const json = JSON.stringify(candidate);
-    if (json.length <= maxBytes) {
-      lo = mid;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  const finalItems = items.slice(0, lo);
-  return { items: finalItems, serialized: JSON.stringify(finalItems) };
-}
-
 function requireField<T>(value: T | undefined, where: { kind: string; field: string }): T {
   if (value === undefined) throw new MissingFieldError(where.kind, where.field);
   return value;
@@ -347,6 +319,10 @@ async function dispatchQuery(context: ToolContext, input: QueryInput): Promise<u
       }
       return context.savedVars[name];
     }
+    case "conversation":
+      return runConversation(context, {
+        npcId: requireField(input.id, { kind: "conversation", field: "id" }),
+      });
   }
 }
 

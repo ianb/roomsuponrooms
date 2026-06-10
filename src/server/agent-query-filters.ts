@@ -122,3 +122,42 @@ function compactNestedInPlace(out: Record<string, unknown>): void {
     }));
   }
 }
+
+/**
+ * Build a one-line description of a value the agent just stashed in the
+ * scratchpad — type and approximate size, no contents. The agent can re-read
+ * the actual data via kind:"var" if it needs more.
+ */
+export function summarizeForSave(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `array of ${value.length} item${value.length === 1 ? "" : "s"}`;
+  if (typeof value === "object") {
+    const keys = Object.keys(value as object);
+    return `object with ${keys.length} key${keys.length === 1 ? "" : "s"}${
+      keys.length > 0 && keys.length <= 6 ? `: ${keys.join(", ")}` : ""
+    }`;
+  }
+  if (typeof value === "string") return `string (${value.length} chars)`;
+  return typeof value;
+}
+
+/** Slice an array down until its serialized form fits within `maxBytes`. */
+export function trimArrayToFit(
+  items: unknown[],
+  maxBytes: number,
+): { items: unknown[]; serialized: string } {
+  let lo = 0;
+  let hi = items.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = items.slice(0, mid);
+    const json = JSON.stringify(candidate);
+    if (json.length <= maxBytes) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  const finalItems = items.slice(0, lo);
+  return { items: finalItems, serialized: JSON.stringify(finalItems) };
+}

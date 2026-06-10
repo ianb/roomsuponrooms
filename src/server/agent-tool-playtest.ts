@@ -149,10 +149,12 @@ export async function runPlaytest(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
   try {
+    game.conversations = game.conversations || {};
     applyPendingEditsToWorld(context.pendingEdits, {
       store: game.store,
       verbs: game.verbs,
       gameId: context.gameId,
+      conversations: game.conversations,
     });
   } catch (e: unknown) {
     return {

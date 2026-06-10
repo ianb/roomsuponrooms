@@ -26,13 +26,14 @@ Movement commands ("go north", "n", "enter") are handled by the ENGINE, not by v
 </movement-and-exits>`;
 
 export const QUERY_SECTION = `<query-tool-and-data-shapes>
-The query tool has FIVE kinds. Pick one via the required "kind" field.
+The query tool has SIX kinds. Pick one via the required "kind" field.
 
   { "kind": "get", "id": "..." }              — one entity by id, OR one verb handler by name (with its code)
   { "kind": "entities" }                       — every entity in the world
   { "kind": "handlers" }                       — every registered verb handler
   { "kind": "events" }                         — the per-user player command log
   { "kind": "var", "name": "..." }            — read a previously-saved scratchpad variable
+  { "kind": "conversation", "id": "npc:..." } — every conversation word entry the NPC responds to
 
 ==== Typical opening moves ====
 
@@ -165,122 +166,7 @@ Knobs:
   - Use "contains" or "jq" to filter the set down before paging kicks in.
 </query-tool-and-data-shapes>`;
 
-export const APPLY_EDITS_SECTION = `<apply-edits>
-The apply_edits tool takes a batch of edits. Each edit is a flat object with a 'target' (entity id or handler name) and EXACTLY ONE of six operation fields. Pick the field name that matches what you want to do — there is no separate kind/op enum to navigate.
-
-  entityCreate    create a new entity (full payload)
-  entityUpdate    update an existing entity (partial overlay; null erases properties)
-  entityDelete    delete an existing entity (set to true)
-  handlerCreate   create a new verb handler (pattern + perform body required)
-  handlerUpdate   update an existing handler (partial overlay)
-  handlerDelete   delete an existing handler (set to true)
-
-The whole batch is rejected if any edit fails validation; nothing is half-applied. Edits become visible to your subsequent query/playtest calls but only commit to the live world when you call finish().
-
-==== Verb form taxonomy ====
-
-The 'pattern.form' field tells the dispatcher how a player must phrase the command. PICK THE RIGHT FORM — the dispatcher will not match a handler whose form differs from the parsed command. The parser uses these four shapes (a "prep" is one of: in, on, off, to, with, at, from, under, into, onto):
-
-  intransitive    "verb"                       e.g. "look", "wait", "shout"
-  transitive      "verb obj"                    e.g. "take lever", "examine turnstile"
-  prepositional   "verb prep obj"               e.g. "look at door", "wait for kip",
-                                                "talk to npc". Exactly one object,
-                                                preceded by the prep. The handler's
-                                                'prep' field names the preposition.
-  ditransitive    "verb obj prep obj"           e.g. "put lever in turnstile",
-                                                "insert key into lock", "give map to kip",
-                                                "use key on lock". Two objects with the
-                                                preposition BETWEEN them. The first noun
-                                                phrase is the direct 'object', the second
-                                                is the 'indirect'. Despite the name,
-                                                ditransitive is the COMMON form for
-                                                X-on-Y / X-in-Y interactions.
-
-KEY DISTINCTION: if the player says one noun before the preposition AND another after it ("put X in Y"), the parser produces a DITRANSITIVE command, not prepositional. Prepositional is only for "verb prep obj" with a single noun phrase after the preposition. Two-object commands are ditransitive even when they feel like a single action.
-
-So a handler for "put lever in turnstile" or "insert lever into socket" must have:
-  { pattern: { verb: "put", form: "ditransitive", prep: "in" } }
-not form: "prepositional".
-
-Preps match by GROUP: in/into/inside are interchangeable, as are on/onto, to/toward, with/using, from/"out of", under/beneath/below. A handler with prep "in" matches "put X into Y" automatically. VERBS DO NOT have groups — "put" does not match "insert" unless you list it in verbAliases. Always cover the synonyms a player would plausibly type (put/insert/place/stick, etc.), and ALWAYS include the exact verb used in the request.
-
-Inside a ditransitive handler's perform/check body, 'object' is the direct object (the lever) and 'indirect' is the indirect object (the turnstile).
-
-==== Properties ====
-
-Property names you set in entityCreate/entityUpdate payloads or read in handler perform bodies MUST come from the registered <available-properties> list below. You cannot create new property names ad-hoc — apply_edits will reject any payload that uses an unregistered name. If you need state that doesn't fit any existing property, you have to either repurpose one or rethink the design.
-
-==== Worked examples ====
-
-Create a portable item in a room:
-  {
-    "edits": [
-      {
-        "target": "item:rusty-key",
-        "entityCreate": {
-          "tags": ["portable"],
-          "name": "Rusty Key",
-          "description": "An old iron key, pitted with rust.",
-          "location": "room:gate",
-          "aliases": ["key", "iron key"]
-        }
-      }
-    ]
-  }
-
-Update an entity (only the fields you want to change):
-  {
-    "edits": [
-      {
-        "target": "item:lantern",
-        "entityUpdate": {
-          "description": "A polished brass lantern, freshly lit.",
-          "properties": { "lit": true }
-        }
-      }
-    ]
-  }
-
-Delete an entity:
-  { "edits": [ { "target": "item:trash", "entityDelete": true } ] }
-
-Create a new verb handler. Pattern needs verb + form (one of "intransitive", "transitive", "prepositional", "ditransitive"). The 'perform' code body returns { output, events } and has access to lib, object, indirect, player, room, store. Use lib.ref(entity) to embed an entity reference in the output text:
-  {
-    "edits": [
-      {
-        "target": "ai-shout",
-        "handlerCreate": {
-          "pattern": { "verb": "shout", "form": "intransitive", "verbAliases": ["yell", "holler"] },
-          "perform": "return { output: 'Your voice echoes through the trees, startling some unseen birds.', events: [] };"
-        }
-      }
-    ]
-  }
-
-A handler bound to a specific entity (only fires when that entity is the direct object). Note the form is "ditransitive" — the player will type "insert lever into turnstile" or "put lever in turnstile", which has TWO noun phrases with the prep between them. verbAliases cover the synonyms a player would try:
-  {
-    "edits": [
-      {
-        "target": "ai-insert-lever-turnstile",
-        "handlerCreate": {
-          "pattern": { "verb": "put", "verbAliases": ["insert", "place", "stick", "jam"], "form": "ditransitive", "prep": "in" },
-          "entityId": "item:rusty-lever",
-          "perform": "if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; const exit = store.get('exit:gate:north'); exit.properties.locked = false; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };"
-        }
-      }
-    ]
-  }
-
-A mixed batch (multiple targets and operations in one call):
-  {
-    "edits": [
-      { "target": "item:old-key", "entityDelete": true },
-      { "target": "item:new-key", "entityCreate": { "tags": ["portable"], "name": "Brass Key", "description": "Shiny.", "location": "room:gate" } },
-      { "target": "exit:gate:north", "entityUpdate": { "properties": { "locked": false } } }
-    ]
-  }
-</apply-edits>`;
-
+export { APPLY_EDITS_SECTION } from "./agent-prompt-apply-edits.js";
 export const PLAYTEST_SECTION = `<playtest>
 After writing or modifying a verb handler, USE THE PLAYTEST TOOL to verify it works before calling finish(). Playtest runs commands in a sandboxed copy of the world (your pending edits included) without touching the live state.
 
@@ -304,7 +190,7 @@ The result also includes a finalState block (player location, inventory, current
 
 AI fallback is DISABLED inside playtest. If a command would have triggered the verb-fallback LLM in real play, it surfaces as outcome:"unhandled" — that's a signal to either write the missing handler or accept that the player can't do it.
 
-CONVERSATIONS work in playtest: "talk to <npc>" (the NPC needs the "talkable" tag) starts a conversation using the NPC's STORED word entries; the step gains a "conversation" field with the npc and known topic words, and while it's present every subsequent command is a conversation word, exactly like real play ("help" lists topics, "bye" exits). Word steps come back as outcome:"conversation" with any world-changing effects in 'events'. The conversation AI is disabled like the other fallbacks: an unknown word surfaces as outcome:"unresolved" with a diagnostic listing the stored words — in real play the AI would improvise a reply there, so an unmatched word is only a bug if a STORED behavior should have matched. An NPC with no stored entries reports "has nothing to say" (in real play the AI would greet); you cannot author conversation entries with apply_edits, so dialogue-driven behavior must come from stored entries or be implemented as verb handlers (give/show/etc.).
+CONVERSATIONS work in playtest: "talk to <npc>" (the NPC needs the "talkable" tag) starts a conversation using the NPC's word entries — including this session's pending conversationSet edits; the step gains a "conversation" field with the npc and known topic words, and while it's present every subsequent command is a conversation word, exactly like real play ("help" lists topics, "bye" exits). Word steps come back as outcome:"conversation" with any world-changing effects in 'events'. The conversation AI is disabled like the other fallbacks: an unknown word surfaces as outcome:"unresolved" with a diagnostic listing the stored words — in real play the AI would improvise a reply there, so an unmatched word is only a bug if an AUTHORED behavior should have matched. An NPC with no entries reports "has nothing to say" (in real play the AI would greet). ALWAYS playtest dialogue you author with the exact words: ["talk to guide", "chest", "bye"].
 
 If a verb handler throws (e.g. accesses a missing entity, references an undefined property), the step's outcome is "error" with the message in 'error'. Treat that as a bug in the handler you wrote.
 </playtest>`;

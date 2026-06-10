@@ -341,3 +341,63 @@ void t.test("ai call log: log, get, list with limit", async (t) => {
   t.equal(listed.length, 1);
   t.equal(listed[0]!.id, "aic-2", "newest first");
 });
+
+void t.test("commitSession materializes conversationSet edits", async (t) => {
+  const storage = makeStorage();
+
+  await storage.saveAiEntity(
+    aiEntity({ id: "npc:keeper", name: "Keeper", tags: ["npc", "talkable"] }),
+  );
+  await storage.createAgentSession(newSession({}));
+  await storage.appendWorldEdit(
+    newEdit({
+      targetKind: "conversation",
+      targetId: "npc:keeper",
+      op: "create",
+      payload: {
+        word: "lantern",
+        narration: "You ask about the lantern.",
+        response: '"Take it, it is yours."',
+        effects: [
+          {
+            type: "move",
+            entityId: "item:lamp",
+            property: "location",
+            value: "player:1",
+            description: "Keeper hands over the lamp",
+          },
+        ],
+      },
+    }),
+  );
+
+  await storage.commitSession("s-test1", "Gave the keeper dialogue");
+
+  const entries = await storage.loadConversationEntries("test-game", "npc:keeper");
+  t.equal(entries.length, 1);
+  t.equal(entries[0]!.word, "lantern");
+  t.equal(entries[0]!.effects![0]!.type, "move");
+  t.equal(entries[0]!.authoring.creationSource, "agent");
+
+  const edits = await storage.getSessionEdits("s-test1");
+  t.equal(edits[0]!.applied, true, "edit marked applied");
+
+  // Re-set the same word in a new session: upsert, not duplicate.
+  await storage.createAgentSession(newSession({ id: "s-test2" }));
+  await storage.appendWorldEdit(
+    newEdit({
+      sessionId: "s-test2",
+      targetKind: "conversation",
+      targetId: "npc:keeper",
+      op: "create",
+      payload: { word: "lantern", narration: "x", response: '"Replaced."' },
+    }),
+  );
+  await storage.commitSession("s-test2", "Replaced the lantern entry");
+  const after = await storage.loadConversationEntries("test-game", "npc:keeper");
+  t.equal(after.length, 1, "same word replaced, not duplicated");
+  t.match(after[0]!.response, /Replaced/);
+
+  const secondEdits = await storage.getSessionEdits("s-test2");
+  t.ok(secondEdits[0]!.priorState, "prior state captured for the replacement");
+});

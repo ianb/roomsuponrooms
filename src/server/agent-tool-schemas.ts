@@ -98,6 +98,59 @@ const handlerCreateSchema = z.object({
 
 const handlerUpdateSchema = handlerCreateSchema.partial();
 
+// --- Conversation payload schema ---
+
+// Gemini's function-calling schema dialect cannot express untyped values —
+// a z.unknown() named property serializes to an empty schema and the model
+// returns EMPTY completions (observed: a 22-turn stall of blank responses).
+// Effect/condition values are scalars in practice, so type them as such.
+const scalarValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+
+const wordConditionsSchema = z.object({
+  context: z
+    .string()
+    .optional()
+    .describe("Only matches when the previous word in the conversation was this one."),
+  first: z
+    .boolean()
+    .optional()
+    .describe("Greeting entry: only used when the conversation starts, never matched as a word."),
+  properties: z
+    .record(z.string(), scalarValueSchema)
+    .optional()
+    .describe("Only matches when the NPC entity has these property values."),
+});
+
+const wordEffectSchema = z.object({
+  type: z
+    .enum(["set-property", "move", "close-conversation"])
+    .describe(
+      'set-property: set a property on an entity. move: requires property:"location" and value:<destination id> to relocate an entity. close-conversation: end the conversation after this word.',
+    ),
+  entityId: z.string().optional().describe("Target entity. Defaults to the NPC itself."),
+  property: z.string().optional(),
+  value: scalarValueSchema.optional(),
+  from: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const conversationSetSchema = z.object({
+  word: z.string().describe("The trigger word the player says. Matching is EXACT (or an alias)."),
+  aliases: z.array(z.string()).optional(),
+  conditions: wordConditionsSchema.optional(),
+  narration: z.string().describe('What the player "really said", e.g. "You ask about the chest."'),
+  response: z.string().describe("The NPC's reply (quoted speech) or reaction."),
+  effects: z.array(wordEffectSchema).optional(),
+  highlights: z
+    .array(z.string())
+    .optional()
+    .describe("0-2 topic words this reply reveals as new conversation topics."),
+  perform: z
+    .string()
+    .optional()
+    .describe("Optional JS body for conditional logic; may override narration/response/effects."),
+});
+
 // --- Edit envelope ---
 //
 // Flat schema with no discriminated unions. Each edit has a `target` (the
@@ -146,6 +199,11 @@ export const editSchema = z.object({
     .describe(
       'Set to true to delete an existing handler. Example: {"target": "ai-shout", "handlerDelete": true}',
     ),
+  conversationSet: conversationSetSchema
+    .optional()
+    .describe(
+      'Set this to add or replace ONE conversation word entry on an NPC. The target is the NPC entity id (must be tagged "talkable"); entries are keyed by word, so setting an existing word replaces it. Example: {"target": "npc:guide", "conversationSet": {"word": "chest", "narration": "You ask about the chest.", "response": "\\"I can unlock it for you.\\"", "effects": [{"type": "set-property", "entityId": "item:chest", "property": "locked", "value": false}]}}',
+    ),
 });
 
 export const editBatchSchema = z.object({
@@ -153,11 +211,13 @@ export const editBatchSchema = z.object({
     .array(editSchema)
     .min(1)
     .describe(
-      "A batch of one or more edits. Each edit must have exactly ONE operation field set (entityCreate, entityUpdate, entityDelete, handlerCreate, handlerUpdate, or handlerDelete). The whole batch is rejected if any edit fails validation.",
+      "A batch of one or more edits. Each edit must have exactly ONE operation field set (entityCreate, entityUpdate, entityDelete, handlerCreate, handlerUpdate, handlerDelete, or conversationSet). The whole batch is rejected if any edit fails validation.",
     ),
 });
 
 export type EditInput = z.infer<typeof editSchema>;
 export type EditBatchInput = z.infer<typeof editBatchSchema>;
+
+export type ConversationSetInput = z.infer<typeof conversationSetSchema>;
 
 export { entityCreateSchema, entityUpdateSchema, handlerCreateSchema, handlerUpdateSchema };

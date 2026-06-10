@@ -1,6 +1,7 @@
 import type { EntityStore } from "../core/entity.js";
 import type { VerbRegistry } from "../core/verbs.js";
-import type { EntityData, HandlerData } from "../core/game-data.js";
+import type { EntityData, HandlerData, ConversationFileData } from "../core/game-data.js";
+import type { WordEntry } from "../core/conversation.js";
 import type { WorldEditRecord } from "./storage.js";
 import { applyAiEntityRecords } from "./apply-ai-records.js";
 import { recordToHandler } from "./handler-convert.js";
@@ -22,15 +23,53 @@ import { mergeHandlerPayload } from "./agent-edit-merge.js";
  */
 export function applyPendingEditsToWorld(
   edits: WorldEditRecord[],
-  { store, verbs, gameId }: { store: EntityStore; verbs: VerbRegistry; gameId: string },
+  {
+    store,
+    verbs,
+    gameId,
+    conversations,
+  }: {
+    store: EntityStore;
+    verbs: VerbRegistry;
+    gameId: string;
+    /** When provided, conversationSet edits are overlaid into this record. */
+    conversations?: Record<string, ConversationFileData>;
+  },
 ): void {
   for (const edit of edits) {
     if (edit.targetKind === "entity") {
       applyEntityEdit(edit, { store, gameId });
-    } else {
+    } else if (edit.targetKind === "handler") {
       applyHandlerEdit(edit, { verbs, gameId });
+    } else if (conversations) {
+      applyConversationEdit(edit, conversations);
     }
   }
+}
+
+/**
+ * Overlay a conversationSet edit into the in-memory conversations record.
+ * Entries are keyed by (npcId, word): a pending entry with the same word
+ * replaces an earlier pending/initial one. Stored (committed) entries are
+ * merged in later by the conversation loaders; initial entries come first
+ * in the match order, so a pending entry shadows a stored one with the
+ * same word.
+ */
+function applyConversationEdit(
+  edit: WorldEditRecord,
+  conversations: Record<string, ConversationFileData>,
+): void {
+  const entry = edit.payload as WordEntry;
+  const npcId = edit.targetId;
+  const existing = conversations[npcId];
+  if (!existing) {
+    conversations[npcId] = { npcId, words: [entry] };
+    return;
+  }
+  existing.words = [
+    ...existing.words.filter((w) => w.word.toLowerCase() !== entry.word.toLowerCase()),
+    entry,
+  ];
 }
 
 const STRUCTURED_ENTITY_FIELDS: ReadonlyArray<keyof EntityData> = [

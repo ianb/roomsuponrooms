@@ -112,6 +112,29 @@ export function runHandlers(context: ToolContext): unknown {
   return context.verbs.list().map(handlerPatternView);
 }
 
+// --- conversation ---
+
+/**
+ * The full set of conversation word entries a "talk to" with this NPC would
+ * use: the game's initial data with this session's pending conversationSet
+ * edits overlaid (context.conversations), plus stored entries from previous
+ * play — initial/pending entries shadow stored ones with the same word,
+ * matching the live loader's precedence.
+ */
+export async function runConversation(
+  context: ToolContext,
+  { npcId }: { npcId: string },
+): Promise<unknown> {
+  const initial = context.conversations[npcId];
+  const words = initial ? [...initial.words] : [];
+  const have = new Set(words.map((w) => w.word.toLowerCase()));
+  const stored = await context.storage.loadConversationEntries(context.gameId, npcId);
+  for (const s of stored) {
+    if (!have.has(s.word.toLowerCase())) words.push(s);
+  }
+  return words;
+}
+
 // --- events ---
 
 export async function runEvents(context: ToolContext): Promise<unknown> {

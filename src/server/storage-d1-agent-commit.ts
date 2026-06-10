@@ -1,9 +1,10 @@
 import type { D1Database, D1PreparedStatement, EntityRow, HandlerRow } from "./d1-types.js";
 import { authoringBindValues } from "./d1-types.js";
-import type { AiEntityRecord, AiHandlerRecord, AuthoringInfo } from "./storage.js";
+import type { AiEntityRecord, AiHandlerRecord, AuthoringInfo, WordEntryRecord } from "./storage.js";
 import type { EntityData, HandlerData } from "../core/game-data.js";
+import type { WordEntry } from "../core/conversation.js";
 import { deserializeEntityRow, serializeEntityRecord } from "./entity-serialize.js";
-import { playSessionEdits } from "./agent-edit-merge.js";
+import { playSessionEdits, conversationKey } from "./agent-edit-merge.js";
 import { getAgentSession, getSessionEdits, updateAgentSession } from "./storage-d1-agent.js";
 
 class SessionNotFoundError extends Error {
@@ -32,10 +33,17 @@ async function loadStartStates(
     gameId,
     entityIds,
     handlerNames,
-  }: { gameId: string; entityIds: Set<string>; handlerNames: Set<string> },
+    conversationTargets,
+  }: {
+    gameId: string;
+    entityIds: Set<string>;
+    handlerNames: Set<string>;
+    conversationTargets: Array<{ npcId: string; word: string }>;
+  },
 ): Promise<{
   startEntities: Map<string, EntityData | null>;
   startHandlers: Map<string, HandlerData | null>;
+  startConversations: Map<string, WordEntry | null>;
 }> {
   const startEntities = new Map<string, EntityData | null>();
   for (const id of entityIds) {
@@ -53,7 +61,20 @@ async function loadStartStates(
       .first<HandlerRow>();
     startHandlers.set(name, row ? entityRecordFromHandlerRow(row) : null);
   }
-  return { startEntities, startHandlers };
+  const startConversations = new Map<string, WordEntry | null>();
+  for (const { npcId, word } of conversationTargets) {
+    const entryJson = await db
+      .prepare(
+        "SELECT entry FROM conversation_entries WHERE game_id = ? AND npc_id = ? AND word = ?",
+      )
+      .bind(gameId, npcId, word)
+      .first<string>("entry");
+    startConversations.set(
+      conversationKey(npcId, word),
+      entryJson ? (JSON.parse(entryJson) as WordEntry) : null,
+    );
+  }
+  return { startEntities, startHandlers, startConversations };
 }
 
 function buildEntityWriteStatement(
@@ -165,18 +186,24 @@ export async function commitSession(
 
   const entityIds = new Set<string>();
   const handlerNames = new Set<string>();
+  const conversationTargets: Array<{ npcId: string; word: string }> = [];
   for (const edit of pending) {
     if (edit.targetKind === "entity") entityIds.add(edit.targetId);
-    else handlerNames.add(edit.targetId);
+    else if (edit.targetKind === "handler") handlerNames.add(edit.targetId);
+    else {
+      const entry = edit.payload as WordEntry;
+      conversationTargets.push({ npcId: edit.targetId, word: entry.word });
+    }
   }
 
-  const { startEntities, startHandlers } = await loadStartStates(db, {
+  const { startEntities, startHandlers, startConversations } = await loadStartStates(db, {
     gameId: session.gameId,
     entityIds,
     handlerNames,
+    conversationTargets,
   });
 
-  const played = playSessionEdits(pending, { startEntities, startHandlers });
+  const played = playSessionEdits(pending, { startEntities, startHandlers, startConversations });
 
   const statements: D1PreparedStatement[] = [];
   const now = new Date().toISOString();
@@ -215,6 +242,33 @@ export async function commitSession(
         authoring,
         now,
       }),
+    );
+  }
+
+  for (const { npcId, entry } of played.finalConversationState.values()) {
+    const record: WordEntryRecord = {
+      ...entry,
+      createdAt: now,
+      gameId: session.gameId,
+      npcId,
+      authoring,
+    };
+    statements.push(
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO conversation_entries
+           (game_id, user_id, npc_id, word, entry, created_at, created_by, creation_source, creation_command)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          session.gameId,
+          "shared",
+          npcId,
+          entry.word,
+          JSON.stringify(record),
+          now,
+          ...authoringBindValues(authoring),
+        ),
     );
   }
 

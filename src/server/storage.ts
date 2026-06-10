@@ -116,7 +116,7 @@ export interface AgentSessionRecord {
   finishedAt: string | null;
 }
 
-export type WorldEditTargetKind = "entity" | "handler";
+export type WorldEditTargetKind = "entity" | "handler" | "conversation";
 export type WorldEditOp = "create" | "update" | "delete";
 
 /** A pending or applied structural edit emitted by an agent session */

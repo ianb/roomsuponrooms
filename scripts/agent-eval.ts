@@ -115,6 +115,7 @@ async function runVerifyScript(
     sessionId: "eval-verify",
     store: game.store,
     verbs: game.verbs,
+    conversations: game.conversations || {},
     pendingEdits: [],
     savedVars: {},
     terminate: null,
@@ -140,9 +141,13 @@ async function runVerifyScript(
   const actualSteps = result.steps as PlaytestStepView[];
   const judged = script.steps.map((s, i) => judgeStep(s, actualSteps.at(i)));
   let pass = judged.every((j) => j.pass);
+  const finalState = (
+    result as {
+      finalState?: { playerLocation?: string; playerInventory?: Array<{ id: string }> };
+    }
+  ).finalState;
   if (script.finalLocation) {
-    const final = (result as { finalState?: { playerLocation?: string } }).finalState;
-    const loc = final ? final.playerLocation : undefined;
+    const loc = finalState ? finalState.playerLocation : undefined;
     if (loc !== script.finalLocation) {
       pass = false;
       judged.push({
@@ -150,6 +155,18 @@ async function runVerifyScript(
         outcome: loc || "(unknown)",
         pass: false,
         why: `expected ${script.finalLocation}`,
+      });
+    }
+  }
+  for (const required of script.finalInventoryIncludes || []) {
+    const inventory = (finalState && finalState.playerInventory) || [];
+    if (!inventory.some((item) => item.id === required)) {
+      pass = false;
+      judged.push({
+        command: "(final inventory)",
+        outcome: inventory.map((i) => i.id).join(", ") || "(empty)",
+        pass: false,
+        why: `expected to include ${required}`,
       });
     }
   }
