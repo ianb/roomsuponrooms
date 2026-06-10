@@ -252,3 +252,51 @@ t.test("loop validation failure feeds error back; agent retries successfully", a
     "good batch was committed",
   );
 });
+
+t.test("rate-limit errors leave the session running and resumable", async (t) => {
+  const { cleanup } = makeStorage();
+  t.teardown(cleanup);
+  await makeSession("s-loop5", "Survive a quota blip");
+
+  const { APICallError } = await import("ai");
+  let calls = 0;
+  const model = new MockLanguageModelV3({
+    doGenerate: async () => {
+      calls += 1;
+      // The SDK itself retries twice (3 attempts) before the error escapes
+      // to tickSession — keep throwing until those are exhausted.
+      if (calls <= 3) {
+        throw new APICallError({
+          message: "You exceeded your current quota",
+          url: "https://example.test",
+          requestBodyValues: {},
+          statusCode: 429,
+          isRetryable: true,
+        });
+      }
+      return {
+        finishReason: { type: "tool-calls" as const, raw: "tool_use" },
+        usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
+        content: [
+          {
+            type: "tool-call" as const,
+            toolCallId: "call-finish",
+            toolName: "finish",
+            input: JSON.stringify({ summary: "Recovered after throttle" }),
+          },
+        ],
+        warnings: [],
+      };
+    },
+  });
+
+  const throttled = await tickSession("s-loop5", { model });
+  t.equal(throttled.status, "running", "session not failed by the 429");
+  t.equal(throttled.throttled, true, "tick reports it was throttled");
+
+  const session = await getStorage().getAgentSession("s-loop5");
+  t.equal(session!.status, "running", "stored session is still resumable");
+
+  const resumed = await tickSession("s-loop5", { model });
+  t.equal(resumed.status, "finished", "next tick resumes and finishes");
+});

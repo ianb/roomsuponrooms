@@ -1,4 +1,4 @@
-import { generateText, stepCountIs, InvalidToolInputError } from "ai";
+import { generateText, stepCountIs, InvalidToolInputError, APICallError, RetryError } from "ai";
 import type { LanguageModel, ModelMessage } from "ai";
 import type { LanguageModelV3ToolCall } from "@ai-sdk/provider";
 import { getLlm, getLlmProviderOptions } from "./llm.js";
@@ -89,6 +89,26 @@ export interface TickResult {
   status: AgentSessionStatus;
   turnsRun: number;
   summary: string | null;
+  /**
+   * Set when the tick made no progress because the provider rate-limited us
+   * (quota / 429 / transient 5xx) even after the SDK's own retries. The
+   * session is left "running" and untouched — the caller should back off
+   * and tick again rather than treating the session as dead.
+   */
+  throttled?: boolean;
+}
+
+/**
+ * Is this a rate-limit / transient provider error that the caller should
+ * back off and retry, rather than a real failure? The SDK wraps the last
+ * error in a RetryError after its own retries are exhausted.
+ */
+function isRateLimitError(e: unknown): boolean {
+  const candidate = RetryError.isInstance(e) ? e.lastError : e;
+  if (APICallError.isInstance(candidate)) {
+    return candidate.statusCode === 429 || candidate.isRetryable === true;
+  }
+  return false;
 }
 
 /**
@@ -239,6 +259,13 @@ export async function tickSession(
     turnsRun = lastResult.steps.length;
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
+    if (isRateLimitError(e)) {
+      // Transient: leave the session running and unmodified so a later tick
+      // can pick it up. Marking it failed here would destroy a session (and
+      // its pending edits) over a 429 that clears in seconds.
+      console.error(`[agent ${session.id}] rate-limited; session left resumable: ${message}`);
+      return { status: "running", turnsRun: 0, summary: null, throttled: true };
+    }
     await storage.updateAgentSession(sessionId, {
       status: "failed",
       summary: `Loop error: ${message}`,

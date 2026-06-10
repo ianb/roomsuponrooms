@@ -237,9 +237,17 @@ async function runScenario(scenario: EvalScenario, flags: Flags): Promise<void> 
   const startMs = Date.now();
   let result = await tickSession(runId);
   let safety = 0;
-  while (result.status === "running" && safety < 20) {
+  let throttles = 0;
+  while (result.status === "running" && safety < 20 && throttles < 8) {
+    if (result.throttled) {
+      throttles += 1;
+      const delayMs = Math.min(5000 * 2 ** (throttles - 1), 60_000);
+      console.log(`[eval] rate-limited; backing off ${delayMs / 1000}s (attempt ${throttles}/8)`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    } else {
+      safety += 1;
+    }
     result = await tickSession(runId);
-    safety += 1;
   }
   const wallMs = Date.now() - startMs;
 
