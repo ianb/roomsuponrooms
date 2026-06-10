@@ -18,8 +18,18 @@ const ROOM_EXCLUDED = [
 export function buildRoomSchema(store: EntityStore) {
   const propsSchema = buildPropertiesSchema(store, { exclude: ROOM_EXCLUDED });
   return z.object({
+    reasoning: z
+      .string()
+      .describe(
+        "FIRST, reason about what belongs here. Consider: the exit's stated intent; the textures and character of the surrounding rooms (see <area-pacing>); what the player just passed through; what would give this area variety and good pacing. Decide whether this room should be a quiet connective space, an ordinary room, or a rich destination — and how it should contrast with its neighbors (sound, light, scale, mood). 2-4 sentences.",
+      ),
     room: z.object({
       idSlug: z.string().describe("Short kebab-case slug for the room ID."),
+      texture: z
+        .enum(["sparse", "plain", "rich"])
+        .describe(
+          "The pacing decision from your reasoning. sparse = deliberately unremarkable connective space (corridors, passages, in-between stretches); plain = an ordinary room; rich = a destination that rewards deep exploration. Rich is RARE and must be earned — when in doubt, choose the quieter option.",
+        ),
       name: z.string().describe("Display name for the room."),
       description: z.string().describe("Full room description. 2-4 sentences."),
       tags: z.array(z.string()).describe("Tags for the room. Always include 'room'."),
@@ -103,8 +113,5 @@ export function buildRoomSchema(store: EntityStore) {
         )
         .describe("Objects/NPCs in the new room. Keep sparse, 0-2 items."),
     }),
-    notes: z
-      .string()
-      .describe("Your reasoning about this room. Shown to the designer, not the player."),
   });
 }

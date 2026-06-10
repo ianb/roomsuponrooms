@@ -1,6 +1,7 @@
 import type { Entity, EntityStore } from "../core/entity.js";
 import type { ResolvedCommand } from "../core/verb-types.js";
 import type { HandlerLib } from "../core/handler-lib.js";
+import { resolveRoomTexture, describeTexture } from "../core/room-texture.js";
 import type { GamePrompts } from "../core/game-data.js";
 import { composeVerbPrompt } from "./ai-prompts.js";
 import { describeProperties, collectTags } from "./ai-prompt-helpers.js";
@@ -23,6 +24,11 @@ Your response creates a REUSABLE handler — it should make sense regardless of 
 </role>
 
 ${styleSection}
+
+<room-texture>
+${describeTexture(resolveRoomTexture(store, room.id))}
+In sparse rooms, lean toward "refuse" for speculative or fishing actions — the in-character reason can simply be that there is nothing remarkable here. Save inventive outcomes for rooms that earn them.
+</room-texture>
 
 <decision-format>
 You must choose one of:

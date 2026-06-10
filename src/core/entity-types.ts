@@ -1,6 +1,14 @@
 import type { PropertyBag } from "./properties.js";
 
 /** Nominal string type for entity references (plain string alias) */
+/**
+ * Pacing/density intent for a room. Drives how generous the runtime AI
+ * fallbacks are: "sparse" rooms are connective tissue (mundane scenery, no
+ * inspection chains), "plain" is modest, "rich" rewards deep exploration.
+ * Unset means: derive procedurally (see core/room-texture.ts).
+ */
+export type RoomTexture = "sparse" | "plain" | "rich";
+
 export type EntityId = string;
 
 /** Scenery descriptions stored on room entities */
@@ -31,6 +39,7 @@ export interface Entity {
     darkWhenUnlit: boolean;
     visits: number;
     grid?: { x: number; y: number; z: number };
+    texture?: RoomTexture;
   };
 
   ai?: {
@@ -60,6 +69,7 @@ export interface CreateEntityOptions {
     darkWhenUnlit?: boolean;
     visits?: number;
     grid?: { x: number; y: number; z: number };
+    texture?: RoomTexture;
   };
   ai?: {
     prompt?: string;
@@ -88,6 +98,7 @@ export interface EntitySnapshot {
     darkWhenUnlit: boolean;
     visits: number;
     grid?: { x: number; y: number; z: number };
+    texture?: RoomTexture;
   };
   ai?: {
     prompt?: string;

@@ -15,6 +15,7 @@ The world is an Entity-Component-System over rooms, items, NPCs, exits, and othe
 - Rooms are entities tagged "room". Players are at a location, which is a room id.
 - Exits are entities tagged "exit", whose location is the source room and whose exit.direction/destination defines the link to another room.
 - Verb handlers are code attached to verbs that define how they work for matching entities. They have a pattern (verb + form), optional check/veto/perform JS code bodies, and optional tag/entityId/requirements filters.
+- Rooms have a TEXTURE (room.texture: "sparse" | "plain" | "rich"; derived procedurally when unset) that paces the world: sparse rooms are deliberately boring connective tissue, rich rooms reward deep exploration. When creating rooms, choose texture deliberately and keep the gradient — corridors, quiet stretches, and unremarkable rooms make the rich ones land. Most rooms should be plain or sparse.
 </world-model>`;
 
 export const MOVEMENT_SECTION = `<movement-and-exits>

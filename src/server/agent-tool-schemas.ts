@@ -18,6 +18,12 @@ const exitSchema = z.object({
 const roomSchema = z.object({
   darkWhenUnlit: z.boolean().optional(),
   visits: z.number().optional(),
+  texture: z
+    .enum(["sparse", "plain", "rich"])
+    .optional()
+    .describe(
+      "Pacing intent: how generous AI improvisation is here. sparse = connective tissue (mundane scenery, no inspection chains), plain = modest, rich = rewards deep exploration. Unset = derived procedurally.",
+    ),
   grid: z
     .object({
       x: z.number(),

@@ -31,6 +31,7 @@ function entityToRecord(
           darkWhenUnlit: entity.room.darkWhenUnlit,
           visits: entity.room.visits,
           grid: entity.room.grid ? { ...entity.room.grid } : undefined,
+          texture: entity.room.texture,
         }
       : undefined,
     ai: entity.ai ? { ...entity.ai } : undefined,

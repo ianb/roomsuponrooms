@@ -37,7 +37,14 @@ export function applySingleEvent(store: EntityStore, event: WorldEvent): void {
       return;
     }
     store.removeProperty(event.entityId, event.property);
-  } else {
+  } else if (!NON_STORE_EVENT_TYPES.has(event.type)) {
     logSkipped(event, "unknown event type");
   }
 }
+
+/**
+ * Event types that are real and meaningful but handled by other systems
+ * (scoring, conversation state) — not store mutations. Skipping them here
+ * is correct and not worth a log line.
+ */
+const NON_STORE_EVENT_TYPES = new Set(["score-change", "start-conversation", "close-conversation"]);

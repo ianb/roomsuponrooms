@@ -1,4 +1,5 @@
 import type { Entity, EntityStore } from "../core/entity.js";
+import { resolveRoomTexture } from "../core/room-texture.js";
 import type { EventLogEntry, RuntimeStorage } from "./storage.js";
 
 const RECENT_EVENTS_LIMIT = 5;
@@ -69,11 +70,18 @@ function renderWorldMap(store: EntityStore): string {
         return `${dir}→"${dest}"${locked}`;
       })
       .join(", ");
-    lines.push(`  "${room.id}" (${room.name})${exits ? ` — ${exits}` : " — no exits"}`);
+    const texture = resolveRoomTexture(store, room.id);
+    lines.push(
+      `  "${room.id}" (${room.name}) [${texture}]${exits ? ` — ${exits}` : " — no exits"}`,
+    );
   }
   if (rooms.length > WORLD_MAP_ROOM_CAP) {
     lines.push(`  …and ${rooms.length - WORLD_MAP_ROOM_CAP} more (query kind:"get" id:"room:*")`);
   }
+
+  lines.push(
+    "Texture = pacing: sparse rooms are connective tissue (AI improvisation stays mundane there), rich rooms reward digging. Respect the gradient — not every room should be a destination.",
+  );
 
   const npcs = store.findByTag("npc");
   if (npcs.length > 0) {

@@ -100,6 +100,7 @@ export class EntityStore {
         darkWhenUnlit: options.room.darkWhenUnlit || false,
         visits: options.room.visits || 0,
       };
+      if (options.room.texture) entity.room.texture = options.room.texture;
       const g = grid || options.room.grid;
       if (g) entity.room.grid = { ...g };
     } else if (entity.tags.includes("room")) {

@@ -1,4 +1,5 @@
 import type { ParsedCommand } from "./verb-types.js";
+import type { RoomTexture } from "./entity-types.js";
 
 /** Prompt layers for AI guidance — style, tone, constraints */
 export interface GamePrompts {
@@ -98,6 +99,7 @@ export interface EntityData {
     darkWhenUnlit?: boolean;
     visits?: number;
     grid?: { x: number; y: number; z: number };
+    texture?: RoomTexture;
   };
   ai?: {
     prompt?: string;

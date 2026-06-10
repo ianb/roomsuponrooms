@@ -5,6 +5,8 @@ import type { GamePrompts } from "../core/game-data.js";
 import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
 import { runLoggedAiCall } from "./ai-call-log.js";
 import { composeVerbPrompt } from "./ai-prompts.js";
+import { resolveRoomTexture, describeTexture } from "../core/room-texture.js";
+import type { RoomTexture } from "../core/entity-types.js";
 
 /** Scenery descriptions stored on the room entity */
 export interface SceneryEntry {
@@ -67,18 +69,46 @@ function buildSystemPrompt({
     secrets.length > 0
       ? `\n<secret>\nHidden information. Be aware of it when describing scenery, but don't reveal it directly. If the word naturally relates to the secret, let hints emerge.\n\n${secrets.join("\n")}\n</secret>\n`
       : "";
+  const texture = resolveRoomTexture(store, room.id);
   return `<role>
-You are describing a detail the player wants to examine more closely. It may come from a room description, an object's description, or something mentioned in a recent interaction. Write atmospheric, vivid detail that rewards curiosity.
+You are describing a detail the player wants to examine more closely. It may come from a room description, an object's description, or something mentioned in a recent interaction.
 </role>
+
+<room-texture>
+${describeTexture(texture)}
+</room-texture>
 
 ${styleSection}
 ${secretSection}
 <guidelines>
-- Write a vivid 1-3 sentence description of what the player sees on closer inspection.
+${textureGuidelines(texture)}
 - Stay consistent with the world tone and the context the word appeared in.
 - The "rejection" is a brief response when the player tries to interact beyond looking.
-- Include "aliases" — other words or phrases from your description that the player might want to examine next. This creates a chain of inspectable details.
 </guidelines>`;
+}
+
+/**
+ * Texture-specific instructions: this is where pacing is enforced. Sparse
+ * rooms terminate the inspection chain (no aliases) and read as mundane;
+ * rich rooms keep the original reward-curiosity behavior.
+ */
+function textureGuidelines(texture: RoomTexture): string {
+  if (texture === "sparse") {
+    return [
+      "- Write ONE short, matter-of-fact sentence. The detail is ordinary — describe it plainly, even a little disappointingly. No secrets, no hooks, no intrigue.",
+      '- Set "aliases" to an EMPTY array. Nothing here invites further inspection.',
+    ].join("\n");
+  }
+  if (texture === "rich") {
+    return [
+      "- Write a vivid 1-3 sentence description that rewards curiosity.",
+      '- Include "aliases" — other words or phrases from your description that the player might want to examine next. This creates a chain of inspectable details. 1-4 aliases.',
+    ].join("\n");
+  }
+  return [
+    "- Write 1-2 sentences of modest, concrete detail. Interesting is fine; fascinating is not.",
+    "- Include AT MOST ONE alias, and only if your description genuinely introduces something worth a second look. Otherwise use an empty array.",
+  ].join("\n");
 }
 
 function buildPrompt(opts: {

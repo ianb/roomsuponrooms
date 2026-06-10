@@ -61,8 +61,10 @@ const store = makeStore();
 const schema = buildRoomSchema(store);
 
 const validResponse = {
+  reasoning: "Test fixture.",
   room: {
     idSlug: "dark-tunnel",
+    texture: "plain",
     name: "Dark Tunnel",
     description: "A narrow passage.",
     tags: ["room"],
@@ -77,7 +79,6 @@ const validResponse = {
     }],
     contents: [],
   },
-  notes: "Connected to existing cavern.",
 };
 
 const parsed = schema.parse(validResponse);
@@ -96,8 +97,10 @@ connectTo exits can include back-exit names:
 
 ```continue
 const withBackNames = {
+  reasoning: "Test fixture.",
   room: {
     idSlug: "dark-tunnel-2",
+    texture: "plain",
     name: "Dark Tunnel",
     description: "A narrow passage.",
     tags: ["room"],
@@ -116,7 +119,6 @@ const withBackNames = {
     }],
     contents: [],
   },
-  notes: "Connected.",
 };
 
 const parsed4 = schema.parse(withBackNames);
@@ -136,8 +138,10 @@ const store2 = makeStore();
 const schema2 = buildRoomSchema(store2);
 
 const unresolved = {
+  reasoning: "Test fixture.",
   room: {
     idSlug: "open-field",
+    texture: "plain",
     name: "Open Field",
     description: "A wide open field.",
     tags: ["room"],
@@ -152,7 +156,6 @@ const unresolved = {
     }],
     contents: [],
   },
-  notes: "New area.",
 };
 
 const parsed2 = schema2.parse(unresolved);
@@ -166,8 +169,10 @@ When the AI provides neither, the schema still parses (both are optional):
 
 ```continue
 const neither = {
+  reasoning: "Test fixture.",
   room: {
     idSlug: "dead-end",
+    texture: "plain",
     name: "Dead End",
     description: "Nothing here.",
     tags: ["room"],
@@ -181,7 +186,6 @@ const neither = {
     }],
     contents: [],
   },
-  notes: "Dead end.",
 };
 
 const parsed3 = schema2.parse(neither);
