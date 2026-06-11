@@ -35,6 +35,20 @@
       "schema": {
         "type": "string"
       }
+    },
+    {
+      "name": "tone",
+      "description": "District tone for region entities — drives area atmosphere and pacing (abandoned, quiet, balanced, busy, dense)",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "abandoned",
+          "quiet",
+          "balanced",
+          "busy",
+          "dense"
+        ]
+      }
     }
   ]
 }

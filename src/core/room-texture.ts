@@ -64,9 +64,27 @@ export interface AreaTone {
  */
 export function resolveAreaTone(store: EntityStore, roomId: string): AreaTone {
   const anchorId = districtAnchor(store, roomId);
+  // An authored region can declare its tone outright (properties.tone) —
+  // hand-built districts shouldn't gamble on the hash.
+  if (store.has(anchorId)) {
+    const declared = store.get(anchorId).properties["tone"];
+    if (typeof declared === "string" && declared in TONE_VALUES) {
+      const label = declared as AreaTone["label"];
+      return { value: TONE_VALUES[label], label };
+    }
+  }
   const value = toneCurve(hash01(`tone:${anchorId}`));
   return { value, label: toneLabel(value) };
 }
+
+/** Representative tone value per label, for authored district tones. */
+const TONE_VALUES: Record<AreaTone["label"], number> = {
+  abandoned: 0.1,
+  quiet: 0.3,
+  balanced: 0.5,
+  busy: 0.75,
+  dense: 1,
+};
 
 function toneLabel(value: number): AreaTone["label"] {
   if (value < 0.2) return "abandoned";
