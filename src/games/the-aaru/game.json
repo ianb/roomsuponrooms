@@ -26,7 +26,13 @@
       "description": "Operational status of a ship system or device",
       "schema": {
         "type": "string",
-        "enum": ["operational", "degraded", "offline", "damaged", "unknown"]
+        "enum": [
+          "operational",
+          "degraded",
+          "offline",
+          "damaged",
+          "unknown"
+        ]
       }
     },
     {
@@ -51,6 +57,20 @@
         "type": "boolean"
       },
       "defaultValue": false
+    },
+    {
+      "name": "tone",
+      "description": "District tone for region entities — drives area atmosphere and pacing (abandoned, quiet, balanced, busy, dense)",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "abandoned",
+          "quiet",
+          "balanced",
+          "busy",
+          "dense"
+        ]
+      }
     }
   ]
 }
