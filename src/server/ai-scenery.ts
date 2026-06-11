@@ -5,7 +5,12 @@ import type { GamePrompts } from "../core/game-data.js";
 import { getLlm, getLlmProviderOptions, getLlmAbortSignal, getLlmModelId } from "./llm.js";
 import { runLoggedAiCall } from "./ai-call-log.js";
 import { composeVerbPrompt } from "./ai-prompts.js";
-import { resolveRoomTexture, describeTexture } from "../core/room-texture.js";
+import {
+  resolveRoomTexture,
+  describeTexture,
+  resolveAreaTone,
+  describeAreaTone,
+} from "../core/room-texture.js";
 import type { RoomTexture } from "../core/entity-types.js";
 
 /** Scenery descriptions stored on the room entity */
@@ -70,12 +75,13 @@ function buildSystemPrompt({
       ? `\n<secret>\nHidden information. Be aware of it when describing scenery, but don't reveal it directly. If the word naturally relates to the secret, let hints emerge.\n\n${secrets.join("\n")}\n</secret>\n`
       : "";
   const texture = resolveRoomTexture(store, room.id);
+  const toneLine = describeAreaTone(resolveAreaTone(store, room.id));
   return `<role>
 You are describing a detail the player wants to examine more closely. It may come from a room description, an object's description, or something mentioned in a recent interaction.
 </role>
 
 <room-texture>
-${describeTexture(texture)}
+${describeTexture(texture)}${toneLine ? `\n${toneLine}` : ""}
 </room-texture>
 
 ${styleSection}

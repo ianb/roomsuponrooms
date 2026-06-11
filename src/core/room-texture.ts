@@ -6,27 +6,43 @@ import type { RoomTexture } from "./entity-types.js";
  * are connective tissue (mundane scenery, no inspection chains, fallbacks
  * lean refusal), "plain" is modest, "rich" rewards deep digging.
  *
- * An explicitly authored room.texture always wins. When unset, the texture
- * is DERIVED deterministically in the spirit of low-frequency value noise,
- * but over the room graph instead of a grid: each room hashes its id to a
- * base value, blends in its neighbors' hashes (so adjacent rooms correlate
- * and the world gets coherent quiet stretches and busy pockets, not salt-
- * and-pepper randomness), and nudges by authored content (a room full of
- * NPCs and items is presumably meant to be lively; an empty pass-through
- * is presumably meant to be quiet). The blended value is re-expanded to
- * counter averaging shrinkage, then thresholded.
+ * An explicitly authored room.texture always wins. When unset, texture is
+ * DERIVED deterministically from THREE octaves of graph noise, so balance is
+ * fractal — it exists at every scale, with extremes in places:
  *
- * Deterministic by construction: same world graph → same textures across
- * restarts. Adding distant rooms doesn't change a room's texture; adding a
- * direct neighbor can shift it, which is acceptable — the neighborhood
- * genuinely changed.
+ *  - District tone (largest): each room belongs to a district — its region
+ *    entity if the game has one, else a minimizer anchor (the room with the
+ *    locally smallest hash within MINIMIZER_RADIUS hops; neighbors provably
+ *    share anchors, so districts are contiguous). The district hash runs
+ *    through a fat-tailed contrast curve: ~74% of districts sit near the
+ *    middle (balanced), ~13% collapse to near-zero (abandoned quarters),
+ *    ~13% blow out high (oppressively dense pockets).
+ *  - Neighborhood (middle): the room's hash blended with direct neighbors,
+ *    re-expanded — local runs and variation within a district.
+ *  - Room (finest): the room's own hash — so even an abandoned quarter has
+ *    the odd room with something in it.
+ *
+ * Content nudges the result (NPCs/items tilt richer, capped) and NPC-staffed
+ * rooms floor at "plain". Deterministic by construction: same world graph →
+ * same textures across restarts.
+ *
+ * Constants are empirically tuned (see test/room-texture.test.ts): on a
+ * 600-room ring, ~40% sparse / 47% plain / 13% rich globally, with ~20% of
+ * 10-room windows reading as extreme (abandoned or dense) and the rest near
+ * the global mix. Hard-won details: hashes need a murmur finalizer (bare
+ * FNV-1a correlates on similar ids); the district anchor must be min-by-HASH,
+ * not min-by-id (monotonic ids make min-by-id degenerate to per-room
+ * districts); variance re-expansion uses the square root of the analytic
+ * shrink ratio.
  */
 
-/** Threshold tuning (empirical, see test): ~43% sparse, ~45% plain, ~12% rich. */
 const SPARSE_BELOW = 0.45;
-const RICH_AT_OR_ABOVE = 0.78;
-/** How much of the value comes from the room itself vs. its neighbors. */
+const RICH_AT_OR_ABOVE = 0.68;
+const TONE_WEIGHT = 0.6;
+const MEDIUM_WEIGHT = 0.25;
+const OWN_WEIGHT = 0.15;
 const SELF_WEIGHT = 0.55;
+const MINIMIZER_RADIUS = 3;
 
 export function resolveRoomTexture(store: EntityStore, roomId: string): RoomTexture {
   if (!store.has(roomId)) return "plain";
@@ -35,12 +51,32 @@ export function resolveRoomTexture(store: EntityStore, roomId: string): RoomText
   return deriveTexture(store, roomId);
 }
 
+export interface AreaTone {
+  /** Raw tone value in roughly [0, 1.1]. */
+  value: number;
+  label: "abandoned" | "quiet" | "balanced" | "busy" | "dense";
+}
+
 /**
- * FNV-1a hash with a murmur3 finalizer, mapped to [0, 1). The finalizer
- * matters: bare FNV-1a produces heavily correlated values for near-identical
- * strings (room:a vs room:b), which made "blending with neighbors" a no-op
- * and the texture distribution lumpy.
+ * The district-scale tone for the area around a room. Exposed so prompts
+ * can let an extreme district read as what it is — a whole abandoned
+ * quarter should FEEL abandoned in every improvised detail.
  */
+export function resolveAreaTone(store: EntityStore, roomId: string): AreaTone {
+  const anchorId = districtAnchor(store, roomId);
+  const value = toneCurve(hash01(`tone:${anchorId}`));
+  return { value, label: toneLabel(value) };
+}
+
+function toneLabel(value: number): AreaTone["label"] {
+  if (value < 0.2) return "abandoned";
+  if (value < 0.38) return "quiet";
+  if (value <= 0.62) return "balanced";
+  if (value <= 0.85) return "busy";
+  return "dense";
+}
+
+/** FNV-1a with a murmur3 finalizer, mapped to [0, 1). */
 function hash01(s: string): number {
   let h = 0x811c9dc5;
   for (const ch of s) {
@@ -55,32 +91,68 @@ function hash01(s: string): number {
   return (h >>> 0) / 0x100000000;
 }
 
-function deriveTexture(store: EntityStore, roomId: string): RoomTexture {
-  const own = hash01(roomId);
-  const neighborIds = store
-    .getExits(roomId)
-    .map((e) => (e.exit && e.exit.destination) || null)
-    .filter((d): d is string => d !== null && store.has(d))
-    .toSorted();
+/**
+ * Fat-tailed contrast curve over a uniform input: most districts land in a
+ * tight band around the middle, but the tails are sent to extremes. This is
+ * where "mostly balanced, extreme in places" comes from.
+ */
+function toneCurve(u: number): number {
+  if (u < 0.13) return 0.02 + (u / 0.13) * 0.16; // abandoned: 0.02..0.18
+  if (u > 0.87) return 0.92 + ((u - 0.87) / 0.13) * 0.18; // dense: 0.92..1.10
+  return 0.38 + ((u - 0.13) / 0.74) * 0.24; // balanced: 0.38..0.62
+}
 
-  let value: number;
-  if (neighborIds.length === 0) {
-    value = own;
-  } else {
-    const neighborAvg =
-      neighborIds.map((id) => hash01(id)).reduce((a, b) => a + b, 0) / neighborIds.length;
-    const blended = SELF_WEIGHT * own + (1 - SELF_WEIGHT) * neighborAvg;
-    // Averaging uniforms shrinks the spread toward 0.5, which would push
-    // everything into "plain". Partially re-expand (square root of the
-    // analytic shrink ratio — full re-expansion overshoots the tails on
-    // non-normal blends; the exponent was tuned empirically, see test).
-    const shrink = Math.sqrt(
-      SELF_WEIGHT ** 2 + (1 - SELF_WEIGHT) ** 2 / Math.max(1, neighborIds.length),
-    );
-    value = 0.5 + (blended - 0.5) / Math.sqrt(shrink);
+/**
+ * The district a room belongs to: its region entity when the game nests
+ * rooms in regions (authored districts win), else the minimizer anchor —
+ * the room id with the smallest hash among all rooms within
+ * MINIMIZER_RADIUS hops, including this one.
+ */
+function districtAnchor(store: EntityStore, roomId: string): string {
+  const room = store.get(roomId);
+  if (room.location && store.has(room.location)) {
+    const parent = store.get(room.location);
+    if (parent.tags.includes("region")) return parent.id;
   }
+  let best = roomId;
+  let bestHash = hash01(roomId);
+  for (const id of roomsWithin(store, { roomId, hops: MINIMIZER_RADIUS })) {
+    const h = hash01(id);
+    if (h < bestHash) {
+      best = id;
+      bestHash = h;
+    }
+  }
+  return best;
+}
 
-  value += contentBias(store, roomId);
+function roomsWithin(
+  store: EntityStore,
+  { roomId, hops }: { roomId: string; hops: number },
+): string[] {
+  const seen = new Set<string>([roomId]);
+  let frontier = [roomId];
+  for (let hop = 0; hop < hops; hop++) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      for (const exit of store.getExits(id)) {
+        const dest = exit.exit && exit.exit.destination;
+        if (!dest || seen.has(dest) || !store.has(dest)) continue;
+        seen.add(dest);
+        next.push(dest);
+      }
+    }
+    frontier = next;
+  }
+  return [...seen];
+}
+
+function deriveTexture(store: EntityStore, roomId: string): RoomTexture {
+  const tone = resolveAreaTone(store, roomId).value;
+  const own = hash01(roomId);
+  const medium = neighborhoodValue(store, { roomId, own });
+  let value = TONE_WEIGHT * tone + MEDIUM_WEIGHT * medium + OWN_WEIGHT * own;
+  value += contentBias(store, { roomId, tone });
 
   if (value < SPARSE_BELOW) {
     // Floor: a room staffed by an NPC is by definition not connective
@@ -91,16 +163,37 @@ function deriveTexture(store: EntityStore, roomId: string): RoomTexture {
   return "rich";
 }
 
+function neighborhoodValue(
+  store: EntityStore,
+  { roomId, own }: { roomId: string; own: number },
+): number {
+  const neighborIds = store
+    .getExits(roomId)
+    .map((e) => (e.exit && e.exit.destination) || null)
+    .filter((d): d is string => d !== null && store.has(d))
+    .toSorted();
+  if (neighborIds.length === 0) return own;
+  const neighborAvg =
+    neighborIds.map((id) => hash01(id)).reduce((a, b) => a + b, 0) / neighborIds.length;
+  const blended = SELF_WEIGHT * own + (1 - SELF_WEIGHT) * neighborAvg;
+  const shrink = Math.sqrt(
+    SELF_WEIGHT ** 2 + (1 - SELF_WEIGHT) ** 2 / Math.max(1, neighborIds.length),
+  );
+  return 0.5 + (blended - 0.5) / Math.sqrt(shrink);
+}
+
 function hasNpc(store: EntityStore, roomId: string): boolean {
   return store.getContents(roomId).some((c) => c.tags.includes("npc"));
 }
 
 /**
- * Authored content is a strong signal of intent: NPCs and clusters of items
- * mean someone meant this room to be lively; a contentless room with
- * through-traffic shape is presumably a corridor.
+ * Authored content tilts the noise — it must not override it. An authored
+ * POI gets a thumb on the scale toward rich, not a guarantee.
  */
-function contentBias(store: EntityStore, roomId: string): number {
+function contentBias(
+  store: EntityStore,
+  { roomId, tone }: { roomId: string; tone: number },
+): number {
   let npcs = 0;
   let items = 0;
   let exits = 0;
@@ -112,12 +205,11 @@ function contentBias(store: EntityStore, roomId: string): number {
   const room = store.get(roomId);
   const sceneryCount = room.scenery ? room.scenery.length : 0;
   let bias = npcs * 0.08 + items * 0.02 + sceneryCount * 0.02;
-  if (npcs === 0 && items === 0 && sceneryCount === 0 && exits >= 2) {
-    // Pure pass-through shape: nudge toward connective tissue.
+  if (npcs === 0 && items === 0 && sceneryCount === 0 && exits >= 2 && tone < 0.85) {
+    // Pass-through shape nudges toward connective tissue — except in dense
+    // districts, where even the corridors are claimed and crowded.
     bias -= 0.1;
   }
-  // The bias TILTS the noise, it must not override it — an authored POI
-  // gets a thumb on the scale toward rich, not a guarantee.
   return Math.min(0.12, bias);
 }
 
@@ -139,4 +231,30 @@ export function describeTexture(texture: RoomTexture): string {
     "This room is PLAIN — moderately interesting. A detail or two repays a look, but it does " +
     "not open endless depths."
   );
+}
+
+/**
+ * One-line area-tone guidance for prompts, or null for unremarkable tones.
+ * Extreme districts should READ as what they are in every improvised detail.
+ */
+export function describeAreaTone(tone: AreaTone): string | null {
+  if (tone.label === "abandoned") {
+    return (
+      "The surrounding district is ABANDONED — disuse, dust, things left mid-task long ago. " +
+      "Let neglect show in every detail; nothing here has been tended in a long time."
+    );
+  }
+  if (tone.label === "dense") {
+    return (
+      "The surrounding district is OPPRESSIVELY DENSE — crowded, layered, every surface " +
+      "claimed. Details crowd each other; there is always one more thing in the corner."
+    );
+  }
+  if (tone.label === "quiet") {
+    return "The surrounding district is quiet and lightly used — keep details low-key.";
+  }
+  if (tone.label === "busy") {
+    return "The surrounding district is busy and well-trafficked — details show wear and use.";
+  }
+  return null;
 }

@@ -1,6 +1,6 @@
 import type { EntityStore, Entity } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
-import { resolveRoomTexture } from "../core/room-texture.js";
+import { resolveRoomTexture, resolveAreaTone, describeAreaTone } from "../core/room-texture.js";
 import {
   describeProperties,
   collectTags,
@@ -86,6 +86,8 @@ function buildAreaPacingContext(store: EntityStore, sourceRoom: Entity): string 
     counts[texture] += 1;
     lines.push(`- ${store.get(id).name} (${id}): ${texture}`);
   }
+  const tone = resolveAreaTone(store, sourceRoom.id);
+  const toneLine = describeAreaTone(tone);
   const total = counts.sparse + counts.plain + counts.rich;
   let hint: string;
   if (counts.rich / Math.max(1, total) >= 0.3) {
@@ -98,7 +100,10 @@ function buildAreaPacingContext(store: EntityStore, sourceRoom: Entity): string 
     hint =
       "The area has a reasonable mix — choose the texture the exit intent and variety suggest, defaulting to the quieter option.";
   }
-  return `<area-pacing>\nTextures of rooms within two hops (sparse = connective tissue, rich = destination):\n${lines.join("\n")}\nPacing hint: ${hint}\n</area-pacing>`;
+  const toneSection = toneLine
+    ? `\nDistrict tone: ${toneLine} A new room here should belong to that tone unless the exit intent demands otherwise.`
+    : "";
+  return `<area-pacing>\nTextures of rooms within two hops (sparse = connective tissue, rich = destination):\n${lines.join("\n")}\nPacing hint: ${hint}${toneSection}\n</area-pacing>`;
 }
 
 export function buildSystemPrompt(ctx: {
