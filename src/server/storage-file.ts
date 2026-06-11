@@ -22,6 +22,11 @@ import type {
 } from "./storage.js";
 import { FileAgentStorage } from "./storage-file-agent.js";
 import { FileAiCallLog } from "./storage-file-ai-calls.js";
+import {
+  bumpKnownEventCount,
+  decrementKnownEventCount,
+  setKnownEventCount,
+} from "./event-count.js";
 import { readJsonl, appendJsonl, writeJsonl, ensureDirFor } from "./jsonl.js";
 
 export class FileStorage implements RuntimeStorage {
@@ -100,8 +105,14 @@ export class FileStorage implements RuntimeStorage {
     );
   }
 
+  async countEvents(session: SessionKey): Promise<number> {
+    const entries = await this.loadEvents(session);
+    return entries.length;
+  }
+
   async appendEvent(session: SessionKey, entry: EventLogEntry): Promise<void> {
     appendJsonl(this.userPath(`event-log-${session.gameId}-${session.userId}.jsonl`), entry);
+    bumpKnownEventCount(session);
   }
 
   async clearEvents(session: SessionKey): Promise<void> {
@@ -109,6 +120,7 @@ export class FileStorage implements RuntimeStorage {
     if (existsSync(filePath)) {
       writeFileSync(filePath, "");
     }
+    setKnownEventCount(session, 0);
   }
 
   async popEvent(session: SessionKey): Promise<EventLogEntry | null> {
@@ -116,6 +128,7 @@ export class FileStorage implements RuntimeStorage {
     if (entries.length === 0) return null;
     const popped = entries.pop()!;
     writeJsonl(this.userPath(`event-log-${session.gameId}-${session.userId}.jsonl`), entries);
+    decrementKnownEventCount(session);
     return popped;
   }
 

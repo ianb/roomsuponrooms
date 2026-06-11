@@ -14,6 +14,14 @@ import type { AiEntityRecord } from "./storage.js";
  */
 export function applyAiEntityRecords(records: AiEntityRecord[], store: EntityStore): void {
   for (const record of records) {
+    // Player entities are per-user runtime state (rebuilt from the event
+    // log), never shared world content. A persisted player record would
+    // stamp one user's stale location and scenery onto every world build.
+    const existingIsPlayer = store.has(record.id) && store.get(record.id).tags.includes("player");
+    if (existingIsPlayer || (record.tags && record.tags.includes("player"))) {
+      console.error(`[apply-ai-records] Skipping ${record.id}: player entities are not applied`);
+      continue;
+    }
     if (store.has(record.id)) {
       const entity = store.get(record.id);
       if (record.name !== undefined) entity.name = record.name;

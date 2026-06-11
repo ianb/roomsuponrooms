@@ -174,6 +174,11 @@ export interface RuntimeStorage {
 
   // --- Event Log (per-user) ---
   loadEvents(session: SessionKey): Promise<EventLogEntry[]>;
+  /**
+   * Number of entries in the session's event log. Cheap freshness probe for
+   * the per-isolate game-instance cache (see getOrCreateGame in router.ts).
+   */
+  countEvents(session: SessionKey): Promise<number>;
   appendEvent(session: SessionKey, entry: EventLogEntry): Promise<void>;
   clearEvents(session: SessionKey): Promise<void>;
   popEvent(session: SessionKey): Promise<EventLogEntry | null>;

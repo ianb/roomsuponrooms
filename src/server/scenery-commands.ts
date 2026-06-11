@@ -106,10 +106,16 @@ export async function handleSceneryCheck(
     scenerySource.source === "item" || scenerySource.source === "output"
       ? scenerySource.entityId
       : undefined;
-  const sourceEntity =
+  const sourceCandidate =
     sceneryEntityId && game.store.has(sceneryEntityId)
       ? game.store.get(sceneryEntityId)
       : undefined;
+  // A recent-output match can attribute the word to the PLAYER entity (the
+  // output of a self-directed command). Scenery must never attach to the
+  // player: storing it would persist the whole player — current location
+  // included — into the shared ai_entities data. Fall back to the room.
+  const sourceEntity =
+    sourceCandidate && !sourceCandidate.tags.includes("player") ? sourceCandidate : undefined;
 
   // Examine: generate or return stored description
   const result = await generateSceneryDescription(game.store, {

@@ -5,6 +5,7 @@ import type { EntityStore } from "../core/index.js";
 import { recordToHandler } from "./handler-convert.js";
 import { applyAiEntityRecords } from "./apply-ai-records.js";
 import { applyEvents } from "./event-apply.js";
+import { getKnownEventCount, setKnownEventCount } from "./event-count.js";
 import { getStorage } from "./storage-instance.js";
 import { composeVerbPrompt, composeCreatePrompt, composeConversationPrompt } from "./ai-prompts.js";
 import type { GameInstance } from "../games/registry.js";
@@ -53,6 +54,7 @@ async function initGame(session: SessionKey): Promise<GameInstance> {
   }
   // Events are per-user
   const events = await storage.loadEvents(session);
+  setKnownEventCount(session, events.length);
   // Track the last unclosed start-conversation event so we can restore the
   // in-memory conversation state after replay (the state itself isn't
   // persisted, but the start/close markers are).
@@ -84,10 +86,26 @@ function cacheKey(session: SessionKey): string {
 export async function getOrCreateGame(session: SessionKey): Promise<GameInstance> {
   const key = cacheKey(session);
   const existing = activeGames.get(key);
-  if (existing) return existing;
+  if (existing && (await isCacheFresh(session))) return existing;
   const instance = await initGame(session);
   activeGames.set(key, instance);
   return instance;
+}
+
+/**
+ * A cached instance is only trustworthy if no OTHER isolate has appended
+ * events since we built (or last updated) it. Workers run many isolates
+ * concurrently, each with its own activeGames map; without this check a
+ * command served by one isolate leaves every other isolate's cached world
+ * stale — players answered from rooms they already left. Appends made by
+ * this isolate keep the known count in sync (see event-count.ts), so the
+ * comparison only fails on foreign writes.
+ */
+async function isCacheFresh(session: SessionKey): Promise<boolean> {
+  const known = getKnownEventCount(session);
+  if (known === null) return false;
+  const stored = await getStorage().countEvents(session);
+  return stored === known;
 }
 
 /** Reinitialize a game for a user and update the cache */

@@ -36,6 +36,11 @@ import * as aiCallDb from "./storage-d1-ai-calls.js";
 import * as userDb from "./storage-d1-users.js";
 import { rowToAuthoring, authoringBindValues } from "./d1-types.js";
 import { deserializeEntityRow, serializeEntityRecord } from "./entity-serialize.js";
+import {
+  bumpKnownEventCount,
+  decrementKnownEventCount,
+  setKnownEventCount,
+} from "./event-count.js";
 
 export type { D1Database } from "./d1-types.js";
 
@@ -153,6 +158,14 @@ export class D1Storage implements RuntimeStorage {
     }));
   }
 
+  async countEvents(session: SessionKey): Promise<number> {
+    const count = await this.db
+      .prepare("SELECT COUNT(*) AS n FROM events WHERE game_id = ? AND user_id = ?")
+      .bind(session.gameId, session.userId)
+      .first<number>("n");
+    return count || 0;
+  }
+
   async appendEvent(session: SessionKey, entry: EventLogEntry): Promise<void> {
     const maxSeq = await this.db
       .prepare(
@@ -174,6 +187,7 @@ export class D1Storage implements RuntimeStorage {
         entry.timestamp,
       )
       .run();
+    bumpKnownEventCount(session);
   }
 
   async clearEvents(session: SessionKey): Promise<void> {
@@ -181,6 +195,7 @@ export class D1Storage implements RuntimeStorage {
       .prepare("DELETE FROM events WHERE game_id = ? AND user_id = ?")
       .bind(session.gameId, session.userId)
       .run();
+    setKnownEventCount(session, 0);
   }
 
   async popEvent(session: SessionKey): Promise<EventLogEntry | null> {
@@ -193,6 +208,7 @@ export class D1Storage implements RuntimeStorage {
       .prepare("DELETE FROM events WHERE game_id = ? AND user_id = ? AND seq = ?")
       .bind(session.gameId, session.userId, row.seq)
       .run();
+    decrementKnownEventCount(session);
     return { command: row.command, events: JSON.parse(row.events), timestamp: row.timestamp };
   }
 
