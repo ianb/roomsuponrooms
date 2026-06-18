@@ -57,6 +57,12 @@ npm run deploy
 
 This runs `bundle-games` (pre-bundles game data) then `wrangler deploy` (which also runs the build command in `wrangler.toml` to build the Vite frontend).
 
+> **Heads up: commits to `main` auto-deploy.** The `.husky/post-commit` hook
+> runs `npm run deploy` whenever you commit on `main`, so every commit to main
+> ships to production immediately. Branch for work-in-progress to avoid shipping
+> half-finished changes (the hook is gated to `main` only). Note this does not
+> apply migrations — those are always manual (see below).
+
 ### Local development (Node server + Vite)
 
 ```bash
