@@ -121,16 +121,16 @@ export function ShellToolbar({
   canDebug,
   debugMode,
   setDebugMode,
-  mapButton,
+  panelButtons,
 }: {
   canDebug: boolean;
   debugMode: boolean;
   setDebugMode: (v: boolean) => void;
-  mapButton?: React.ReactNode;
+  panelButtons?: React.ReactNode;
 }) {
   return (
     <div className="flex items-center justify-end gap-2 py-1">
-      {mapButton}
+      {panelButtons}
       {canDebug ? (
         <label className="flex cursor-pointer items-center gap-2 text-xs text-content/40">
           <input

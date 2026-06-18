@@ -27,7 +27,7 @@ function GamePage() {
   const [revision, setRevision] = useState(0);
   const [sidebarTab, setSidebarTab] = useStickyState<SidebarTab>("extenso:sidebarTab", "map");
   const [sidebarExpanded, setSidebarExpanded] = useStickyState("extenso:sidebarExpanded", false);
-  const [showMobileMap, setShowMobileMap] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"map" | "standing" | null>(null);
   const [aiThinkingMessages, setAiThinkingMessages] = useState<string[] | null>(null);
   const [statusTracks, setStatusTracks] = useState<TrackStatus[]>([]);
 
@@ -67,14 +67,25 @@ function GamePage() {
             onEntityClick={setSelectedEntityId}
             onCommandComplete={handleCommandComplete}
             aiThinkingMessages={aiThinkingMessages}
-            mapButton={
-              <button
-                onClick={() => setShowMobileMap(true)}
-                className="rounded px-2 py-1 text-xs text-content/40 hover:text-content/60 lg:hidden"
-                title="Show map"
-              >
-                Map
-              </button>
+            panelButtons={
+              <div className="flex gap-2 lg:hidden">
+                <button
+                  onClick={() => setMobilePanel("map")}
+                  className="rounded px-2 py-1 text-xs text-content/40 hover:text-content/60"
+                  title="Show map"
+                >
+                  Map
+                </button>
+                {statusTracks.length > 0 ? (
+                  <button
+                    onClick={() => setMobilePanel("standing")}
+                    className="rounded px-2 py-1 text-xs text-content/40 hover:text-content/60"
+                    title="Show standing"
+                  >
+                    Standing
+                  </button>
+                ) : null}
+              </div>
             }
           />
         </div>
@@ -107,25 +118,47 @@ function GamePage() {
           ) : null}
         </div>
       </div>
-      {/* Mobile map modal */}
-      {showMobileMap ? (
+      {/* Mobile map / standing modal */}
+      {mobilePanel ? (
         <div className="fixed inset-0 z-50 flex flex-col bg-page/95 lg:hidden">
-          <div className="flex items-center justify-between border-b border-content/15 px-4 py-2">
-            <span className="text-sm text-content/70">Map</span>
+          <div className="flex items-center justify-between border-b border-content/15 px-2 py-2">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setMobilePanel("map")}
+                className={mobileTabClass(mobilePanel === "map")}
+              >
+                Map
+              </button>
+              {statusTracks.length > 0 ? (
+                <button
+                  onClick={() => setMobilePanel("standing")}
+                  className={mobileTabClass(mobilePanel === "standing")}
+                >
+                  Standing
+                </button>
+              ) : null}
+            </div>
             <button
-              onClick={() => setShowMobileMap(false)}
-              className="text-sm text-content/50 hover:text-content/80"
+              onClick={() => setMobilePanel(null)}
+              className="px-2 text-sm text-content/50 hover:text-content/80"
             >
               Close
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            <MapPanel gameId={gameId} revision={revision} />
+            {mobilePanel === "map" ? <MapPanel gameId={gameId} revision={revision} /> : null}
+            {mobilePanel === "standing" ? <StandingPanel tracks={statusTracks} /> : null}
           </div>
         </div>
       ) : null}
     </div>
   );
+}
+
+function mobileTabClass(active: boolean): string {
+  return `rounded px-3 py-1 text-sm ${
+    active ? "bg-surface text-accent" : "text-content/50 hover:text-content/70"
+  }`;
 }
 
 function SidebarTabs({

@@ -146,13 +146,13 @@ export function WorldShell({
   gameId,
   onEntityClick,
   onCommandComplete,
-  mapButton,
+  panelButtons,
   aiThinkingMessages,
 }: {
   gameId: string;
   onEntityClick?: (id: string) => void;
   onCommandComplete?: () => void;
-  mapButton?: React.ReactNode;
+  panelButtons?: React.ReactNode;
   aiThinkingMessages?: string[] | null;
 }) {
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -236,7 +236,7 @@ export function WorldShell({
         canDebug={canDebug}
         debugMode={debugMode}
         setDebugMode={setDebugMode}
-        mapButton={mapButton}
+        panelButtons={panelButtons}
       />
       {conversationMode ? <ConversationHeader npcName={conversationMode.npcName} /> : null}
       <div
