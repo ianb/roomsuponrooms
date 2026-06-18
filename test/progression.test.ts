@@ -9,6 +9,7 @@ import {
   tierIndex,
   tierCrossings,
   describeStatus,
+  playerStatus,
   type Track,
 } from "../src/core/progression.js";
 import type { EntityStore } from "../src/core/entity.js";
@@ -123,6 +124,34 @@ t.test("crafting awards the craft meter and fires the tier ceremony", (t) => {
   const out2 = runner.command("combine coppervine wire with void glass shard");
   t.equal(runner.getProperty("player:1", "craft"), 2, "craft meter rose to 2");
   t.match(out2, /Journeyman/, "tier ceremony fired on crossing");
+  t.end();
+});
+
+t.test("playerStatus returns structured standing for the UI panel", (t) => {
+  const { store } = tinkermarket();
+  store.setProperty("player:1", { name: "craft", value: 3 });
+  const tracks: Track[] = [{ name: "coin", label: "Coin" }, CRAFT_TRACK];
+  const rows = playerStatus(store, { tracks, playerId: "player:1" });
+
+  const coin = rows.find((r) => r.name === "coin")!;
+  t.equal(coin.hasTiers, false, "coin is tierless");
+  t.equal(coin.value, 12, "coin value");
+  t.equal(coin.nextTier, null, "tierless track has no next");
+
+  const craft = rows.find((r) => r.name === "craft")!;
+  t.equal(craft.tier, "a Journeyman", "craft 3 -> Journeyman");
+  t.same(craft.nextTier, { name: "a Master", at: 4 }, "signposted next tier exposed");
+  t.end();
+});
+
+t.test("playerStatus omits hidden tracks and handles tierless-only worlds", (t) => {
+  const { store } = tinkermarket();
+  const rows = playerStatus(store, {
+    tracks: [{ name: "secret", label: "Secret", hidden: true }, { name: "coin", label: "Coin" }],
+    playerId: "player:1",
+  });
+  t.equal(rows.length, 1, "hidden track omitted");
+  t.equal(rows[0]!.name, "coin", "only the visible track remains");
   t.end();
 });
 

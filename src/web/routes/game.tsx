@@ -5,9 +5,11 @@ import { WorldShell } from "../WorldShell.js";
 import { EntityViewer } from "../EntityViewer.js";
 import { PromptViewer } from "../PromptViewer.js";
 import { MapPanel } from "../MapPanel.js";
+import { StandingPanel } from "../StandingPanel.js";
 import { useStickyState } from "../use-sticky-state.js";
 import { AuthContext } from "../auth.js";
 import { trpc } from "../trpc.js";
+import type { TrackStatus } from "../../core/progression.js";
 
 export const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -15,7 +17,7 @@ export const gameRoute = createRoute({
   component: GamePage,
 });
 
-type SidebarTab = "map" | "entities" | "prompts";
+type SidebarTab = "map" | "standing" | "entities" | "prompts";
 
 function GamePage() {
   const auth = useContext(AuthContext);
@@ -27,6 +29,11 @@ function GamePage() {
   const [sidebarExpanded, setSidebarExpanded] = useStickyState("extenso:sidebarExpanded", false);
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [aiThinkingMessages, setAiThinkingMessages] = useState<string[] | null>(null);
+  const [statusTracks, setStatusTracks] = useState<TrackStatus[]>([]);
+
+  useEffect(() => {
+    trpc.playerStanding.query({ gameId }).then((data) => setStatusTracks(data.tracks));
+  }, [gameId, revision]);
 
   useEffect(() => {
     trpc.games.query().then((games) => {
@@ -78,6 +85,7 @@ function GamePage() {
       >
         <SidebarTabs
           canDebug={canDebug}
+          hasStanding={statusTracks.length > 0}
           sidebarTab={sidebarTab}
           onTabChange={setSidebarTab}
           sidebarExpanded={sidebarExpanded}
@@ -85,6 +93,7 @@ function GamePage() {
         />
         <div className="flex-1 overflow-hidden">
           {sidebarTab === "map" && <MapPanel gameId={gameId} revision={revision} />}
+          {sidebarTab === "standing" && <StandingPanel tracks={statusTracks} />}
           {sidebarTab === "entities" && canDebug ? (
             <EntityViewer
               gameId={gameId}
@@ -121,12 +130,14 @@ function GamePage() {
 
 function SidebarTabs({
   canDebug,
+  hasStanding,
   sidebarTab,
   onTabChange,
   sidebarExpanded,
   onToggleExpand,
 }: {
   canDebug: boolean;
+  hasStanding: boolean;
   sidebarTab: SidebarTab;
   onTabChange: (tab: SidebarTab) => void;
   sidebarExpanded: boolean;
@@ -145,6 +156,11 @@ function SidebarTabs({
       <button onClick={() => onTabChange("map")} className={tabClass("map")}>
         Map
       </button>
+      {hasStanding ? (
+        <button onClick={() => onTabChange("standing")} className={tabClass("standing")}>
+          Standing
+        </button>
+      ) : null}
       {canDebug ? (
         <>
           <button onClick={() => onTabChange("entities")} className={tabClass("entities")}>

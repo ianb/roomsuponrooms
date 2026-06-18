@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure, authedProcedure } from "./trpc.js";
 import { describeRoomFull } from "../core/index.js";
 import type { EntityStore } from "../core/index.js";
+import { playerStatus } from "../core/progression.js";
 import { recordToHandler } from "./handler-convert.js";
 import { applyAiEntityRecords } from "./apply-ai-records.js";
 import { applyEvents } from "./event-apply.js";
@@ -235,6 +236,17 @@ const gameRouter = router({
       };
     });
     return { rooms, currentRoomId };
+  }),
+
+  playerStanding: authedProcedure.input(gameInput).query(async ({ input, ctx }) => {
+    const session = { gameId: input.gameId, userId: ctx.userId };
+    const game = await getOrCreateGame(session);
+    const players = game.store.findByTag("player");
+    const player = players[0];
+    if (!player) return { tracks: [] };
+    return {
+      tracks: playerStatus(game.store, { tracks: game.tracks || [], playerId: player.id }),
+    };
   }),
 
   prompts: authedProcedure.input(gameInput).query(async ({ input, ctx }) => {

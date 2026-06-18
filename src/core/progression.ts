@@ -137,6 +137,46 @@ export function describeTracksForAuthoring(tracks: Track[] | undefined): string 
   return lines.join("\n");
 }
 
+/** Structured standing for one track — for UI panels (vs. the text describeStatus). */
+export interface TrackStatus {
+  name: string;
+  label: string;
+  value: number;
+  /** Current tier name, or null for a tierless meter or one still below its first tier. */
+  tier: string | null;
+  /** The next tier to reach, included only when the track is signposted. */
+  nextTier: { name: string; at: number } | null;
+  hasTiers: boolean;
+}
+
+/**
+ * Structured player standing across all non-hidden tracks, for the client's
+ * Standing panel. Returns [] when the world declares no tracks (so the tab can
+ * hide itself).
+ */
+export function playerStatus(
+  store: EntityStore,
+  { tracks, playerId }: { tracks: Track[]; playerId: string },
+): TrackStatus[] {
+  if (!store.has(playerId)) return [];
+  const player = store.get(playerId);
+  const out: TrackStatus[] = [];
+  for (const track of tracks) {
+    if (track.hidden) continue;
+    const value = meterValue(player, track.name);
+    const hasTiers = Boolean(track.tiers && track.tiers.length > 0);
+    const idx = hasTiers ? tierIndex(track, value) : -1;
+    const tier = idx >= 0 && track.tiers ? track.tiers[idx]!.name : null;
+    let nextTier: { name: string; at: number } | null = null;
+    if (track.signpostNext && track.tiers && idx + 1 < track.tiers.length) {
+      const next = track.tiers[idx + 1]!;
+      nextTier = { name: next.name, at: next.at };
+    }
+    out.push({ name: track.name, label: track.label, value, tier, nextTier, hasTiers });
+  }
+  return out;
+}
+
 /** Player-facing status readout: each visible track, its value, current tier, signposted next. */
 export function describeStatus(
   store: EntityStore,
