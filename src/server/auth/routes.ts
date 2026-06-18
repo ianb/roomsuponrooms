@@ -123,7 +123,15 @@ export async function handleAuthRoute(request: Request, env: AuthEnv): Promise<R
     return handleGoogleCallback(url, env);
   }
 
-  if (path === "/auth/dev-login" && request.method === "POST") {
+  // Dev-only login: gated on the absence of a Google client id so it can never
+  // be reached in production (where it would otherwise mint an admin session
+  // for any caller). GET is supported as a convenience for browser automation
+  // and manual testing — open /auth/dev-login?name=Tester and you're logged in.
+  if (
+    path === "/auth/dev-login" &&
+    !env.googleClientId &&
+    (request.method === "POST" || request.method === "GET")
+  ) {
     return handleDevLogin(request, env);
   }
 
@@ -220,8 +228,13 @@ async function handleGoogleCallback(url: URL, env: AuthEnv): Promise<Response> {
 }
 
 async function handleDevLogin(request: Request, env: AuthEnv): Promise<Response> {
-  const body = (await request.json()) as { name?: string };
-  const name = body.name ? body.name.trim() : "";
+  let name = "";
+  if (request.method === "GET") {
+    name = (new URL(request.url).searchParams.get("name") || "").trim();
+  } else {
+    const body = (await request.json()) as { name?: string };
+    name = body.name ? body.name.trim() : "";
+  }
   if (!name) {
     return jsonResponse({ error: "Name is required" }, { status: 400 });
   }
@@ -230,11 +243,15 @@ async function handleDevLogin(request: Request, env: AuthEnv): Promise<Response>
     { sub: user.id, name: user.displayName, roles: user.roles },
     env.jwtSecret,
   );
+  const cookie = sessionCookie(jwt, { secure: env.secure });
+  // GET callers (browser automation, manual URL) land on the home page logged in;
+  // POST callers (the dev login form) get JSON back.
+  if (request.method === "GET") {
+    return redirectResponse("/", { "Set-Cookie": cookie });
+  }
   return jsonResponse(
     { user: { userId: user.id, displayName: user.displayName } },
-    {
-      headers: { "Set-Cookie": sessionCookie(jwt, { secure: env.secure }) },
-    },
+    { headers: { "Set-Cookie": cookie } },
   );
 }
 
