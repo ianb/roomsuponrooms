@@ -2,6 +2,7 @@ import type { EntityStore, Entity } from "./entity.js";
 import type { WorldEvent } from "./verb-types.js";
 import { describeRoomFull } from "./describe.js";
 import { isRoomLit, darknessDescription } from "./darkness.js";
+import { gateState } from "./progression.js";
 
 export interface UnresolvedExitContext {
   exit: Entity;
@@ -35,6 +36,25 @@ function exitDirection(e: Entity): string {
   return (e.exit && e.exit.direction) || "";
 }
 
+/**
+ * Evaluate an exit's progression gate. Returns a blocking MovementResult when
+ * the gate fails, `null` when a hidden gate should make a bare direction word
+ * fall through to normal parsing, or `undefined` when the exit is passable.
+ */
+function gatedExitBlock(
+  store: EntityStore,
+  { exit, direction, isExplicitGo }: { exit: Entity; direction: string; isExplicitGo: boolean },
+): MovementResult | null | undefined {
+  const gate = gateState(exit, getPlayer(store));
+  if (!gate.gated || gate.passes) return undefined;
+  if (gate.hidden) {
+    if (!isExplicitGo) return null;
+    return { output: "{!You can't go that way.!}", direction, moved: false, events: [] };
+  }
+  const signpost = gate.message ? gate.message : `The way ${direction} is closed to you for now.`;
+  return { output: `{!${signpost}!}`, direction, moved: false, events: [] };
+}
+
 export function tryMovement(store: EntityStore, input: string): MovementResult | null {
   const trimmed = input.trim().toLowerCase();
   let direction: string;
@@ -63,6 +83,11 @@ export function tryMovement(store: EntityStore, input: string): MovementResult |
   const exit = exits.find((e) => exitDirection(e) === direction);
 
   if (exit) {
+    // Progression gate: an exit may stay shut until a meter crosses a
+    // threshold. Hidden gates behave as if the exit isn't there; visible
+    // gates show their signpost. See gatedExitBlock.
+    const blocked = gatedExitBlock(store, { exit, direction, isExplicitGo });
+    if (blocked !== undefined) return blocked;
     if (exit.properties.locked) {
       const exitName = exit.name !== exit.id ? exit.name : "way";
       return { output: `{!The ${exitName} is locked.!}`, direction, moved: false, events: [] };

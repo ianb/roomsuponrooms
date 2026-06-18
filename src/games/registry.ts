@@ -2,6 +2,7 @@ import type { EntityStore } from "../core/entity.js";
 import type { VerbRegistry } from "../core/verbs.js";
 import type { HandlerLib } from "../core/handler-lib.js";
 import type { GamePrompts, ConversationFileData } from "../core/game-data.js";
+import type { Track } from "../core/progression.js";
 import type { ConversationState } from "../core/conversation.js";
 import type { RecentOutputBuffer } from "../server/recent-output.js";
 
@@ -23,6 +24,8 @@ export interface GameInstance {
   conversations?: Record<string, ConversationFileData>;
   conversationState?: ConversationState;
   recentOutputs?: RecentOutputBuffer;
+  /** Per-world progression tracks (named meters with optional tiers). */
+  tracks?: Track[];
 }
 
 const games: Map<string, GameDefinition> = new Map();

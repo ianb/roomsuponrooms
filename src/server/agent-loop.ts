@@ -116,6 +116,7 @@ export async function tickSession(
     store: game.store,
     prompts: game.prompts,
     libClass: game.libClass,
+    tracks: game.tracks,
   });
 
   const messages: ModelMessage[] =

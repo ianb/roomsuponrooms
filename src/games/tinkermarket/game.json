@@ -49,6 +49,46 @@
           "dense"
         ]
       }
+    },
+    {
+      "name": "coin",
+      "description": "Progression meter: the player's money. Spend it for access; earned by selling.",
+      "schema": {
+        "type": "number"
+      },
+      "defaultValue": 0
+    },
+    {
+      "name": "craft",
+      "description": "Progression meter: the player's crafting standing. Earned by making things; gates artisan-only areas.",
+      "schema": {
+        "type": "number"
+      },
+      "defaultValue": 0
+    }
+  ],
+  "tracks": [
+    {
+      "name": "coin",
+      "label": "Coin"
+    },
+    {
+      "name": "craft",
+      "label": "Craft",
+      "signpostNext": true,
+      "tiers": [
+        { "name": "an Apprentice", "at": 0 },
+        {
+          "name": "a Journeyman",
+          "at": 2,
+          "announce": "*** Word travels: the makers now call you a Journeyman. Tighter lanes will make room for you. ***"
+        },
+        {
+          "name": "a Master",
+          "at": 4,
+          "announce": "*** You are acknowledged a Master of the craft. Things hidden from lesser hands begin to show themselves. ***"
+        }
+      ]
     }
   ]
 }

@@ -92,6 +92,31 @@ const BASE_PROPS = [
     schema: { type: "string", format: "entity-ref" },
   },
   {
+    name: "gateTrack",
+    description:
+      "Progression gate: name of the meter (track) that must reach gateAtLeast before this exit/entity is reachable",
+    schema: { type: "string" },
+  },
+  {
+    name: "gateAtLeast",
+    description: "Progression gate: meter value required to pass gateTrack",
+    schema: { type: "number" },
+    defaultValue: 0,
+  },
+  {
+    name: "gateHidden",
+    description:
+      "Progression gate: when true, hide this exit/entity entirely until the gate is met (no signpost)",
+    schema: { type: "boolean" },
+    defaultValue: false,
+  },
+  {
+    name: "gateMessage",
+    description:
+      "Progression gate: in-character signpost shown when a visible gate blocks the player",
+    schema: { type: "string" },
+  },
+  {
     name: "powerRemaining",
     description: "Remaining power/fuel for a device",
     schema: { type: "number" },

@@ -1,5 +1,13 @@
 import type { EntityStore, Entity } from "./entity.js";
 import { renderTemplate } from "./templates.js";
+import { gateState } from "./progression.js";
+
+/** A hidden, unmet progression gate removes an entity from player-facing listings. */
+function hiddenByGate(entity: Entity, player: Entity | null): boolean {
+  if (!player) return false;
+  const gate = gateState(entity, player);
+  return gate.gated && !gate.passes && gate.hidden;
+}
 
 /** Mark an entity name for highlighting in output: {{id|Name}} */
 export function entityRef(entity: Entity): string {
@@ -25,7 +33,8 @@ export function describeRoomFull(
 ): string {
   const name = entityRef(room);
   const description = renderTemplate(room.description, { entity: room, store });
-  const contents = store.getContents(room.id);
+  const player = store.has(playerId) ? store.get(playerId) : null;
+  const contents = store.getContents(room.id).filter((e) => !hiddenByGate(e, player));
 
   const dirOrder: Record<string, number> = {
     north: 0,

@@ -1,5 +1,6 @@
 import type { EntityStore } from "./entity.js";
 import type { VerbRegistry } from "./verbs.js";
+import type { Track } from "./progression.js";
 import { processCommand } from "./world.js";
 import { describeRoomFull } from "./describe.js";
 import { isRoomLit, darknessDescription } from "./darkness.js";
@@ -31,9 +32,11 @@ class PlayerNotFoundError extends Error {
 export function createGameRunner({
   store,
   verbs,
+  tracks,
 }: {
   store: EntityStore;
   verbs: VerbRegistry;
+  tracks?: Track[];
 }): GameRunner {
   function getPlayer(): { id: string; location: string } {
     const players = store.findByTag("player");
@@ -52,7 +55,7 @@ export function createGameRunner({
   }
 
   function command(input: string): string {
-    const result = processCommand(store, { input, verbs });
+    const result = processCommand(store, { input, verbs, tracks });
     return result.output;
   }
 

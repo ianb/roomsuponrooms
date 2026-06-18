@@ -6,6 +6,8 @@ import { describeParsed, describeResolved } from "./debug-helpers.js";
 import type { ParsedCommand } from "./verb-types.js";
 import { tryMovement, getPlayer, getPlayerRoom } from "./movement.js";
 import type { UnresolvedExitContext } from "./movement.js";
+import { tierCrossings, trackSnapshot, describeStatus } from "./progression.js";
+import type { Track } from "./progression.js";
 
 export { getPlayer, getPlayerRoom } from "./movement.js";
 export type { UnresolvedExitContext } from "./movement.js";
@@ -115,51 +117,117 @@ function showParse(parsed: ParsedCommand): string {
   return `${parsed.verb} [${parsed.object}] ${parsed.prep} [${parsed.indirect}]`;
 }
 
+const STATUS_COMMANDS = new Set(["status", "progress", "standing", "stats"]);
+
+/** Append any tier-up ceremony lines to a command's output parts. */
+function appendCeremony(
+  store: EntityStore,
+  {
+    parts,
+    tracks,
+    before,
+    playerId,
+  }: { parts: string[]; tracks: Track[]; before: Map<string, number>; playerId: string },
+): void {
+  if (tracks.length === 0) return;
+  parts.push(...tierCrossings(store, { tracks, before, playerId }));
+}
+
+/** Handle the informational "status"/"progress" command, or null if it's not one. */
+function statusResult(
+  store: EntityStore,
+  {
+    input,
+    playerId,
+    tracks,
+    debug,
+  }: { input: string; playerId: string; tracks: Track[]; debug?: boolean },
+): CommandResult | null {
+  const trimmed = input.trim().toLowerCase();
+  if (tracks.length === 0 || !STATUS_COMMANDS.has(trimmed)) return null;
+  return {
+    output: describeStatus(store, { tracks, playerId }),
+    events: [],
+    debug: debug ? { parse: trimmed, outcome: "status" } : undefined,
+  };
+}
+
+function runMovement(
+  store: EntityStore,
+  {
+    movement,
+    verbs,
+    player,
+    debug,
+    tracks,
+    before,
+  }: {
+    movement: NonNullable<ReturnType<typeof tryMovement>>;
+    verbs: VerbRegistry;
+    player: Entity;
+    debug?: boolean;
+    tracks: Track[];
+    before: Map<string, number>;
+  },
+): CommandResult {
+  if (movement.unresolvedExit) {
+    return {
+      output: "",
+      events: [],
+      unresolvedExit: movement.unresolvedExit,
+      debug: debug ? { parse: `go ${movement.direction}`, outcome: "unresolved-exit" } : undefined,
+    };
+  }
+  const parts = [movement.output];
+  const allEvents = [...movement.events];
+  if (movement.moved) {
+    const sys = dispatchSystemVerbs(verbs, {
+      store,
+      player,
+      systemVerbs: [SYSTEM_VERBS.ENTER, SYSTEM_VERBS.TICK],
+    });
+    parts.push(...sys.outputs);
+    allEvents.push(...sys.events);
+    const enc = dispatchEncounters(verbs, { store, player });
+    parts.push(...enc.outputs);
+    allEvents.push(...enc.events);
+    appendCeremony(store, { parts, tracks, before, playerId: player.id });
+  }
+  return {
+    output: parts.join("\n"),
+    events: allEvents,
+    // "movement-blocked": the movement system handled the command but the
+    // player did not move (e.g. locked exit). Distinct from "movement" so
+    // tooling can tell a successful move from a refusal.
+    debug: debug
+      ? {
+          parse: `go ${movement.direction}`,
+          outcome: movement.moved ? "movement" : "movement-blocked",
+        }
+      : undefined,
+  };
+}
+
 export function processCommand(
   store: EntityStore,
-  { input, verbs, debug }: { input: string; verbs: VerbRegistry; debug?: boolean },
+  {
+    input,
+    verbs,
+    debug,
+    tracks,
+  }: { input: string; verbs: VerbRegistry; debug?: boolean; tracks?: Track[] },
 ): CommandResult {
   const player = getPlayer(store);
+  const declaredTracks = tracks || [];
+  // Snapshot meters before the command so we can announce any tier crossings.
+  const before = trackSnapshot(player, declaredTracks);
+
+  const status = statusResult(store, { input, playerId: player.id, tracks: declaredTracks, debug });
+  if (status) return status;
 
   const movement = tryMovement(store, input);
   if (movement) {
-    if (movement.unresolvedExit) {
-      return {
-        output: "",
-        events: [],
-        unresolvedExit: movement.unresolvedExit,
-        debug: debug
-          ? { parse: `go ${movement.direction}`, outcome: "unresolved-exit" }
-          : undefined,
-      };
-    }
-    const parts = [movement.output];
-    const allEvents = [...movement.events];
-    if (movement.moved) {
-      const sys = dispatchSystemVerbs(verbs, {
-        store,
-        player,
-        systemVerbs: [SYSTEM_VERBS.ENTER, SYSTEM_VERBS.TICK],
-      });
-      parts.push(...sys.outputs);
-      allEvents.push(...sys.events);
-      const enc = dispatchEncounters(verbs, { store, player });
-      parts.push(...enc.outputs);
-      allEvents.push(...enc.events);
-    }
-    return {
-      output: parts.join("\n"),
-      events: allEvents,
-      // "movement-blocked": the movement system handled the command but the
-      // player did not move (e.g. locked exit). Distinct from "movement" so
-      // tooling can tell a successful move from a refusal.
-      debug: debug
-        ? {
-            parse: `go ${movement.direction}`,
-            outcome: movement.moved ? "movement" : "movement-blocked",
-          }
-        : undefined,
-    };
+    return runMovement(store, { movement, verbs, player, debug, tracks: declaredTracks, before });
   }
 
   const parsed = parseCommand(input);
@@ -209,6 +277,7 @@ export function processCommand(
       parts.push(...sys.outputs);
       allEvents.push(...sys.events);
     }
+    appendCeremony(store, { parts, tracks: declaredTracks, before, playerId: player.id });
     return {
       output: parts.join("\n"),
       events: allEvents,

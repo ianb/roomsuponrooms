@@ -1,6 +1,8 @@
 import type { EntityStore } from "../core/entity.js";
 import type { GamePrompts } from "../core/game-data.js";
 import { HandlerLib } from "../core/handler-lib.js";
+import { describeTracksForAuthoring } from "../core/progression.js";
+import type { Track } from "../core/progression.js";
 import { collectTags, describeProperties } from "./ai-prompt-helpers.js";
 import {
   ROLE_SECTION,
@@ -41,10 +43,12 @@ export function buildAgentSystemPrompt({
   store,
   prompts,
   libClass,
+  tracks,
 }: {
   store: EntityStore;
   prompts?: GamePrompts;
   libClass?: typeof HandlerLib;
+  tracks?: Track[];
 }): string {
   const sections: string[] = [];
 
@@ -64,6 +68,7 @@ export function buildAgentSystemPrompt({
   sections.push(SCENERY_SECTION);
   sections.push(`<existing-tags>\n${collectTags(store).join(", ")}\n</existing-tags>`);
   sections.push(`<available-properties>\n${describeProperties(store)}\n</available-properties>`);
+  sections.push(`<available-tracks>\n${describeTracksForAuthoring(tracks)}\n</available-tracks>`);
   sections.push(RULES_SECTION);
   return sections.join("\n\n");
 }

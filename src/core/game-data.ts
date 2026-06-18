@@ -1,5 +1,6 @@
 import type { ParsedCommand } from "./verb-types.js";
 import type { RoomTexture } from "./entity-types.js";
+import type { Track } from "./progression.js";
 
 /** Prompt layers for AI guidance — style, tone, constraints */
 export interface GamePrompts {
@@ -34,6 +35,8 @@ export interface GameData {
   };
   prompts?: GamePrompts;
   properties?: PropertyData[];
+  /** Per-world progression tracks (named meters with optional tiers). */
+  tracks?: Track[];
   entities: EntityData[];
   handlers?: HandlerData[];
   /** NPC conversation data, keyed by entity ID */

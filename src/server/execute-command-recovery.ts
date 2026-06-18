@@ -8,7 +8,12 @@ interface RecoveryArgs {
   game: GameInstance;
   session: SessionKey;
   reinitGame: (s: SessionKey) => Promise<GameInstance>;
-  processArgs: { input: string; verbs: GameInstance["verbs"]; debug?: boolean };
+  processArgs: {
+    input: string;
+    verbs: GameInstance["verbs"];
+    debug?: boolean;
+    tracks?: GameInstance["tracks"];
+  };
 }
 
 export type RecoveryResult =

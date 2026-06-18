@@ -14,6 +14,7 @@ export interface LoadedGame {
   libClass: typeof HandlerLib;
   prompts?: GameData["prompts"];
   conversations?: GameData["conversations"];
+  tracks?: GameData["tracks"];
 }
 
 export interface LoadGameOptions {
@@ -38,6 +39,7 @@ export function parseGameDataJsonl(content: string): GameData {
   const header = JSON.parse(firstLine) as {
     meta: GameData["meta"];
     properties?: PropertyData[];
+    tracks?: GameData["tracks"];
   };
   if (!header.meta) {
     throw new MissingMetaError();
@@ -58,6 +60,7 @@ export function parseGameDataJsonl(content: string): GameData {
   return {
     meta: header.meta,
     properties: header.properties,
+    tracks: header.tracks,
     entities,
     handlers: handlers.length > 0 ? handlers : undefined,
   };
@@ -124,5 +127,6 @@ export function loadGameData(data: GameData, options?: LoadGameOptions): LoadedG
     libClass,
     prompts: data.prompts,
     conversations: data.conversations,
+    tracks: data.tracks,
   };
 }

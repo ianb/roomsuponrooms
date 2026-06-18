@@ -1,1 +1,1 @@
-{"id":"player:1","tags":["player"],"name":"Visitor","description":"","location":"room:gate","properties":{"carryingCapacity":10,"score":0,"maxScore":0}}
+{"id":"player:1","tags":["player"],"name":"Visitor","description":"","location":"room:gate","properties":{"carryingCapacity":10,"coin":12,"craft":0}}

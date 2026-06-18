@@ -50,6 +50,25 @@ export class HandlerLib {
     };
   }
 
+  /**
+   * Award points to a named progression track (e.g. "craft", "reputation").
+   * Returns a set-property event carrying the new absolute total, so the
+   * change persists on replay. The meter must be a declared game property.
+   * There is no universal score — every track is game-defined.
+   */
+  award(track: string, delta: number): WorldEvent {
+    requireString(track, "lib.award() track");
+    const d = typeof delta === "number" ? delta : 0;
+    const current = (this.player.properties[track] as number) || 0;
+    return {
+      type: "set-property",
+      entityId: this.player.id,
+      property: track,
+      value: current + d,
+      description: `${d >= 0 ? "+" : ""}${d} ${track}`,
+    };
+  }
+
   moveEvent(entityId: string, opts: { to: string; from: string; description: string }): WorldEvent {
     requireString(entityId, "lib.moveEvent() entityId");
     const o = requireOpts(opts, "lib.moveEvent()");

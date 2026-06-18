@@ -10,6 +10,7 @@ import type { ToolContext } from "./agent-tool-context.js";
 import { applyPendingEditsToWorld } from "./agent-world-view.js";
 import { loadAgentGameInstance } from "./agent-game-loader.js";
 import { trySceneryResolve, describeSceneryGap } from "./agent-tool-playtest-scenery.js";
+import { classifyOutcome } from "./agent-tool-playtest-classify.js";
 import {
   startSandboxConversation,
   sandboxConversationWord,
@@ -248,7 +249,12 @@ async function runPlaytestStep(
     const convo = await sandboxConversationWord(game, { gameId, word: command });
     return conversationStep(command, convo);
   }
-  const step = runOneCommand({ store: game.store, verbs: game.verbs, command });
+  const step = runOneCommand({
+    store: game.store,
+    verbs: game.verbs,
+    command,
+    tracks: game.tracks,
+  });
   const startEvent = step.events.find((e) => e.type === "start-conversation");
   if (startEvent) {
     const convo = await startSandboxConversation(game, { gameId, npcId: startEvent.entityId });
@@ -265,45 +271,20 @@ async function runPlaytestStep(
   return step;
 }
 
-function classifyOutcome(
-  result: CommandResult,
-  debug: { outcome?: string } | undefined,
-): { outcome: PlaytestStep["outcome"]; handlerError?: string } {
-  if (result.unresolvedExit || result.unresolvedObject) {
-    return { outcome: "unresolved" };
-  }
-  if (result.unhandled && result.unhandled.removedBroken) {
-    // A handler matched but its code threw; the registry auto-removed it.
-    // Report the actual error — a bare "unhandled" here sends the agent
-    // chasing dispatch problems when the real bug is in its handler code.
-    const broken = result.unhandled.removedBroken;
-    return {
-      outcome: "error",
-      handlerError:
-        `Handler "${broken.handler}" threw: ${broken.error}. ` +
-        "The broken handler was automatically removed from the registry — " +
-        "fix the code and re-apply it (handlerCreate) before playtesting again.",
-    };
-  }
-  if (result.unhandled) return { outcome: "unhandled" };
-  if (debug && debug.outcome === "vetoed") return { outcome: "vetoed" };
-  if (debug && debug.outcome === "movement") return { outcome: "movement" };
-  if (debug && debug.outcome === "movement-blocked") return { outcome: "movement-blocked" };
-  return { outcome: "performed" };
-}
-
 function runOneCommand({
   store,
   verbs,
   command,
+  tracks,
 }: {
   store: EntityStore;
   verbs: VerbRegistry;
   command: string;
+  tracks?: GameInstance["tracks"];
 }): PlaytestStep {
   let result: CommandResult;
   try {
-    result = processCommand(store, { input: command, verbs, debug: true });
+    result = processCommand(store, { input: command, verbs, debug: true, tracks });
   } catch (e: unknown) {
     return {
       command,
@@ -321,7 +302,6 @@ function runOneCommand({
     description: e.description,
   }));
   const debug = result.debug as { outcome?: string; handler?: string; parse?: string } | undefined;
-
   // Scenery fallback: processCommand only consults the entity registry, so an
   // examine of a stored scenery word comes back as unresolved here even though
   // it would resolve in real play (via executeCommand's trySceneryFallback).

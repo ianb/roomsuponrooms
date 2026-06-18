@@ -241,7 +241,7 @@ export async function executeCommand(
     game,
     session,
     reinitGame,
-    processArgs: { input: commandText, verbs: game.verbs, debug: input.debug },
+    processArgs: { input: commandText, verbs: game.verbs, debug: input.debug, tracks: game.tracks },
   });
   if (!recovery.ok) return recovery.response;
   ({ game } = recovery);

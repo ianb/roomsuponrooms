@@ -21,6 +21,7 @@ export function readGameDir(dir: string): GameData {
   const manifest = JSON.parse(readFileSync(resolve(dir, "game.json"), "utf-8")) as {
     meta: GameData["meta"];
     properties?: GameData["properties"];
+    tracks?: GameData["tracks"];
   };
 
   const entities: EntityData[] = [];
@@ -51,6 +52,7 @@ export function readGameDir(dir: string): GameData {
     meta: manifest.meta,
     prompts: prompts || undefined,
     properties: manifest.properties,
+    tracks: manifest.tracks,
     entities,
     handlers: handlers.length > 0 ? handlers : undefined,
     conversations: conversations || undefined,

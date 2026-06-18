@@ -149,4 +149,25 @@ A mixed batch (multiple targets and operations in one call):
       { "target": "exit:gate:north", "entityUpdate": { "properties": { "locked": false } } }
     ]
   }
+
+PROGRESSION: gating content behind a meter (use this to make the world feel REVEALED, not all-open).
+
+A "track" is a per-world meter on the player (e.g. craft, reputation, coin) declared in the game's config; check <available-tracks> below to see which this world has, and their tiers. There is NO universal score — only the tracks listed there.
+
+Two building blocks, both made of REGISTERED PROPERTIES (so they work with the same entityCreate/entityUpdate edits you already use — no new operation):
+
+1. GATE — lock an exit or entity behind a meter by setting these properties on it:
+     gateTrack    (string)  the meter to test, e.g. "craft"
+     gateAtLeast  (number)  the value required
+     gateHidden   (boolean) true = the exit/entity is invisible until met (a surprise reveal); omit/false = visible but blocked
+     gateMessage  (string)  in-character signpost shown when a VISIBLE gate blocks the player
+   Gates are reactive — the content simply becomes reachable once the player qualifies; there is nothing to "unlock" later. Prefer a visible gateMessage for main-path goals (the player should see what to aim for) and gateHidden for optional side rewards.
+     { "target": "exit:plaza:east", "entityUpdate": { "properties": { "gateTrack": "reputation", "gateAtLeast": 3, "gateMessage": "The guards know your face now, but not yet your name. Earn more standing and they'll wave you through." } } }
+     { "target": "item:hidden-cache", "entityUpdate": { "properties": { "gateTrack": "craft", "gateAtLeast": 5, "gateHidden": true } } }
+
+2. AWARD — raise a meter from inside a handler's perform body with lib.award('track', n), which returns a set-property event (it persists on replay). Add it to the events you already return:
+     "perform": "return { output: 'You finish the commission. Word gets around.', events: [lib.award('reputation', 1)] };"
+   Crossing a tier is announced automatically — you do NOT need to print the level-up yourself. The player can type "status" any time to see their standing.
+
+Designing a new arc is usually: pick a track from <available-tracks>, add lib.award(...) to the handlers that represent earning it, and put gates on the exits/entities that the new standing should open.
 </apply-edits>`;
