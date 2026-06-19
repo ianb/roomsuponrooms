@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { WorldEvent } from "./verb-types.js";
 
 /**
@@ -39,20 +40,33 @@ export interface Sandbox {
 
 export class SandboxNotConfiguredError extends Error {
   constructor() {
-    super("No sandbox configured — call setSandbox() in the entry point");
+    super("No sandbox configured — call setSandbox()/runWithSandbox() in the entry point");
     this.name = "SandboxNotConfiguredError";
   }
 }
 
-let current: Sandbox | null = null;
+// The Worker builds a per-request sandbox that closes over the request's
+// ExecutionContext (ctx.exports). Cloudflare interleaves concurrent requests in
+// one isolate across awaits, so that sandbox must NOT live in a shared module
+// global — it's scoped per request via AsyncLocalStorage. Node uses a stateless
+// singleton sandbox, so it just sets the fallback once at startup.
+const scope = new AsyncLocalStorage<Sandbox>();
+let fallback: Sandbox | null = null;
 
 export function setSandbox(sandbox: Sandbox): void {
-  current = sandbox;
+  fallback = sandbox;
+}
+
+/** Run `fn` with `sandbox` as the active sandbox for its async context. */
+export function runWithSandbox<T>(sandbox: Sandbox, fn: () => T): T {
+  return scope.run(sandbox, fn);
 }
 
 export function getSandbox(): Sandbox {
-  if (!current) throw new SandboxNotConfiguredError();
-  return current;
+  const scoped = scope.getStore();
+  if (scoped) return scoped;
+  if (fallback) return fallback;
+  throw new SandboxNotConfiguredError();
 }
 
 /**

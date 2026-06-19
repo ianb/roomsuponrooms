@@ -53,6 +53,15 @@ function handlerScope(context: VerbContext): Record<string, unknown> {
   return scope;
 }
 
+// Methods reachable on every object that must never be callable through the
+// bridge — otherwise handler code could invoke e.g. lib.valueOf() (serializing
+// the live store/player/room) or reach the prototype chain.
+const BLOCKED_LIB_METHODS = new Set<string>([
+  "prototype",
+  "__proto__",
+  ...Object.getOwnPropertyNames(Object.prototype),
+]);
+
 /** Bridge a live game lib instance into the generic LibDispatch the sandbox
  *  forwards every `lib.method(...)` call to. Methods run in the parent over the
  *  live store; args (snapshots / ids) and returns pass through as JSON. */
@@ -60,6 +69,9 @@ function libDispatch(lib: HandlerLib): LibDispatch {
   const target = lib as unknown as Record<string, unknown>;
   return {
     invoke: (method, args) => {
+      if (BLOCKED_LIB_METHODS.has(method)) {
+        throw new UnknownLibMethodError(method);
+      }
       const fn = target[method];
       if (typeof fn !== "function") {
         throw new UnknownLibMethodError(method);

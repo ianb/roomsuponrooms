@@ -18,18 +18,19 @@ export function buildPerformCode(response: {
   code?: string;
   events: Array<{ type: string; property: string; value: unknown; description: string }>;
 }): string {
+  // lib.* is async in the sandbox — generated code MUST await every call.
   if (response.decision === "refuse") {
-    return `return lib.result("{!" + ${JSON.stringify(response.message)} + "!}");`;
+    return `return await lib.result("{!" + ${JSON.stringify(response.message)} + "!}");`;
   }
   if (response.code) {
     return response.code;
   }
   if (response.events.length === 0) {
-    return `return lib.result(${JSON.stringify(response.message)});`;
+    return `return await lib.result(${JSON.stringify(response.message)});`;
   }
   const eventStrs = response.events.map(
     (e) =>
-      `lib.setEvent(object.id, ${JSON.stringify({ property: e.property, value: e.value, description: e.description })})`,
+      `await lib.setEvent(object.id, ${JSON.stringify({ property: e.property, value: e.value, description: e.description })})`,
   );
   return `return { output: ${JSON.stringify(response.message)}, events: [${eventStrs.join(", ")}] };`;
 }
