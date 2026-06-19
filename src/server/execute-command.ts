@@ -173,12 +173,22 @@ async function tryConversationMode(
   };
 }
 
+/** Debug output exposes AI prompts (designer secrets); only debug-role callers get it. */
+export function debugAllowed(input: CommandInput): boolean {
+  return input.debug === true && !!input.roles && input.roles.includes("debug");
+}
+
 export async function executeCommand(
   input: CommandInput,
   { game, reinitGame, onAiStart, onAgentProgress }: ExecuteOptions,
 ): Promise<CommandResult> {
   const trimmed = input.text.trim();
   const session: SessionKey = { gameId: input.gameId, userId: input.userId };
+  // Debug output includes AI prompts, which contain designer-only secrets.
+  // Honor the client's debug flag only for callers that hold the debug role —
+  // gating input.debug here covers both the opts below and the AI-fallback
+  // helpers (which read input.debug directly), for every entry point.
+  input.debug = debugAllowed(input);
   let hasAiRole = !input.roles || input.roles.includes("ai");
   // Ensure recent output buffer exists on game instance
   if (!game.recentOutputs) {

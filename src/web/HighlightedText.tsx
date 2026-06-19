@@ -4,6 +4,19 @@ import type { ReactNode } from "react";
 const HIGHLIGHT_PATTERN =
   /{img:([^|}]+)\|?([^}]*)}|{link:([^|}]+)\|([^}]+)}|{{([^|]+)\|([^}]+)}}|\[\[([^\]]+)]]|<<([^>]+)>>|\(\(([^|]+)\|([^)]+)\)\)|{!([^!]+)!}/g;
 
+/**
+ * Validate a {link:...} href before rendering. AI/user-authored content flows
+ * through here, so only same-origin relative paths and explicit http(s) URLs are
+ * allowed — javascript:, data:, and other schemes are rejected so a crafted link
+ * can't run script in the app origin. Returns null for unsafe hrefs.
+ */
+export function safeHref(raw: string): string | null {
+  const href = raw.trim();
+  if (href.startsWith("/") && !href.startsWith("//")) return href; // same-origin relative
+  if (/^https?:\/\//i.test(href)) return href; // explicit http(s)
+  return null;
+}
+
 interface TextSegment {
   type: "text" | "entity" | "topic" | "direction" | "command" | "refusal" | "image" | "link";
   text: string;
@@ -131,10 +144,15 @@ export function HighlightedText({
       );
     }
     if (seg.type === "link" && seg.href) {
+      const href = safeHref(seg.href);
+      if (!href) {
+        // Unsafe scheme (javascript:, data:, …) — render as plain text, not a link.
+        return <span key={i}>{seg.text}</span>;
+      }
       return (
         <a
           key={i}
-          href={seg.href}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           className="text-highlight-topic underline hover:no-underline"

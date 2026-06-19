@@ -1,11 +1,22 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
+import { TRPCError } from "@trpc/server";
 import { router, aiRoleProcedure } from "./trpc.js";
 import { getStorage } from "./storage-instance.js";
 import { tickSession } from "./agent-loop.js";
+import { checkAiQuota } from "./ai-quota.js";
 import { isValidGameId } from "../games/registry.js";
 import { emptyAgentTokenUsage } from "./storage.js";
 import type { AgentSessionRecord, AgentSessionStatus } from "./storage.js";
+
+/** Agent sessions can mutate the shared world under their owner's provenance, so
+ *  only the owner (or an admin) may inspect or advance one. */
+export function canAccess(
+  session: AgentSessionRecord,
+  ctx: { userId: string; roles: string[] },
+): boolean {
+  return session.userId === ctx.userId || ctx.roles.includes("admin");
+}
 
 const validGameId = z.string().refine(isValidGameId, { message: "Unknown game" });
 
@@ -58,6 +69,8 @@ export const agentRouter = router({
    * The mutation returns once the session is finished, bailed, or failed.
    */
   start: aiRoleProcedure.input(startInputSchema).mutation(async ({ input, ctx }) => {
+    const quotaMsg = await checkAiQuota(ctx.userId, ctx.roles);
+    if (quotaMsg) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: quotaMsg });
     const storage = getStorage();
     const id = "s-" + nanoid(10);
     const now = new Date().toISOString();
@@ -91,22 +104,31 @@ export const agentRouter = router({
     return { sessionId: id, status: result.status, summary: result.summary };
   }),
 
-  /** Run a single tick on an existing running session. */
-  tick: aiRoleProcedure.input(sessionIdInput).mutation(async ({ input }) => {
+  /** Run a single tick on an existing running session (owner or admin only). */
+  tick: aiRoleProcedure.input(sessionIdInput).mutation(async ({ input, ctx }) => {
+    const session = await getStorage().getAgentSession(input.sessionId);
+    if (!session || !canAccess(session, ctx)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Not your agent session" });
+    }
+    const quotaMsg = await checkAiQuota(ctx.userId, ctx.roles);
+    if (quotaMsg) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: quotaMsg });
     const result = await tickSession(input.sessionId);
     return { status: result.status, summary: result.summary, turnsRun: result.turnsRun };
   }),
 
-  /** Get the current state of a session. */
-  status: aiRoleProcedure.input(sessionIdInput).query(async ({ input }) => {
+  /** Get the current state of a session (owner or admin only). */
+  status: aiRoleProcedure.input(sessionIdInput).query(async ({ input, ctx }) => {
     const session = await getStorage().getAgentSession(input.sessionId);
-    if (!session) return null;
+    if (!session || !canAccess(session, ctx)) return null;
     return summarizeSession(session);
   }),
 
-  /** List all sessions, optionally filtered by game and status. */
-  list: aiRoleProcedure.input(listInputSchema).query(async ({ input }) => {
+  /** List sessions — scoped to the caller's own, unless admin. */
+  list: aiRoleProcedure.input(listInputSchema).query(async ({ input, ctx }) => {
     const sessions = await getStorage().listAgentSessions(input);
-    return sessions.map(summarizeSession);
+    const visible = ctx.roles.includes("admin")
+      ? sessions
+      : sessions.filter((s) => s.userId === ctx.userId);
+    return visible.map(summarizeSession);
   }),
 });

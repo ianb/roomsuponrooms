@@ -39,17 +39,35 @@ function commandSnapshot(context: VerbContext): Record<string, unknown> {
   return snap;
 }
 
-/** Build the JSON scope handed into the sandbox: entity snapshots, never live objects. */
+/** Strip designer-only fields (the hidden `secret` and the `ai` prompt config)
+ *  from entity-shaped values before they cross into untrusted handler code, so a
+ *  handler can't exfiltrate them via `room.secret` or `lib.contents(id)`. */
+function redactEntityFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactEntityFields);
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (typeof o.id === "string" && ("properties" in o || "tags" in o)) {
+      const copy = { ...o };
+      delete copy.secret;
+      delete copy.ai;
+      return copy;
+    }
+  }
+  return value;
+}
+
+/** Build the JSON scope handed into the sandbox: redacted entity snapshots, never live objects. */
 function handlerScope(context: VerbContext): Record<string, unknown> {
   const target = getTarget(context);
   const indirect = getIndirect(context);
+  const snap = (id: string): unknown => redactEntityFields(context.store.getSnapshot(id));
   const scope: Record<string, unknown> = {
-    player: context.store.getSnapshot(context.player.id),
-    room: context.store.getSnapshot(context.room.id),
+    player: snap(context.player.id),
+    room: snap(context.room.id),
     command: commandSnapshot(context),
   };
-  if (target) scope.object = context.store.getSnapshot(target.id);
-  if (indirect) scope.indirect = context.store.getSnapshot(indirect.id);
+  if (target) scope.object = snap(target.id);
+  if (indirect) scope.indirect = snap(indirect.id);
   return scope;
 }
 
@@ -76,7 +94,8 @@ function libDispatch(lib: HandlerLib): LibDispatch {
       if (typeof fn !== "function") {
         throw new UnknownLibMethodError(method);
       }
-      return (fn as (...a: unknown[]) => unknown).apply(lib, args);
+      // Redact designer-only fields from any entity(s) the lib returns.
+      return redactEntityFields((fn as (...a: unknown[]) => unknown).apply(lib, args));
     },
   };
 }

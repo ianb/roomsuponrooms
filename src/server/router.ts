@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure, authedProcedure } from "./trpc.js";
+import { router, publicProcedure, authedProcedure, debugRoleProcedure } from "./trpc.js";
 import { describeRoomFull } from "../core/index.js";
 import type { EntityStore } from "../core/index.js";
 import { playerStatus } from "../core/progression.js";
@@ -249,7 +249,7 @@ const gameRouter = router({
     };
   }),
 
-  prompts: authedProcedure.input(gameInput).query(async ({ input, ctx }) => {
+  prompts: debugRoleProcedure.input(gameInput).query(async ({ input, ctx }) => {
     const session = { gameId: input.gameId, userId: ctx.userId };
     const game = await getOrCreateGame(session);
     const players = game.store.findByTag("player");

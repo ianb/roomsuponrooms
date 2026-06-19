@@ -13,6 +13,16 @@ export class SandboxRegistryError extends Error {
   }
 }
 
+export class SandboxTimeoutError extends Error {
+  constructor(token: string) {
+    super("Handler exceeded the execution deadline (" + token + ")");
+    this.name = "SandboxTimeoutError";
+  }
+}
+
+/** Wall-clock deadline for a single handler invocation in the dynamic isolate. */
+const HANDLER_TIMEOUT_MS = 5000;
+
 // --- Hand-rolled Worker Loader binding types (see r2-types.ts convention) ---
 
 interface WorkerCode {
@@ -113,7 +123,21 @@ export class WorkerLoaderSandbox implements Sandbox {
         env: { LIB: lib },
         globalOutbound: null,
       }));
-      return await stub.getEntrypoint("Handler").run({ scope: run.scope });
+      // Bound the handler: a runaway (e.g. while(true){}) otherwise burns CPU
+      // until the platform kills the whole request. On timeout we throw, which
+      // dispatch surfaces as a handler failure (and auto-removes AI handlers).
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new SandboxTimeoutError(token)), HANDLER_TIMEOUT_MS);
+      });
+      try {
+        return await Promise.race([
+          stub.getEntrypoint("Handler").run({ scope: run.scope }),
+          deadline,
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     } finally {
       registry.delete(token);
     }

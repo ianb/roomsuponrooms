@@ -19,6 +19,7 @@ import { loadAgentGameInstance } from "./agent-game-loader.js";
 import type { ToolContext } from "./agent-tool-context.js";
 import type { AgentSessionStatus } from "./storage.js";
 import { mergeTokenUsage } from "./agent-token-usage.js";
+import { recordAiCall } from "./ai-quota.js";
 
 class SessionNotFoundError extends Error {
   override name = "SessionNotFoundError";
@@ -193,6 +194,10 @@ export async function tickSession(
     });
     return { status: "failed", turnsRun, summary: `Loop error: ${message}` };
   }
+
+  // Count this tick's LLM call toward the user's AI quota (the command path
+  // does this via checkAiQuota/recordAiCall; agent ticks must too).
+  await recordAiCall(session.userId, "agent");
 
   // Append new response messages onto the persistent session messages.
   const newMessages: unknown[] = [...messages, ...lastResult.response.messages];

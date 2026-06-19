@@ -41,3 +41,14 @@ export const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+/**
+ * Procedure for endpoints that expose internal state / AI prompts (which contain
+ * designer-only secrets). Requires the "debug" role, or admin.
+ */
+export const debugRoleProcedure = authedProcedure.use(async ({ ctx, next }) => {
+  if (!ctx.roles.includes("debug") && !ctx.roles.includes("admin")) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Requires the 'debug' role" });
+  }
+  return next({ ctx });
+});
