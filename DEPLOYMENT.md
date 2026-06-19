@@ -48,11 +48,11 @@ via the `Sandbox` interface (`src/core/sandbox-host.ts`):
 - **Local dev (Node):** `NodeQuickJsSandbox` (`src/server/sandbox-quickjs.ts`)
   uses QuickJS-WASM in-process; set as the fallback in `src/server/index.ts`.
 
-Handler `lib` calls are async — all handler code (incl. game `*.jsonl`) must
-`await` every `lib.*` call. Template `${...}` expressions use a separate safe
-AST evaluator (`src/core/template-eval.ts`, acorn-based, synchronous). The
-legacy SVal interpreter (`src/core/sandbox.ts`) remains only for unused
-conversation `perform` code and is marked for removal.
+Handler `lib` calls are async — all handler code (incl. game `*.jsonl` and NPC
+conversation `perform` code) must `await` every `lib.*` call. Template `${...}`
+expressions use a separate safe AST evaluator (`src/core/template-eval.ts`,
+acorn-based, synchronous). The old escapable SVal interpreter has been fully
+removed — handlers, conversation code, and templates no longer use it.
 
 ### Game data bundling
 

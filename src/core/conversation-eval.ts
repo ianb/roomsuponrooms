@@ -2,7 +2,8 @@ import type { Entity, EntityStore } from "./entity.js";
 import type { WordEntry, WordEffect, ConversationState } from "./conversation.js";
 import { HandlerLib } from "./handler-lib.js";
 import type { VerbContext, WorldEvent } from "./verb-types.js";
-import { runSandboxed } from "./sandbox.js";
+import { getSandbox } from "./sandbox-host.js";
+import { libDispatch, redactEntityFields } from "./handler-eval.js";
 
 interface PerformContext {
   npc: Entity;
@@ -22,38 +23,42 @@ interface PerformResult {
 }
 
 /**
- * Evaluate a word entry's perform code string.
+ * Evaluate a word entry's perform code string in the sandbox.
  *
- * The code receives: lib, npc, player, room, store, word, state
- * and should return a PerformResult object.
+ * The code receives JSON scope (npc, player, room snapshots; word; state) plus
+ * the async `lib` (every lib.* call must be awaited, as for verb handlers). It
+ * returns a PerformResult object. Runs in the same isolate sandbox as handlers
+ * — no live store, no host escape, designer-only fields redacted.
  */
-export function evaluateWordPerform(
+export async function evaluateWordPerform(
   entry: WordEntry,
   context: PerformContext,
-): PerformResult | null {
+): Promise<PerformResult | null> {
   if (!entry.perform) return null;
 
-  // Build a minimal VerbContext for HandlerLib
+  // Build a minimal VerbContext for HandlerLib (runs parent-side over the live store).
   const verbContext: VerbContext = {
     store: context.store,
     command: { form: "intransitive", verb: "talk" },
     player: context.player,
     room: context.room,
   };
-  const lib = new HandlerLib(verbContext);
+  const snap = (e: Entity): unknown => redactEntityFields(context.store.getSnapshot(e.id));
 
-  const result = runSandboxed(entry.perform, {
-    lib,
-    npc: context.npc,
-    player: context.player,
-    room: context.room,
-    store: context.store,
-    word: context.word,
-    state: {
-      currentWord: context.state.currentWord,
-      seenWords: Array.from(context.state.seenWords),
-      knownWords: Array.from(context.state.knownWords),
+  const result = await getSandbox().runHandler({
+    code: entry.perform,
+    scope: {
+      npc: snap(context.npc),
+      player: snap(context.player),
+      room: snap(context.room),
+      word: context.word,
+      state: {
+        currentWord: context.state.currentWord,
+        seenWords: Array.from(context.state.seenWords),
+        knownWords: Array.from(context.state.knownWords),
+      },
     },
+    lib: libDispatch(new HandlerLib(verbContext)),
   });
 
   if (!result || typeof result !== "object") return null;

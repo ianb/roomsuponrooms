@@ -42,7 +42,7 @@ function commandSnapshot(context: VerbContext): Record<string, unknown> {
 /** Strip designer-only fields (the hidden `secret` and the `ai` prompt config)
  *  from entity-shaped values before they cross into untrusted handler code, so a
  *  handler can't exfiltrate them via `room.secret` or `lib.contents(id)`. */
-function redactEntityFields(value: unknown): unknown {
+export function redactEntityFields(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactEntityFields);
   if (value && typeof value === "object") {
     const o = value as Record<string, unknown>;
@@ -83,7 +83,7 @@ const BLOCKED_LIB_METHODS = new Set<string>([
 /** Bridge a live game lib instance into the generic LibDispatch the sandbox
  *  forwards every `lib.method(...)` call to. Methods run in the parent over the
  *  live store; args (snapshots / ids) and returns pass through as JSON. */
-function libDispatch(lib: HandlerLib): LibDispatch {
+export function libDispatch(lib: HandlerLib): LibDispatch {
   const target = lib as unknown as Record<string, unknown>;
   return {
     invoke: (method, args) => {

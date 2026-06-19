@@ -3,7 +3,7 @@ import type { ConversationResult, WordEntry } from "../core/conversation.js";
 import { evaluateWordPerform } from "../core/conversation-eval.js";
 
 /** Apply perform code from a matched word entry, if present */
-export function applyPerformCode(
+export async function applyPerformCode(
   game: GameInstance,
   {
     word,
@@ -16,7 +16,7 @@ export function applyPerformCode(
     result: ConversationResult;
     data: { words: WordEntry[] };
   },
-): ConversationResult {
+): Promise<ConversationResult> {
   const state = game.conversationState!;
   const normalized = word.toLowerCase().trim();
   const matchedEntry = data.words.find(
@@ -32,7 +32,7 @@ export function applyPerformCode(
 
   const roomId = player.location;
   const room = game.store.get(roomId);
-  const performResult = evaluateWordPerform(matchedEntry, {
+  const performResult = await evaluateWordPerform(matchedEntry, {
     npc,
     player,
     room,

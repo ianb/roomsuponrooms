@@ -106,7 +106,7 @@ export async function sandboxConversationWord(
     throw err as Error;
   }
 
-  result = applyPerformCode(game, { word, npc, result, data });
+  result = await applyPerformCode(game, { word, npc, result, data });
   const events = applyConversationEffects(result.events, { store: game.store, npcId: state.npcId });
   const output = highlightTopics(result.output, result.knownWords);
 

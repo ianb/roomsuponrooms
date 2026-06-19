@@ -184,7 +184,7 @@ export async function handleConversationWord(
   }
 
   // Check for perform code on the matched entry
-  result = applyPerformCode(game, { word, npc, result, data });
+  result = await applyPerformCode(game, { word, npc, result, data });
 
   const output = highlightTopics(result.output, result.knownWords);
 
