@@ -5,6 +5,8 @@ import { setStorage } from "./storage-instance.js";
 import { FileStorage } from "./storage-file.js";
 import { setImageStorage } from "./image-storage-instance.js";
 import { FileImageStorage } from "./image-storage.js";
+import { setSandbox } from "../core/sandbox-host.js";
+import { NodeQuickJsSandbox } from "./sandbox-quickjs.js";
 import { handleImageRequest } from "./image-routes.js";
 import { appRouter } from "./router.js";
 import { handleCommandStreamNode } from "./command-stream.js";
@@ -27,6 +29,9 @@ setStorage(
   }),
 );
 setImageStorage(new FileImageStorage(resolve(process.cwd(), "data", "images")));
+// Worker Loader isn't available under Node; use the QuickJS-WASM sandbox, which
+// presents the same async lib contract.
+setSandbox(new NodeQuickJsSandbox());
 
 const DEV_JWT_SECRET = "dev-secret-not-for-production";
 

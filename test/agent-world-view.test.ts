@@ -131,7 +131,7 @@ t.test("edits are not visible on a fresh game (no leak)", (t) => {
   t.end();
 });
 
-t.test("handler create edit registers a verb", (t) => {
+t.test("handler create edit registers a verb", async (t) => {
   const game = freshGame();
   const handlerData: HandlerData = {
     name: "test:custom-shout",
@@ -152,7 +152,7 @@ t.test("handler create edit registers a verb", (t) => {
   // Verify the handler exists by trying to dispatch the verb
   const player = game.store.findByTag("player")[0]!;
   const room = game.store.get(player.location);
-  const result = game.verbs.dispatch({
+  const result = await game.verbs.dispatch({
     store: game.store,
     player,
     room,
@@ -162,7 +162,6 @@ t.test("handler create edit registers a verb", (t) => {
   if (result.outcome === "performed") {
     t.match(result.output, /shout/);
   }
-  t.end();
 });
 
 t.test("partial overlay records preserve base-game fields on reload", (t) => {
@@ -189,7 +188,7 @@ t.test("partial overlay records preserve base-game fields on reload", (t) => {
   t.end();
 });
 
-t.test("handler delete edit removes the verb", (t) => {
+t.test("handler delete edit removes the verb", async (t) => {
   const game = freshGame();
   const handlerData: HandlerData = {
     name: "test:custom-bark",
@@ -216,12 +215,11 @@ t.test("handler delete edit removes the verb", (t) => {
   );
   const player = game.store.findByTag("player")[0]!;
   const room = game.store.get(player.location);
-  const result = game.verbs.dispatch({
+  const result = await game.verbs.dispatch({
     store: game.store,
     player,
     room,
     command: { verb: "bark", form: "intransitive" },
   });
   t.equal(result.outcome, "unhandled");
-  t.end();
 });

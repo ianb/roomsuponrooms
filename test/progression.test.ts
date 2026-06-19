@@ -75,18 +75,17 @@ t.test("gateState reads gate properties off an entity", (t) => {
   t.end();
 });
 
-t.test("a signposted exit gate blocks then opens with the meter", (t) => {
+t.test("a signposted exit gate blocks then opens with the meter", async (t) => {
   const runner = createGameRunner(tinkermarket());
   runner.store.setProperty("player:1", { name: "location", value: "room:rawstock-row" });
 
-  const blocked = runner.command("go east");
+  const blocked = await runner.command("go east");
   t.match(blocked, /apprentice/, "blocked with the in-character signpost");
   t.equal(runner.currentRoom(), "room:rawstock-row", "did not move");
 
   runner.store.setProperty("player:1", { name: "craft", value: 2 });
-  runner.command("go east");
+  await runner.command("go east");
   t.equal(runner.currentRoom(), "room:the-crush", "journeyman walks into the crush");
-  t.end();
 });
 
 t.test("a hidden gate keeps an entity out of listings until met", (t) => {
@@ -108,12 +107,12 @@ t.test("a hidden gate keeps an entity out of listings until met", (t) => {
   t.end();
 });
 
-t.test("crafting awards the craft meter and fires the tier ceremony", (t) => {
+t.test("crafting awards the craft meter and fires the tier ceremony", async (t) => {
   const runner = createGameRunner(tinkermarket());
   // Hand the player the two ingredients for the first recipe.
   runner.store.setProperty("item:shimmerite-dust", { name: "location", value: "player:1" });
   runner.store.setProperty("item:sealed-clay", { name: "location", value: "player:1" });
-  const out1 = runner.command("combine shimmerite dust with sealed clay");
+  const out1 = await runner.command("combine shimmerite dust with sealed clay");
   t.match(out1, /glittering brick/, "first recipe succeeds");
   t.equal(runner.getProperty("player:1", "craft"), 1, "craft meter rose to 1");
   t.notMatch(out1, /Journeyman/, "no tier-up yet at craft 1");
@@ -121,10 +120,9 @@ t.test("crafting awards the craft meter and fires the tier ceremony", (t) => {
   // Second recipe takes craft to 2 — Journeyman.
   runner.store.setProperty("item:coppervine-wire", { name: "location", value: "player:1" });
   runner.store.setProperty("item:void-glass-shard", { name: "location", value: "player:1" });
-  const out2 = runner.command("combine coppervine wire with void glass shard");
+  const out2 = await runner.command("combine coppervine wire with void glass shard");
   t.equal(runner.getProperty("player:1", "craft"), 2, "craft meter rose to 2");
   t.match(out2, /Journeyman/, "tier ceremony fired on crossing");
-  t.end();
 });
 
 t.test("playerStatus returns structured standing for the UI panel", (t) => {
@@ -155,10 +153,9 @@ t.test("playerStatus omits hidden tracks and handles tierless-only worlds", (t) 
   t.end();
 });
 
-t.test("the status command reports standing in real play", (t) => {
+t.test("the status command reports standing in real play", async (t) => {
   const runner = createGameRunner(tinkermarket());
-  const out = runner.command("status");
+  const out = await runner.command("status");
   t.match(out, /Coin: 12/, "status lists coin");
   t.match(out, /Craft: an Apprentice/, "status lists craft tier");
-  t.end();
 });

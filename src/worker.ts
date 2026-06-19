@@ -21,6 +21,13 @@ import { handleAuthRoute } from "./server/auth/routes.js";
 import type { AuthEnv } from "./server/auth/routes.js";
 import { verifyJwt, parseCookie, bearerApiKeyMatches } from "./server/auth/jwt.js";
 import { logErrorObj } from "./server/error-log.js";
+import { setSandbox } from "./core/sandbox-host.js";
+import { WorkerLoaderSandbox } from "./server/sandbox-worker-loader.js";
+import type { WorkerLoaderBinding, LoaderCtx } from "./server/sandbox-worker-loader.js";
+
+// Re-exported so `ctx.exports.LibEntry` resolves: the dynamic isolate calls
+// back into this parent entrypoint for store reads.
+export { LibEntry } from "./server/sandbox-worker-loader.js";
 
 interface Env {
   DB: D1Database;
@@ -33,6 +40,7 @@ interface Env {
   LLM_MODEL: string;
   GOOGLE_GENERATIVE_AI_API_KEY: string;
   API_KEY?: string;
+  LOADER: WorkerLoaderBinding;
 }
 
 function getAuthEnv(env: Env, request: Request): AuthEnv {
@@ -71,10 +79,12 @@ async function extractUser(
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  // eslint-disable-next-line max-params -- Cloudflare fetch handler signature is fixed: (request, env, ctx)
+  async fetch(request: Request, env: Env, ctx: LoaderCtx): Promise<Response> {
     // Set D1 storage for this request
     setStorage(new D1Storage(env.DB));
     setImageStorage(new R2ImageStorage(env.IMAGES));
+    setSandbox(new WorkerLoaderSandbox(env.LOADER, ctx));
 
     // Expose secrets as process.env for modules that read from it (e.g. llm.ts)
     process.env["LLM_PROVIDER"] = env.LLM_PROVIDER;

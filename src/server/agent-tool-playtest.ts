@@ -249,7 +249,7 @@ async function runPlaytestStep(
     const convo = await sandboxConversationWord(game, { gameId, word: command });
     return conversationStep(command, convo);
   }
-  const step = runOneCommand({
+  const step = await runOneCommand({
     store: game.store,
     verbs: game.verbs,
     command,
@@ -271,7 +271,7 @@ async function runPlaytestStep(
   return step;
 }
 
-function runOneCommand({
+async function runOneCommand({
   store,
   verbs,
   command,
@@ -281,10 +281,10 @@ function runOneCommand({
   verbs: VerbRegistry;
   command: string;
   tracks?: GameInstance["tracks"];
-}): PlaytestStep {
+}): Promise<PlaytestStep> {
   let result: CommandResult;
   try {
-    result = processCommand(store, { input: command, verbs, debug: true, tracks });
+    result = await processCommand(store, { input: command, verbs, debug: true, tracks });
   } catch (e: unknown) {
     return {
       command,
@@ -337,7 +337,7 @@ function runOneCommand({
       player: result.unhandled.player,
       room: result.unhandled.room,
     };
-    const candidates = diagnoseUnhandled(ctx, { verbs });
+    const candidates = await diagnoseUnhandled(ctx, { verbs });
     if (candidates.length > 0) step.candidates = candidates;
   }
   // If this remains unresolved, attach a scenery diagnostic so the agent can

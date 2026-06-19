@@ -21,15 +21,15 @@ export class TestGame {
   }
 
   /** Send a command and return the narrative output */
-  do(input: string): string {
+  async do(input: string): Promise<string> {
     return this.runner.command(input);
   }
 
   /** Run multiple commands silently, return only the last output */
-  walk(...commands: string[]): string {
+  async walk(...commands: string[]): Promise<string> {
     let last = "";
     for (const cmd of commands) {
-      last = this.runner.command(cmd);
+      last = await this.runner.command(cmd);
     }
     return last;
   }

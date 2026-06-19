@@ -53,7 +53,7 @@ export async function executeAndSave(
 ): Promise<ExecuteResult | null> {
   const handler = recordToHandler(record);
   try {
-    const performResult = handler.perform({ store, command, player, room });
+    const performResult = await handler.perform({ store, command, player, room });
     // Apply events (also validates properties)
     for (const event of performResult.events) {
       if (event.type === "create-entity") {

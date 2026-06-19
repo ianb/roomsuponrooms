@@ -58,10 +58,10 @@ export interface CommandResult {
   unresolvedObject?: { verb: string; objectName: string };
 }
 
-function dispatchSystemVerbs(
+async function dispatchSystemVerbs(
   verbs: VerbRegistry,
   { store, player, systemVerbs }: { store: EntityStore; player: Entity; systemVerbs: string[] },
-): { outputs: string[]; events: WorldEvent[] } {
+): Promise<{ outputs: string[]; events: WorldEvent[] }> {
   const allOutputs: string[] = [];
   const allEvents: WorldEvent[] = [];
   for (const verb of systemVerbs) {
@@ -72,7 +72,7 @@ function dispatchSystemVerbs(
       player,
       room: currentRoom,
     };
-    const result = verbs.dispatchSystem(verb, context);
+    const result = await verbs.dispatchSystem(verb, context);
     allOutputs.push(...result.outputs);
     allEvents.push(...result.events);
   }
@@ -80,10 +80,10 @@ function dispatchSystemVerbs(
 }
 
 /** Fire [encounter] for each entity in the current room */
-function dispatchEncounters(
+async function dispatchEncounters(
   verbs: VerbRegistry,
   { store, player }: { store: EntityStore; player: Entity },
-): { outputs: string[]; events: WorldEvent[] } {
+): Promise<{ outputs: string[]; events: WorldEvent[] }> {
   const room = getPlayerRoom(store);
   const contents = store.getContents(room.id);
   const allOutputs: string[] = [];
@@ -97,7 +97,7 @@ function dispatchEncounters(
       player,
       room,
     };
-    const result = verbs.dispatchSystem(SYSTEM_VERBS.ENCOUNTER, context);
+    const result = await verbs.dispatchSystem(SYSTEM_VERBS.ENCOUNTER, context);
     allOutputs.push(...result.outputs);
     allEvents.push(...result.events);
   }
@@ -152,7 +152,7 @@ function statusResult(
   };
 }
 
-function runMovement(
+async function runMovement(
   store: EntityStore,
   {
     movement,
@@ -169,7 +169,7 @@ function runMovement(
     tracks: Track[];
     before: Map<string, number>;
   },
-): CommandResult {
+): Promise<CommandResult> {
   if (movement.unresolvedExit) {
     return {
       output: "",
@@ -181,14 +181,14 @@ function runMovement(
   const parts = [movement.output];
   const allEvents = [...movement.events];
   if (movement.moved) {
-    const sys = dispatchSystemVerbs(verbs, {
+    const sys = await dispatchSystemVerbs(verbs, {
       store,
       player,
       systemVerbs: [SYSTEM_VERBS.ENTER, SYSTEM_VERBS.TICK],
     });
     parts.push(...sys.outputs);
     allEvents.push(...sys.events);
-    const enc = dispatchEncounters(verbs, { store, player });
+    const enc = await dispatchEncounters(verbs, { store, player });
     parts.push(...enc.outputs);
     allEvents.push(...enc.events);
     appendCeremony(store, { parts, tracks, before, playerId: player.id });
@@ -208,7 +208,7 @@ function runMovement(
   };
 }
 
-export function processCommand(
+export async function processCommand(
   store: EntityStore,
   {
     input,
@@ -216,7 +216,7 @@ export function processCommand(
     debug,
     tracks,
   }: { input: string; verbs: VerbRegistry; debug?: boolean; tracks?: Track[] },
-): CommandResult {
+): Promise<CommandResult> {
   const player = getPlayer(store);
   const declaredTracks = tracks || [];
   // Snapshot meters before the command so we can announce any tier crossings.
@@ -227,7 +227,14 @@ export function processCommand(
 
   const movement = tryMovement(store, input);
   if (movement) {
-    return runMovement(store, { movement, verbs, player, debug, tracks: declaredTracks, before });
+    return await runMovement(store, {
+      movement,
+      verbs,
+      player,
+      debug,
+      tracks: declaredTracks,
+      before,
+    });
   }
 
   const parsed = parseCommand(input);
@@ -263,13 +270,13 @@ export function processCommand(
   }
 
   const context: VerbContext = { store, command: resolved, player, room };
-  const result = verbs.dispatch(context);
+  const result = await verbs.dispatch(context);
 
   if (result.outcome === "performed") {
     const parts = [result.output];
     const allEvents = [...result.events];
     if (!result.freeTurn) {
-      const sys = dispatchSystemVerbs(verbs, {
+      const sys = await dispatchSystemVerbs(verbs, {
         store,
         player,
         systemVerbs: [SYSTEM_VERBS.TICK],
