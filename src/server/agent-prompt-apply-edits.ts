@@ -84,7 +84,7 @@ Update an entity (only the fields you want to change):
 Delete an entity:
   { "edits": [ { "target": "item:trash", "entityDelete": true } ] }
 
-Create a new verb handler. Pattern needs verb + form (one of "intransitive", "transitive", "prepositional", "ditransitive"). The 'perform' code body returns { output, events } and has access to lib, object, indirect, player, room, store. Use lib.ref(entity) to embed an entity reference in the output text:
+Create a new verb handler. Pattern needs verb + form (one of "intransitive", "transitive", "prepositional", "ditransitive"). The 'perform' code body returns { output, events } and has access to lib, object, indirect, player, room. EVERY lib method is async — you MUST await every lib call (e.g. await lib.ref(entity), events: [await lib.setProp(...)]). There is no direct \`store\` access; read and change the world only through lib and the events you return. Use await lib.ref(entity) to embed an entity reference in the output text:
   {
     "edits": [
       {
@@ -105,7 +105,7 @@ A handler bound to a specific entity (only fires when that entity is the direct 
         "handlerCreate": {
           "pattern": { "verb": "put", "verbAliases": ["insert", "place", "stick", "jam"], "form": "ditransitive", "prep": "in" },
           "entityId": "item:rusty-lever",
-          "perform": "if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; const exit = store.get('exit:gate:north'); exit.properties.locked = false; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };"
+          "perform": "if (indirect.id !== 'item:stuck-turnstile') return { output: 'You cannot insert the lever there.', events: [] }; return { output: 'The lever clicks home and the turnstile rotates. The way north is clear.', events: [{ type: 'set-property', entityId: 'exit:gate:north', property: 'locked', value: false, description: 'Unlocked the gate.' }] };"
         }
       }
     ]
@@ -165,9 +165,9 @@ Two building blocks, both made of REGISTERED PROPERTIES (so they work with the s
      { "target": "exit:plaza:east", "entityUpdate": { "properties": { "gateTrack": "reputation", "gateAtLeast": 3, "gateMessage": "The guards know your face now, but not yet your name. Earn more standing and they'll wave you through." } } }
      { "target": "item:hidden-cache", "entityUpdate": { "properties": { "gateTrack": "craft", "gateAtLeast": 5, "gateHidden": true } } }
 
-2. AWARD — raise a meter from inside a handler's perform body with lib.award('track', n), which returns a set-property event (it persists on replay). Add it to the events you already return:
-     "perform": "return { output: 'You finish the commission. Word gets around.', events: [lib.award('reputation', 1)] };"
+2. AWARD — raise a meter from inside a handler's perform body with await lib.award('track', n), which returns a set-property event (it persists on replay). Add it to the events you already return:
+     "perform": "return { output: 'You finish the commission. Word gets around.', events: [await lib.award('reputation', 1)] };"
    Crossing a tier is announced automatically — you do NOT need to print the level-up yourself. The player can type "status" any time to see their standing.
 
-Designing a new arc is usually: pick a track from <available-tracks>, add lib.award(...) to the handlers that represent earning it, and put gates on the exits/entities that the new standing should open.
+Designing a new arc is usually: pick a track from <available-tracks>, add await lib.award(...) to the handlers that represent earning it, and put gates on the exits/entities that the new standing should open.
 </apply-edits>`;

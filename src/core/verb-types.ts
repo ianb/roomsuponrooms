@@ -78,9 +78,11 @@ export interface VerbHandler {
   tag?: string;
   objectRequirements?: EntityRequirements;
   indirectRequirements?: EntityRequirements;
-  check?: (context: VerbContext) => CheckResult;
-  veto?: (context: VerbContext) => VetoResult;
-  perform: (context: VerbContext) => PerformResult;
+  // Return values may be sync (built-in TS handlers) or async (data-driven
+  // handlers that run in the sandbox). Dispatch awaits either.
+  check?: (context: VerbContext) => CheckResult | Promise<CheckResult>;
+  veto?: (context: VerbContext) => VetoResult | Promise<VetoResult>;
+  perform: (context: VerbContext) => PerformResult | Promise<PerformResult>;
   /**
    * Original source record this handler was compiled from, if any.
    * Carried on data-driven (HandlerData-derived) handlers so partial

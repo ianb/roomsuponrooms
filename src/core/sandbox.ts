@@ -1,5 +1,15 @@
 import $t from "sval";
 
+// ⚠️ LEGACY, INSECURE. SVal is an in-realm interpreter: the blocklist below is
+// bypassable via `({}).constructor.constructor(...)`, which escapes to the host
+// realm (and, in the production Worker, host secrets in process.env). Verb
+// handlers moved to the Worker Loader sandbox (sandbox-host.ts) and templates
+// moved to the safe AST evaluator (template-eval.ts). The ONLY remaining caller
+// is:
+//   - runSandboxed — conversation word `perform` code (currently unused by any
+//     shipped game; migrate to the Worker Loader sandbox before relying on it)
+// Do NOT add new callers. This last use still needs to be closed.
+
 /** Globals that are explicitly blocked in the sandbox */
 const BLOCKED_GLOBALS: Record<string, undefined> = {
   process: undefined,
@@ -34,48 +44,4 @@ export function runSandboxed(code: string, variables: Record<string, unknown>): 
   interpreter.import({ ...BLOCKED_GLOBALS, ...variables });
   interpreter.run("exports.result = (function() { " + code + " })();");
   return interpreter.exports.result;
-}
-
-/**
- * Build a reusable sandboxed function from a code string.
- * Returns a function that accepts variables and runs the code.
- */
-export function buildSandboxedFunction(
-  code: string,
-): (variables: Record<string, unknown>) => unknown {
-  const wrappedCode = "exports.result = (function() { " + code + " })();";
-  return (variables: Record<string, unknown>): unknown => {
-    const interpreter = new $t({
-      ecmaVer: "latest",
-      sourceType: "script",
-      sandBox: true,
-    });
-    interpreter.import({ ...BLOCKED_GLOBALS, ...variables });
-    interpreter.run(wrappedCode);
-    return interpreter.exports.result;
-  };
-}
-
-/**
- * Evaluate a template expression in a sandboxed environment.
- * The code is a template literal body (no backticks).
- */
-export function evalTemplate(template: string, variables: Record<string, unknown>): string {
-  const interpreter = new $t({
-    ecmaVer: "latest",
-    sourceType: "script",
-    sandBox: true,
-  });
-  // SVal reserves "self" (browser global), so remap it to _self and rewrite templates
-  const vars = { ...BLOCKED_GLOBALS, ...variables };
-  let processedTemplate = template;
-  if ("self" in vars) {
-    vars._self = vars.self;
-    delete vars.self;
-    processedTemplate = template.replace(/\bself\b/g, "_self");
-  }
-  interpreter.import(vars);
-  interpreter.run("exports.result = `" + processedTemplate + "`;");
-  const result = interpreter.exports.result;
-  return typeof result === "string" ? result : String(result);
 }

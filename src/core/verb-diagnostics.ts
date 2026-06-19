@@ -24,21 +24,21 @@ import {
  * Lives outside VerbRegistry so verbs.ts can stay under the file-length cap;
  * it relies only on the public `list()` method.
  */
-export function diagnoseUnhandled(
+export async function diagnoseUnhandled(
   context: VerbContext,
   { verbs, limit }: { verbs: VerbRegistry; limit?: number },
-): Array<{ handler: string; reason: string }> {
+): Promise<Array<{ handler: string; reason: string }>> {
   const cap = limit !== undefined ? limit : 8;
   const results: Array<{ handler: string; reason: string }> = [];
   for (const handler of verbs.list()) {
     if (results.length >= cap) break;
-    const reason = rejectionReason(handler, context);
+    const reason = await rejectionReason(handler, context);
     if (reason) results.push({ handler: handler.name, reason });
   }
   return results;
 }
 
-function rejectionReason(handler: VerbHandler, context: VerbContext): string | null {
+async function rejectionReason(handler: VerbHandler, context: VerbContext): Promise<string | null> {
   const verbMatches =
     handler.pattern.verb === context.command.verb ||
     (handler.pattern.verbAliases !== undefined &&
@@ -83,7 +83,7 @@ function rejectionReason(handler: VerbHandler, context: VerbContext): string | n
     }
   }
   if (handler.check) {
-    const check = handler.check(context);
+    const check = await handler.check(context);
     if (!check.applies) return "check phase rejected (handler.check returned applies:false)";
   }
   // Pattern, specificity, and check all pass — handler should have applied.

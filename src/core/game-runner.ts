@@ -7,7 +7,7 @@ import { isRoomLit, darknessDescription } from "./darkness.js";
 
 export interface GameRunner {
   /** Send a command and return the output */
-  command(input: string): string;
+  command(input: string): Promise<string>;
   /** Get the current room description */
   look(): string;
   /** Get the entity store for direct inspection */
@@ -15,7 +15,7 @@ export interface GameRunner {
   /** Get the verb registry */
   verbs: VerbRegistry;
   /** Run multiple commands, returning all outputs */
-  run(commands: string[]): string[];
+  run(commands: string[]): Promise<string[]>;
   /** Get a property of an entity */
   getProperty(entityId: string, property: string): unknown;
   /** Get the player's current room ID */
@@ -54,13 +54,15 @@ export function createGameRunner({
     return describeRoomFull(store, { room, playerId: player.id });
   }
 
-  function command(input: string): string {
-    const result = processCommand(store, { input, verbs, tracks });
+  async function command(input: string): Promise<string> {
+    const result = await processCommand(store, { input, verbs, tracks });
     return result.output;
   }
 
-  function run(commands: string[]): string[] {
-    return commands.map((cmd) => command(cmd));
+  async function run(commands: string[]): Promise<string[]> {
+    const outputs: string[] = [];
+    for (const cmd of commands) outputs.push(await command(cmd));
+    return outputs;
   }
 
   function getProperty(entityId: string, property: string): unknown {

@@ -108,7 +108,7 @@ async function handleUnhandledFallback(
     existingDebug,
     onAiStart,
   }: {
-    unhandled: NonNullable<ReturnType<typeof processCommand>["unhandled"]>;
+    unhandled: NonNullable<Awaited<ReturnType<typeof processCommand>>["unhandled"]>;
     trimmed: string;
     session: SessionKey;
     input: CommandInput;

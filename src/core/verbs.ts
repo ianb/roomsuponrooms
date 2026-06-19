@@ -60,12 +60,12 @@ export class VerbRegistry {
     return this.handlers.find((h) => h.name === name) || null;
   }
 
-  dispatch(context: VerbContext): DispatchResult {
+  async dispatch(context: VerbContext): Promise<DispatchResult> {
     const candidates = this.findHandlers(context);
-    const applicable = candidates.filter((h) => {
-      if (!h.check) return true;
-      return h.check(context).applies;
-    });
+    const applicable: VerbHandler[] = [];
+    for (const h of candidates) {
+      if (!h.check || (await h.check(context)).applies) applicable.push(h);
+    }
 
     if (applicable.length === 0) {
       return { outcome: "unhandled" };
@@ -73,7 +73,7 @@ export class VerbRegistry {
 
     for (const handler of applicable) {
       if (handler.veto) {
-        const veto = handler.veto(context);
+        const veto = await handler.veto(context);
         if (veto.blocked) {
           return { outcome: "vetoed", output: veto.output, vetoedBy: handler.name };
         }
@@ -87,7 +87,7 @@ export class VerbRegistry {
 
     let result;
     try {
-      result = performer.perform(context);
+      result = await performer.perform(context);
       for (const event of result.events) {
         applySingleEvent(context.store, event);
       }
@@ -115,7 +115,10 @@ export class VerbRegistry {
   }
 
   /** Dispatch a system verb like [enter] or [tick]. Returns combined output and events from all handlers. */
-  dispatchSystem(verb: string, context: VerbContext): { outputs: string[]; events: WorldEvent[] } {
+  async dispatchSystem(
+    verb: string,
+    context: VerbContext,
+  ): Promise<{ outputs: string[]; events: WorldEvent[] }> {
     const systemCommand: ResolvedCommand = {
       form: "intransitive",
       verb,
@@ -127,10 +130,10 @@ export class VerbRegistry {
 
     for (const handler of candidates) {
       if (handler.check) {
-        const check = handler.check(systemContext);
+        const check = await handler.check(systemContext);
         if (!check.applies) continue;
       }
-      const result = handler.perform(systemContext);
+      const result = await handler.perform(systemContext);
       if (result.output) {
         outputs.push(result.output);
       }

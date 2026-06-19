@@ -21,6 +21,13 @@ import { handleAuthRoute } from "./server/auth/routes.js";
 import type { AuthEnv } from "./server/auth/routes.js";
 import { verifyJwt, parseCookie, bearerApiKeyMatches } from "./server/auth/jwt.js";
 import { logErrorObj } from "./server/error-log.js";
+import { runWithSandbox } from "./core/sandbox-host.js";
+import { WorkerLoaderSandbox } from "./server/sandbox-worker-loader.js";
+import type { WorkerLoaderBinding, LoaderCtx } from "./server/sandbox-worker-loader.js";
+
+// Re-exported so `ctx.exports.LibEntry` resolves: the dynamic isolate calls
+// back into this parent entrypoint for store reads.
+export { LibEntry } from "./server/sandbox-worker-loader.js";
 
 interface Env {
   DB: D1Database;
@@ -33,6 +40,7 @@ interface Env {
   LLM_MODEL: string;
   GOOGLE_GENERATIVE_AI_API_KEY: string;
   API_KEY?: string;
+  LOADER: WorkerLoaderBinding;
 }
 
 function getAuthEnv(env: Env, request: Request): AuthEnv {
@@ -71,7 +79,8 @@ async function extractUser(
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  // eslint-disable-next-line max-params -- Cloudflare fetch handler signature is fixed: (request, env, ctx)
+  async fetch(request: Request, env: Env, ctx: LoaderCtx): Promise<Response> {
     // Set D1 storage for this request
     setStorage(new D1Storage(env.DB));
     setImageStorage(new R2ImageStorage(env.IMAGES));
@@ -81,50 +90,54 @@ export default {
     process.env["LLM_MODEL"] = env.LLM_MODEL;
     process.env["GOOGLE_GENERATIVE_AI_API_KEY"] = env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-    const url = new URL(request.url);
+    // The sandbox closes over this request's ctx; scope it per request (ALS) so
+    // concurrent requests in one isolate never clobber each other's context.
+    return runWithSandbox(new WorkerLoaderSandbox(env.LOADER, ctx), async () => {
+      const url = new URL(request.url);
 
-    // Auth routes (public)
-    if (url.pathname.startsWith("/auth/")) {
-      const authResponse = await handleAuthRoute(request, getAuthEnv(env, request));
-      if (authResponse) return authResponse;
-    }
+      // Auth routes (public)
+      if (url.pathname.startsWith("/auth/")) {
+        const authResponse = await handleAuthRoute(request, getAuthEnv(env, request));
+        if (authResponse) return authResponse;
+      }
 
-    // Serve images (public, no auth needed)
-    if (url.pathname.startsWith("/api/images/")) {
-      return handleImageRequest(url);
-    }
+      // Serve images (public, no auth needed)
+      if (url.pathname.startsWith("/api/images/")) {
+        return handleImageRequest(url);
+      }
 
-    // Extract user for API routes
-    const user = await extractUser(request, { jwtSecret: env.JWT_SECRET, apiKey: env.API_KEY });
+      // Extract user for API routes
+      const user = await extractUser(request, { jwtSecret: env.JWT_SECRET, apiKey: env.API_KEY });
 
-    // Streaming command endpoint (authed)
-    if (url.pathname === "/api/command" && request.method === "POST") {
-      if (!user) return new Response("Unauthorized", { status: 401 });
-      return handleCommandStream(request, user);
-    }
+      // Streaming command endpoint (authed)
+      if (url.pathname === "/api/command" && request.method === "POST") {
+        if (!user) return new Response("Unauthorized", { status: 401 });
+        return handleCommandStream(request, user);
+      }
 
-    // Handle tRPC requests (auth checked per-procedure)
-    if (url.pathname.startsWith("/trpc")) {
-      return fetchRequestHandler({
-        endpoint: "/trpc",
-        req: request,
-        router: appRouter,
-        createContext: () => ({
-          userId: user ? user.userId : null,
-          userName: user ? user.userName : null,
-          roles: user ? user.roles : [],
-        }),
-        onError: ({ error, path }) => {
-          logErrorObj("trpc", {
-            error,
-            userId: user ? user.userId : undefined,
-            context: path,
-          });
-        },
-      });
-    }
+      // Handle tRPC requests (auth checked per-procedure)
+      if (url.pathname.startsWith("/trpc")) {
+        return fetchRequestHandler({
+          endpoint: "/trpc",
+          req: request,
+          router: appRouter,
+          createContext: () => ({
+            userId: user ? user.userId : null,
+            userName: user ? user.userName : null,
+            roles: user ? user.roles : [],
+          }),
+          onError: ({ error, path }) => {
+            logErrorObj("trpc", {
+              error,
+              userId: user ? user.userId : undefined,
+              context: path,
+            });
+          },
+        });
+      }
 
-    // Everything else: static assets (SPA fallback configured in wrangler.toml)
-    return env.ASSETS.fetch(request);
+      // Everything else: static assets (SPA fallback configured in wrangler.toml)
+      return env.ASSETS.fetch(request);
+    });
   },
 };

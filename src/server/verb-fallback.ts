@@ -153,7 +153,7 @@ export async function handleVerbFallback(
     console.log(`[ai-fallback] Registering "${command.verb}" as alias for "${response.aliasOf}"`);
     verbs.addVerbAlias(response.aliasOf, command.verb);
     // Re-dispatch with the alias now registered
-    const aliasResult = verbs.dispatch(context);
+    const aliasResult = await verbs.dispatch(context);
     if (aliasResult.outcome === "performed") {
       return {
         output: aliasResult.output,

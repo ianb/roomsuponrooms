@@ -36,6 +36,24 @@ Entry points call `setStorage()` to configure which backend:
 - `src/server/index.ts` — sets FileStorage
 - `src/worker.ts` — sets D1Storage from `env.DB`
 
+### Handler/template sandboxing
+
+Untrusted handler code (verb handlers, AI-authored handlers) runs in a sandbox
+via the `Sandbox` interface (`src/core/sandbox-host.ts`):
+- **Production (Worker):** `WorkerLoaderSandbox` (`src/server/sandbox-worker-loader.ts`)
+  runs handlers in a Cloudflare **dynamic isolate** via the `worker_loaders`
+  binding (`LOADER`). Requires the **Workers Paid plan** and the
+  `enable_ctx_exports` + `nodejs_compat` compatibility flags. The sandbox is
+  scoped per request with `AsyncLocalStorage` (`runWithSandbox`).
+- **Local dev (Node):** `NodeQuickJsSandbox` (`src/server/sandbox-quickjs.ts`)
+  uses QuickJS-WASM in-process; set as the fallback in `src/server/index.ts`.
+
+Handler `lib` calls are async — all handler code (incl. game `*.jsonl`) must
+`await` every `lib.*` call. Template `${...}` expressions use a separate safe
+AST evaluator (`src/core/template-eval.ts`, acorn-based, synchronous). The
+legacy SVal interpreter (`src/core/sandbox.ts`) remains only for unused
+conversation `perform` code and is marked for removal.
+
 ### Game data bundling
 
 Game definitions are loaded from disk (`src/games/read-game-dir.ts`) using `node:fs`. Workers can't access the filesystem, so a build step pre-bundles all game data:

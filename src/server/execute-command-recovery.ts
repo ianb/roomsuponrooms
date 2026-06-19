@@ -17,7 +17,7 @@ interface RecoveryArgs {
 }
 
 export type RecoveryResult =
-  | { ok: true; game: GameInstance; result: ReturnType<typeof processCommand> }
+  | { ok: true; game: GameInstance; result: Awaited<ReturnType<typeof processCommand>> }
   | { ok: false; response: CommandResult };
 
 /**
@@ -34,13 +34,13 @@ export async function processWithRecovery({
   processArgs,
 }: RecoveryArgs): Promise<RecoveryResult> {
   try {
-    return { ok: true, game, result: processCommand(game.store, processArgs) };
+    return { ok: true, game, result: await processCommand(game.store, processArgs) };
   } catch (err: unknown) {
     if (!(err instanceof EntityNotFoundError)) throw err as Error;
     console.warn(`[execute-command] EntityNotFoundError (${err.entityId}); reinitializing session`);
     const rebuilt = await reinitGame(session);
     try {
-      return { ok: true, game: rebuilt, result: processCommand(rebuilt.store, processArgs) };
+      return { ok: true, game: rebuilt, result: await processCommand(rebuilt.store, processArgs) };
     } catch (retryErr: unknown) {
       if (!(retryErr instanceof EntityNotFoundError)) throw retryErr as Error;
       return {

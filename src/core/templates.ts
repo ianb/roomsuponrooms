@@ -1,5 +1,5 @@
 import type { EntityStore, Entity } from "./entity.js";
-import { evalTemplate } from "./sandbox.js";
+import { evalTemplateSafe } from "./template-eval.js";
 
 /**
  * Evaluate template expressions in a string.
@@ -35,7 +35,7 @@ export function renderTemplate(
   }
 
   try {
-    return evalTemplate(template, { self, entity: entityLookup, has, contents });
+    return evalTemplateSafe(template, { self, entity: entityLookup, has, contents });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error(

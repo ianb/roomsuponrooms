@@ -5,11 +5,10 @@ import type {
   CheckResult,
   VetoResult,
   PerformResult,
-  WorldEvent,
 } from "./verb-types.js";
 import type { HandlerData } from "./game-data.js";
 import { HandlerLib } from "./handler-lib.js";
-import { buildSandboxedFunction } from "./sandbox.js";
+import { getSandbox, coerceEvents, type LibDispatch } from "./sandbox-host.js";
 
 export type LibFactory = (context: VerbContext) => HandlerLib;
 
@@ -32,23 +31,81 @@ function getIndirect(context: VerbContext): Entity | null {
   return null;
 }
 
-function handlerVars(context: VerbContext, createLib: LibFactory): Record<string, unknown> {
+/** A JSON-safe view of the resolved command (entities live in scope separately). */
+function commandSnapshot(context: VerbContext): Record<string, unknown> {
+  const c = context.command;
+  const snap: Record<string, unknown> = { form: c.form, verb: c.verb };
+  if (c.form === "prepositional" || c.form === "ditransitive") snap.prep = c.prep;
+  return snap;
+}
+
+/** Build the JSON scope handed into the sandbox: entity snapshots, never live objects. */
+function handlerScope(context: VerbContext): Record<string, unknown> {
+  const target = getTarget(context);
+  const indirect = getIndirect(context);
+  const scope: Record<string, unknown> = {
+    player: context.store.getSnapshot(context.player.id),
+    room: context.store.getSnapshot(context.room.id),
+    command: commandSnapshot(context),
+  };
+  if (target) scope.object = context.store.getSnapshot(target.id);
+  if (indirect) scope.indirect = context.store.getSnapshot(indirect.id);
+  return scope;
+}
+
+// Methods reachable on every object that must never be callable through the
+// bridge — otherwise handler code could invoke e.g. lib.valueOf() (serializing
+// the live store/player/room) or reach the prototype chain.
+const BLOCKED_LIB_METHODS = new Set<string>([
+  "prototype",
+  "__proto__",
+  ...Object.getOwnPropertyNames(Object.prototype),
+]);
+
+/** Bridge a live game lib instance into the generic LibDispatch the sandbox
+ *  forwards every `lib.method(...)` call to. Methods run in the parent over the
+ *  live store; args (snapshots / ids) and returns pass through as JSON. */
+function libDispatch(lib: HandlerLib): LibDispatch {
+  const target = lib as unknown as Record<string, unknown>;
   return {
-    lib: createLib(context),
-    object: getTarget(context),
-    indirect: getIndirect(context),
-    player: context.player,
-    room: context.room,
-    store: context.store,
-    command: context.command,
+    invoke: (method, args) => {
+      if (BLOCKED_LIB_METHODS.has(method)) {
+        throw new UnknownLibMethodError(method);
+      }
+      const fn = target[method];
+      if (typeof fn !== "function") {
+        throw new UnknownLibMethodError(method);
+      }
+      return (fn as (...a: unknown[]) => unknown).apply(lib, args);
+    },
   };
 }
 
-function buildCheck(code: string, createLib: LibFactory): (context: VerbContext) => CheckResult {
-  const fn = buildSandboxedFunction(code);
-  return (context: VerbContext): CheckResult => {
+export class UnknownLibMethodError extends Error {
+  constructor(method: string) {
+    super("Handler called unknown lib method: " + method);
+    this.name = "UnknownLibMethodError";
+  }
+}
+
+function runHandlerCode(
+  context: VerbContext,
+  { code, createLib }: { code: string; createLib: LibFactory },
+): Promise<unknown> {
+  return getSandbox().runHandler({
+    code,
+    scope: handlerScope(context),
+    lib: libDispatch(createLib(context)),
+  });
+}
+
+function buildCheck(
+  code: string,
+  createLib: LibFactory,
+): (context: VerbContext) => Promise<CheckResult> {
+  return async (context: VerbContext): Promise<CheckResult> => {
     try {
-      const result = fn(handlerVars(context, createLib));
+      const result = await runHandlerCode(context, { code, createLib });
       return { applies: !!result };
     } catch (err: unknown) {
       console.error(`[handler-eval] Check code threw: ${err instanceof Error ? err.message : err}`);
@@ -57,11 +114,13 @@ function buildCheck(code: string, createLib: LibFactory): (context: VerbContext)
   };
 }
 
-function buildVeto(code: string, createLib: LibFactory): (context: VerbContext) => VetoResult {
-  const fn = buildSandboxedFunction(code);
-  return (context: VerbContext): VetoResult => {
+function buildVeto(
+  code: string,
+  createLib: LibFactory,
+): (context: VerbContext) => Promise<VetoResult> {
+  return async (context: VerbContext): Promise<VetoResult> => {
     try {
-      const result = fn(handlerVars(context, createLib));
+      const result = await runHandlerCode(context, { code, createLib });
       if (typeof result === "string") {
         return { blocked: true, output: result };
       }
@@ -73,34 +132,18 @@ function buildVeto(code: string, createLib: LibFactory): (context: VerbContext) 
   };
 }
 
-function validateEvent(e: unknown): WorldEvent | null {
-  if (typeof e !== "object" || e === null) return null;
-  const obj = e as Record<string, unknown>;
-  if (typeof obj.type !== "string" || typeof obj.entityId !== "string") return null;
-  if (typeof obj.description !== "string") obj.description = "";
-  return obj as unknown as WorldEvent;
-}
-
 function buildPerform(
   code: string,
   createLib: LibFactory,
-): (context: VerbContext) => PerformResult {
-  const fn = buildSandboxedFunction(code);
-  return (context: VerbContext): PerformResult => {
-    const raw = fn(handlerVars(context, createLib));
+): (context: VerbContext) => Promise<PerformResult> {
+  return async (context: VerbContext): Promise<PerformResult> => {
+    const raw = await runHandlerCode(context, { code, createLib });
     if (!raw || typeof raw !== "object") {
       return { output: "Something strange happens, but nothing changes.", events: [] };
     }
     const result = raw as Record<string, unknown>;
     const output = typeof result.output === "string" ? result.output : "";
-    const events: WorldEvent[] = [];
-    if (Array.isArray(result.events)) {
-      for (const e of result.events) {
-        const valid = validateEvent(e);
-        if (valid) events.push(valid);
-      }
-    }
-    return { output, events };
+    return { output, events: coerceEvents(raw) };
   };
 }
 

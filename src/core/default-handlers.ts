@@ -7,14 +7,14 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     name: "look",
     pattern: { verb: "look", verbAliases: ["l"], form: "intransitive" },
     freeTurn: true,
-    perform: "return lib.describeRoom();",
+    perform: "return await lib.describeRoom();",
   },
 
   {
     name: "look-at",
     pattern: { verb: "look", verbAliases: ["l"], form: "prepositional", prep: "direction" },
     freeTurn: true,
-    perform: "return lib.examine(object);",
+    perform: "return await lib.examine(object);",
   },
 
   {
@@ -25,7 +25,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
       form: "transitive",
     },
     freeTurn: true,
-    perform: "return lib.examine(object);",
+    perform: "return await lib.examine(object);",
   },
 
   {
@@ -37,8 +37,8 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     },
     objectRequirements: { tags: ["portable"] },
     check: "return object.location !== player.id;",
-    veto: "return lib.checkCarryCapacity();",
-    perform: "return lib.take(object);",
+    veto: "return await lib.checkCarryCapacity();",
+    perform: "return await lib.take(object);",
   },
 
   {
@@ -50,7 +50,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     },
     priority: -5,
     perform:
-      "if (object.properties.takeRefusal) return lib.result('{!' + object.properties.takeRefusal + '!}'); if (object.properties.fixed) return lib.result('{!The ' + lib.ref(object) + ' is fixed in place.!}'); return lib.result('{!You can\\'t take the ' + lib.ref(object) + '.!}');",
+      "if (object.properties.takeRefusal) return await lib.result('{!' + object.properties.takeRefusal + '!}'); if (object.properties.fixed) return await lib.result('{!The ' + await lib.ref(object) + ' is fixed in place.!}'); return await lib.result('{!You can\\'t take the ' + await lib.ref(object) + '.!}');",
   },
 
   {
@@ -59,38 +59,38 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     priority: 10,
     indirectRequirements: { tags: ["container"] },
     check: "return object.location === indirect.id;",
-    veto: "if (indirect.tags.includes('openable') && !indirect.properties.open) return 'The ' + lib.ref(indirect) + ' is closed.'; return null;",
-    perform: "return lib.takeFrom(object, indirect);",
+    veto: "if (indirect.tags.includes('openable') && !indirect.properties.open) return 'The ' + await lib.ref(indirect) + ' is closed.'; return null;",
+    perform: "return await lib.takeFrom(object, indirect);",
   },
 
   {
     name: "drop",
     pattern: { verb: "drop", verbAliases: ["discard", "throw"], form: "transitive" },
     check: "return object.location === player.id;",
-    perform: "return lib.drop(object);",
+    perform: "return await lib.drop(object);",
   },
 
   {
     name: "inventory",
     pattern: { verb: "inventory", verbAliases: ["i"], form: "intransitive" },
     freeTurn: true,
-    perform: "return lib.showInventory();",
+    perform: "return await lib.showInventory();",
   },
 
   {
     name: "open",
     pattern: { verb: "open", verbAliases: ["unwrap", "uncover"], form: "transitive" },
     objectRequirements: { tags: ["openable"] },
-    veto: "if (object.properties.locked) return 'The ' + lib.ref(object) + ' is locked.'; if (object.properties.open) return 'The ' + lib.ref(object) + ' is already open.'; return null;",
-    perform: "return lib.open(object);",
+    veto: "if (object.properties.locked) return 'The ' + await lib.ref(object) + ' is locked.'; if (object.properties.open) return 'The ' + await lib.ref(object) + ' is already open.'; return null;",
+    perform: "return await lib.open(object);",
   },
 
   {
     name: "close",
     pattern: { verb: "close", verbAliases: ["shut", "cover"], form: "transitive" },
     objectRequirements: { tags: ["openable"] },
-    veto: "if (!object.properties.open) return 'The ' + lib.ref(object) + ' is already closed.'; return null;",
-    perform: "return lib.close(object);",
+    veto: "if (!object.properties.open) return 'The ' + await lib.ref(object) + ' is already closed.'; return null;",
+    perform: "return await lib.close(object);",
   },
 
   {
@@ -103,33 +103,33 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     },
     indirectRequirements: { tags: ["container"] },
     check: "return object.location === player.id;",
-    veto: "if (indirect.tags.includes('openable') && !indirect.properties.open) return 'The ' + lib.ref(indirect) + ' is closed.'; return null;",
-    perform: "return lib.putIn(object, indirect);",
+    veto: "if (indirect.tags.includes('openable') && !indirect.properties.open) return 'The ' + await lib.ref(indirect) + ' is closed.'; return null;",
+    perform: "return await lib.putIn(object, indirect);",
   },
 
   {
     name: "unlock-with",
     pattern: { verb: "unlock", form: "ditransitive", prep: "instrument" },
     objectRequirements: { properties: { locked: true } },
-    veto: "var requiredKey = object.properties.unlockedBy; if (requiredKey && indirect.id !== requiredKey) return 'The ' + lib.ref(indirect) + \" doesn't fit the \" + lib.ref(object) + '.'; return null;",
-    perform: "return lib.unlockWith(object, indirect);",
+    veto: "var requiredKey = object.properties.unlockedBy; if (requiredKey && indirect.id !== requiredKey) return 'The ' + await lib.ref(indirect) + \" doesn't fit the \" + await lib.ref(object) + '.'; return null;",
+    perform: "return await lib.unlockWith(object, indirect);",
   },
 
   {
     name: "unlock",
     pattern: { verb: "unlock", form: "transitive" },
     objectRequirements: { properties: { locked: true } },
-    check: "return !!lib.findKey(object);",
-    perform: "return lib.unlock(object);",
+    check: "return !!await lib.findKey(object);",
+    perform: "return await lib.unlock(object);",
   },
 
   {
     name: "lock",
     pattern: { verb: "lock", form: "transitive" },
     objectRequirements: { tags: ["openable"], properties: { locked: false } },
-    check: "return !!object.properties.unlockedBy && !!lib.findKey(object);",
-    veto: "if (object.properties.open) return 'You need to close the ' + lib.ref(object) + ' first.'; return null;",
-    perform: "return lib.lock(object);",
+    check: "return !!object.properties.unlockedBy && !!await lib.findKey(object);",
+    veto: "if (object.properties.open) return 'You need to close the ' + await lib.ref(object) + ' first.'; return null;",
+    perform: "return await lib.lock(object);",
   },
 
   {
@@ -137,7 +137,7 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     pattern: { verb: "turn-on", verbAliases: ["turn", "switch", "light"], form: "transitive" },
     objectRequirements: { tags: ["device"] },
     check: "return !object.properties.switchedOn;",
-    perform: "return lib.switchOn(object);",
+    perform: "return await lib.switchOn(object);",
   },
 
   {
@@ -149,21 +149,21 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
     },
     objectRequirements: { tags: ["device"] },
     check: "return !!object.properties.switchedOn;",
-    perform: "return lib.switchOff(object);",
+    perform: "return await lib.switchOff(object);",
   },
 
   {
     name: "help",
     pattern: { verb: "help", form: "intransitive" },
     freeTurn: true,
-    perform: "return lib.showHelp();",
+    perform: "return await lib.showHelp();",
   },
 
   {
     name: "score",
     pattern: { verb: "score", form: "intransitive" },
     freeTurn: true,
-    perform: "return lib.showScore();",
+    perform: "return await lib.showScore();",
   },
 
   {
@@ -196,6 +196,6 @@ export const DEFAULT_HANDLERS: HandlerData[] = [
   {
     name: "[enter]",
     pattern: { verb: SYSTEM_VERBS.ENTER, form: "intransitive" },
-    perform: "return lib.incrementVisits();",
+    perform: "return await lib.incrementVisits();",
   },
 ];

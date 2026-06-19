@@ -4,6 +4,7 @@ node-arg:
   - --import=tsx
   - --import=agent-doctest/tap
   - --import=agent-doctest/loader
+  - --import=./test/setup-sandbox.ts
 include:
   - test/**/*.test.ts
   - test/**/*.doctest.md
